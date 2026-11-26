@@ -10,6 +10,7 @@
   },
   "chat": {
     "archived": "Archived: read-only. Its copy is released; the changes stay on the branch.",
+    "archivedKept": "Archived: read-only. Its copy is kept: it had uncommitted changes, not in the last turn’s snapshot. Unarchive to go on with them.",
     "unarchive": "Unarchive",
     "log": "Conversation",
     "failed": "Failed",

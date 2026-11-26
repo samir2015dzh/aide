@@ -127,7 +127,8 @@ type SessionServiceClient interface {
 	// and the next message goes on in the same agent conversation.
 	InterruptSession(context.Context, *v1.InterruptSessionRequest) (*v1.Session, error)
 	// ArchiveSession makes an idle session read-only and frees its worktree
-	// (its branch keeps the work). Sessions never end otherwise.
+	// (its branch keeps the work), or keeps one with work no turn's snapshot
+	// has (Session.workspace_kept). Sessions never end otherwise.
 	ArchiveSession(context.Context, *v1.ArchiveSessionRequest) (*v1.Session, error)
 	// UnarchiveSession restores the worktree from the branch; the session is
 	// idle again.
@@ -591,7 +592,8 @@ type SessionServiceHandler interface {
 	// and the next message goes on in the same agent conversation.
 	InterruptSession(context.Context, *v1.InterruptSessionRequest) (*v1.Session, error)
 	// ArchiveSession makes an idle session read-only and frees its worktree
-	// (its branch keeps the work). Sessions never end otherwise.
+	// (its branch keeps the work), or keeps one with work no turn's snapshot
+	// has (Session.workspace_kept). Sessions never end otherwise.
 	ArchiveSession(context.Context, *v1.ArchiveSessionRequest) (*v1.Session, error)
 	// UnarchiveSession restores the worktree from the branch; the session is
 	// idle again.

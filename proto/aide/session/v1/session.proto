@@ -48,7 +48,8 @@ service SessionService {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
   // ArchiveSession makes an idle session read-only and frees its worktree
-  // (its branch keeps the work). Sessions never end otherwise.
+  // (its branch keeps the work), or keeps one with work no turn's snapshot
+  // has (Session.workspace_kept). Sessions never end otherwise.
   rpc ArchiveSession(ArchiveSessionRequest) returns (Session) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
@@ -511,6 +512,13 @@ message Session {
   // What the owner has seen of it (MarkSessionSeen); unset from older
   // machines, where every turn counts as seen.
   SessionSeen seen = 27;
+  // Archived sessions only: its worktree is still on disk. Archiving
+  // frees a worktree unless it holds work the last turn's snapshot (the
+  // commit its latest checkpoint names) does not have: files changed,
+  // added or removed since, ignored ones aside. Such a worktree is kept,
+  // changes and all, and unarchiving goes on in it. False from older
+  // machines, which freed it anyway.
+  bool workspace_kept = 28;
 }
 
 // SessionSeen is what the owner's devices have seen of a session, kept by

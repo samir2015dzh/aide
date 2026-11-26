@@ -509,7 +509,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   };
   const archive = (s: Session, on: boolean) =>
     (on ? local.archiveSession({ sessionId: s.sessionId }) : local.unarchiveSession({ sessionId: s.sessionId })).then(
-      () => setState({ kind: "done", text: t(on ? "conv.archived" : "conv.unarchived", { title: displayTitle(s) }) }),
+      (res) => setState({ kind: "done", text: t(!on ? "conv.unarchived" : res.session?.workspaceKept ? "conv.archivedKept" : "conv.archived", { title: displayTitle(s) }) }),
       (e) => setState({ kind: "error", text: errorText(e) }),
     );
   // What the next message does, said over the box before it is sent.

@@ -91,7 +91,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
           s.status === SessionStatus.ARCHIVED && (
             <div className="anote">
               <Icon name="archive" className="sm" />
-              {t("chat.archived")}
+              {t(s.workspaceKept ? "chat.archivedKept" : "chat.archived")}
               <button className="link" onClick={() => unarchive(st, s)}>{t("chat.unarchive")}</button>
             </div>
           )

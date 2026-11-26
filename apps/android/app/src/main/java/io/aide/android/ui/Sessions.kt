@@ -257,7 +257,7 @@ fun statusText(s: Session): String = when (s.status) {
     SessionStatus.PREPARING -> t("preparing", "准备中")
     SessionStatus.QUEUED -> t("queued", "排队中")
     SessionStatus.CRASHED -> t("stopped", "已中断")
-    SessionStatus.ARCHIVED -> t("archived", "已归档")
+    SessionStatus.ARCHIVED -> if (s.workspaceKept) t("archived · worktree kept", "已归档 · 工作区已保留") else t("archived", "已归档")
     SessionStatus.IDLE -> if (s.progress?.lastFailure != null) t("failed", "失败") else t("done", "完成")
     SessionStatus.UNKNOWN -> t("state unknown", "状态未知")
     else -> ""

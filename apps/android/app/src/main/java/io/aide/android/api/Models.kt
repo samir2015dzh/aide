@@ -379,6 +379,8 @@ data class Session(
     val effort: String = "",
     /** Unset from an older machine, which keeps nothing seen. */
     val seen: SessionSeen? = null,
+    /** Archived, its worktree kept: it had changes not in the last turn's snapshot (Session.workspace_kept). */
+    val workspaceKept: Boolean = false,
 )
 
 @Serializable

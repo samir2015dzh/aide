@@ -1878,7 +1878,14 @@ type Session struct {
 	RepoBranch string `protobuf:"bytes,26,opt,name=repo_branch,json=repoBranch,proto3" json:"repo_branch,omitempty"`
 	// What the owner has seen of it (MarkSessionSeen); unset from older
 	// machines, where every turn counts as seen.
-	Seen          *SessionSeen `protobuf:"bytes,27,opt,name=seen,proto3" json:"seen,omitempty"`
+	Seen *SessionSeen `protobuf:"bytes,27,opt,name=seen,proto3" json:"seen,omitempty"`
+	// Archived sessions only: its worktree is still on disk. Archiving
+	// frees a worktree unless it holds work the last turn's snapshot (the
+	// commit its latest checkpoint names) does not have: files changed,
+	// added or removed since, ignored ones aside. Such a worktree is kept,
+	// changes and all, and unarchiving goes on in it. False from older
+	// machines, which freed it anyway.
+	WorkspaceKept bool `protobuf:"varint,28,opt,name=workspace_kept,json=workspaceKept,proto3" json:"workspace_kept,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2058,6 +2065,13 @@ func (x *Session) GetSeen() *SessionSeen {
 		return x.Seen
 	}
 	return nil
+}
+
+func (x *Session) GetWorkspaceKept() bool {
+	if x != nil {
+		return x.WorkspaceKept
+	}
+	return false
 }
 
 // SessionSeen is what the owner's devices have seen of a session, kept by
@@ -6465,7 +6479,7 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"resolution\x12\x0e\n" +
 	"\x02by\x18\x03 \x01(\tR\x02by\x121\n" +
 	"\aanswers\x18\x04 \x03(\v2\x17.aide.session.v1.AnswerR\aanswers\x12,\n" +
-	"\x12client_message_ids\x18\x05 \x03(\tR\x10clientMessageIds\"\x92\x06\n" +
+	"\x12client_message_ids\x18\x05 \x03(\tR\x10clientMessageIds\"\xb9\x06\n" +
 	"\aSession\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -6496,7 +6510,8 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\x04repo\x18\x19 \x01(\tR\x04repo\x12\x1f\n" +
 	"\vrepo_branch\x18\x1a \x01(\tR\n" +
 	"repoBranch\x120\n" +
-	"\x04seen\x18\x1b \x01(\v2\x1c.aide.session.v1.SessionSeenR\x04seenJ\x04\b\x05\x10\x06R\x06preset\"o\n" +
+	"\x04seen\x18\x1b \x01(\v2\x1c.aide.session.v1.SessionSeenR\x04seen\x12%\n" +
+	"\x0eworkspace_kept\x18\x1c \x01(\bR\rworkspaceKeptJ\x04\b\x05\x10\x06R\x06preset\"o\n" +
 	"\vSessionSeen\x12\x14\n" +
 	"\x05turns\x18\x01 \x01(\rR\x05turns\x12\x1f\n" +
 	"\vquestion_id\x18\x02 \x01(\tR\n" +

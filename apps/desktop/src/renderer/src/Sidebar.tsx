@@ -39,8 +39,11 @@ export function machineName(st: Store, id: string): string {
 }
 
 export function archive(st: Store, s: Session) {
-  st.run(() => local.archiveSession({ sessionId: s.sessionId })).then((ok) => {
-    if (ok) st.show(i18n.t("common:sidebar.archived", { title: displayTitle(s) }), () => unarchive(st, s));
+  let kept = false; // the machine kept its worktree: it has changes no turn's snapshot has
+  st.run(async () => {
+    kept = (await local.archiveSession({ sessionId: s.sessionId })).session?.workspaceKept ?? false;
+  }).then((ok) => {
+    if (ok) st.show(i18n.t(kept ? "common:sidebar.archivedKept" : "common:sidebar.archived", { title: displayTitle(s) }), () => unarchive(st, s));
   });
 }
 
@@ -54,6 +57,7 @@ export function confirmDelete(st: Store, s: Session) {
   const message = [
     i18n.t(s.branch ? "common:sessionMenu.deleteMessage" : "common:sessionMenu.deleteMessageNoBranch", { branch: s.branch }),
     isActive(s) ? i18n.t("common:sessionMenu.deleteRunning") : "",
+    s.workspaceKept ? i18n.t("common:sessionMenu.deleteKept") : "",
   ].filter(Boolean).join(" ");
   st.set({
     sheet: {

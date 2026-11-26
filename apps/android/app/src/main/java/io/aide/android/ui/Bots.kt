@@ -406,7 +406,7 @@ private fun TextLink(text: String, onClick: () -> Unit) {
 private fun stateWord(s: Session): String = when (s.status) {
     SessionStatus.RUNNING -> t("Running", "进行中")
     SessionStatus.WAITING_INPUT -> t("Waiting for you", "等你回答")
-    SessionStatus.ARCHIVED -> t("Archived", "已归档")
+    SessionStatus.ARCHIVED -> if (s.workspaceKept) t("Archived · worktree kept", "已归档 · 工作区已保留") else t("Archived", "已归档")
     SessionStatus.CRASHED -> t("Failed", "出错")
     else -> t("Idle", "空闲")
 }

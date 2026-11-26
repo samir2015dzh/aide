@@ -715,7 +715,7 @@ stateDiagram-v2
   This makes per-turn diffs possible. The agent committing or pushing on its own is not restricted.
 - **Diff**: `git diff --binary <base_commit>..<turn or HEAD>`, at most 10 MiB per response, paged beyond that.
 - **Delivery**: changes stay on the local branch `aide/<session_id>`. **The daemon itself never pushes.**
-- **Cleanup**: on archive the worktree and the session's TMPDIR are deleted, and the branch `aide/<session>` keeps every turn's snapshot; on unarchive the worktree is rebuilt from the branch (same path, so the coding agent's session can resume in its original working directory), and the agent's next start makes a new TMPDIR.
+- **Cleanup**: on archive the worktree and the session's TMPDIR are deleted, and the branch `aide/<session>` keeps every turn's snapshot; on unarchive the worktree is rebuilt from the branch (same path, so the coding agent's session can resume in its original working directory), and the agent's next start makes a new TMPDIR. A worktree that holds work the last turn's snapshot does not have (what a snapshot would commit now: tracked and untracked files, ignored ones aside, or a HEAD moved off the session branch to another tree) is not deleted: the session is archived with it kept, says so (`Session.workspace_kept`, read from the worktree still being there, nothing else records it; the archived status event's reason names the paths), and unarchive goes on in it, so the next turn's snapshot takes those changes. Deleting the session deletes a kept worktree too.
 
 ### 6.7 Claude Code Adapter
 

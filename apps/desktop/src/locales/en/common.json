@@ -54,6 +54,7 @@
     "notConnected": "Not connected",
     "disconnectedGrant": "Disconnected agent",
     "archived": "Archived “{{title}}”",
+    "archivedKept": "Archived “{{title}}”; its worktree is kept: it has changes that are not in the last turn’s snapshot",
     "unarchived": "Unarchived “{{title}}”",
     "overview": "Overview",
     "you": "You",
@@ -96,6 +97,7 @@
     "deleteMessage": "Its record, conversation, and worktree will be permanently deleted. The agent’s changes remain on branch {{branch}}.",
     "deleteMessageNoBranch": "Its record and conversation will be permanently deleted.",
     "deleteRunning": "The current turn will be interrupted first.",
+    "deleteKept": "Its kept worktree holds changes that are not on the branch; they will be deleted too.",
     "deleteButton": "Delete",
     "deleted": "Deleted “{{title}}”"
   },
@@ -691,6 +693,7 @@
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archived": "Archived “{{title}}”",
+    "archivedKept": "Archived “{{title}}”; its worktree is kept: it has changes that are not in the last turn’s snapshot",
     "unarchived": "Unarchived “{{title}}”",
     "archivedGroup_one": "Archived ({{count}})",
     "archivedGroup_other": "Archived ({{count}})",

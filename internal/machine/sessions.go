@@ -1169,7 +1169,9 @@ func (s *Sessions) InterruptByClient(clientID, reason string) {
 
 // Archive makes an idle session read-only and frees its worktree; the
 // session's branch keeps every turn's work, and its events and diff stay
-// readable.
+// readable. A worktree holding work the last turn's snapshot does not
+// have (Workspace.Unsaved) is kept instead, and archived with it: the
+// session says so (Session.workspace_kept), and Unarchive goes on in it.
 func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessionv1.Session, error) {
 	l, r, err := s.find(p, id, p.Kind != PrincipalOwner)
 	if err != nil {
@@ -1202,18 +1204,21 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	if err := s.st.ReleasePorts(id); err != nil {
 		s.log.Warn("archive: ports not released", "session", id, "err", err)
 	}
+	kept := ""
 	if !inPlace && s.ws.Exists(id) {
-		if proj, _ := s.st.Project(row.ProjectID); proj != nil {
-			if err := s.ws.Remove(ctx, proj.Path, id); err != nil {
-				s.log.Warn("archive: worktree not removed", "session", id, "err", err)
-			}
+		if kept = s.unsavedWork(ctx, row.ProjectID, id); kept != "" {
+			s.log.Info("archive: worktree kept", "session", id, "why", kept)
 		} else {
-			os.RemoveAll(s.ws.Path(id))
+			s.freeWorktree(ctx, row.ProjectID, id)
 		}
 	}
 	s.archiveInAgent(ctx, row, true)
 	if changed {
-		s.statusChanged(l, sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED, "archived by "+p.ID())
+		why := "archived by " + p.ID()
+		if kept != "" {
+			why += "; worktree kept: " + kept
+		}
+		s.statusChanged(l, sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED, why)
 	}
 	// Retire it now, and wait until the archive is stored, so an unarchive
 	// that follows at once sees an archived session and numbers its events
@@ -1229,7 +1234,7 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	if err := s.w.sync(writeOp{}); err != nil {
 		return nil, err
 	}
-	s.audit.Log(AuditRecord{Kind: "session.archive", Subject: p.ID(), Session: id, Decision: "allow"})
+	s.audit.Log(AuditRecord{Kind: "session.archive", Subject: p.ID(), Session: id, Decision: "allow", Detail: kept})
 	// Its review, made now and kept (docs/session-insights.md), off the
 	// archive's own path.
 	go func() {
@@ -1240,8 +1245,44 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	return s.toProto(row), nil
 }
 
+// unsavedWork says why the session's worktree must be kept, "" when it
+// holds nothing the last turn's snapshot lacks and may go.
+func (s *Sessions) unsavedWork(ctx context.Context, projectID, id string) string {
+	if s.ws.none {
+		return "" // no git, no snapshots: nothing it could keep apart
+	}
+	repo := s.ws.Path(id) // its project gone: the worktree shares the refs
+	if proj, _ := s.st.Project(projectID); proj != nil {
+		repo = proj.Path
+	}
+	paths, err := s.ws.Unsaved(ctx, repo, id)
+	switch {
+	case err != nil:
+		return "its changes could not be checked: " + err.Error()
+	case len(paths) == 0:
+		return ""
+	case len(paths) == 1:
+		return "1 path not in the last turn's snapshot (" + paths[0] + ")"
+	default:
+		return fmt.Sprintf("%d paths not in the last turn's snapshot (%s, …)", len(paths), paths[0])
+	}
+}
+
+// freeWorktree removes the session's worktree; its branch stays.
+func (s *Sessions) freeWorktree(ctx context.Context, projectID, id string) {
+	if proj, _ := s.st.Project(projectID); proj != nil {
+		if err := s.ws.Remove(ctx, proj.Path, id); err != nil {
+			s.log.Warn("worktree not removed", "session", id, "err", err)
+		}
+	} else {
+		os.RemoveAll(s.ws.Path(id))
+	}
+}
+
 // Unarchive checks the session's branch out again in its worktree and
-// makes the session idle; the next message resumes its conversation.
+// makes the session idle; the next message resumes its conversation. A
+// worktree that archiving kept is still there, its changes too: the
+// session goes on in it.
 func (s *Sessions) Unarchive(ctx context.Context, p *Principal, id string) (*sessionv1.Session, error) {
 	l, r, err := s.find(p, id, p.Kind != PrincipalOwner)
 	if err != nil {
@@ -1482,6 +1523,10 @@ func (s *Sessions) Delete(ctx context.Context, p *Principal, id string) error {
 	r, err := s.st.Session(id)
 	if err != nil || r == nil {
 		return err
+	}
+	// Deleting is for good: a worktree that archiving kept goes too.
+	if r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE && s.ws.Exists(id) {
+		s.freeWorktree(ctx, r.ProjectID, id)
 	}
 	if r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE && !s.ws.none {
 		if proj, _ := s.st.Project(r.ProjectID); proj != nil {
@@ -2908,7 +2953,15 @@ func (s *Sessions) toProto(r *sessionRow) *sessionv1.Session {
 		ProviderSessionRef: r.ProviderRef, CreatedAt: timestamppb.New(r.CreatedAt), UpdatedAt: timestamppb.New(r.UpdatedAt),
 		Error: r.Error, Branch: r.Branch, Workspace: r.Workspace, Result: r.Result, Title: r.Title, CreatedAs: r.Conversation,
 		Model: cmp.Or(r.AgentModel, r.Model), Effort: cmp.Or(r.Effort, r.AgentEffort), Repo: r.Repo, RepoBranch: r.RepoBranch,
-		Seen: proto.Clone(cmpOrEmpty(r.Seen)).(*sessionv1.SessionSeen)}
+		Seen: proto.Clone(cmpOrEmpty(r.Seen)).(*sessionv1.SessionSeen), WorkspaceKept: s.workspaceKept(r)}
+}
+
+// workspaceKept: an archived session whose worktree is still on disk, as
+// Archive keeps one holding unsaved work. The directory itself says so;
+// nothing else records it.
+func (s *Sessions) workspaceKept(r *sessionRow) bool {
+	return r.Status == sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED && r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE &&
+		!s.ws.none && s.ws.Exists(r.ID)
 }
 
 // Janitor enforces timeouts and stops idle agent processes (their sessions

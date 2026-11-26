@@ -53,6 +53,7 @@
     "notConnected": "未连接",
     "disconnectedGrant": "已断开的 Agent",
     "archived": "已归档「{{title}}」",
+    "archivedKept": "已归档「{{title}}」，工作区已保留：里面有最后一轮快照之外的改动",
     "unarchived": "已取消归档「{{title}}」",
     "overview": "概览",
     "you": "你",
@@ -94,6 +95,7 @@
     "deleteMessage": "任务记录、对话和工作区会被永久删除，无法恢复。Agent 做的改动仍保留在分支 {{branch}} 上。",
     "deleteMessageNoBranch": "任务记录和对话会被永久删除，无法恢复。",
     "deleteRunning": "这一轮还在进行，会先被打断。",
+    "deleteKept": "保留着的工作区里有不在分支上的改动，也会一起删掉。",
     "deleteButton": "删除",
     "deleted": "已删除「{{title}}」"
   },
@@ -674,6 +676,7 @@
     "archive": "归档",
     "unarchive": "取消归档",
     "archived": "已归档「{{title}}」",
+    "archivedKept": "已归档「{{title}}」，工作区已保留：里面有最后一轮快照之外的改动",
     "unarchived": "已取消归档「{{title}}」",
     "archivedGroup_other": "已归档（{{count}}）",
     "others": "别的 Agent 派给它的",

@@ -835,6 +835,51 @@ func (w *Workspace) Remove(ctx context.Context, repo, sessionID string) error {
 	return os.RemoveAll(admin)
 }
 
+// Unsaved lists what the session's worktree holds that its last snapshot
+// does not: the paths a snapshot would commit now (tracked and untracked
+// files, not ignored ones: what Snapshot takes and Reset puts back), and
+// the files where HEAD's tree differs from the session branch's when HEAD
+// was moved off it. The session branch's tip is the last turn's snapshot,
+// the commit its latest checkpoint names. None: removing the worktree
+// loses nothing a turn made. repo may be the worktree itself (its project
+// is gone).
+func (w *Workspace) Unsaved(ctx context.Context, repo, sessionID string) ([]string, error) {
+	wt := w.Path(sessionID)
+	out, err := git(ctx, wt, "-c", "core.quotepath=false", "status", "--porcelain=v1", "-z", "--untracked-files=normal", "--ignore-submodules=none")
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	entries := strings.Split(out, "\x00")
+	for i := 0; i < len(entries); i++ {
+		e := entries[i]
+		if len(e) < 4 {
+			continue
+		}
+		paths = append(paths, e[3:])
+		if e[0] == 'R' || e[0] == 'C' { // -z puts a rename's source next
+			i++
+		}
+	}
+	branch := "refs/heads/" + sessionBranch(ctx, repo, sessionID)
+	trees, err := git(ctx, wt, "rev-parse", "HEAD^{tree}", branch+"^{tree}")
+	if err != nil {
+		return nil, err
+	}
+	if t := strings.Fields(trees); len(t) == 2 && t[0] != t[1] {
+		moved, err := git(ctx, wt, "-c", "core.quotepath=false", "diff", "--name-only", "-z", branch, "HEAD", "--")
+		if err != nil {
+			return nil, err
+		}
+		for p := range strings.SplitSeq(moved, "\x00") {
+			if p != "" && !slices.Contains(paths, p) {
+				paths = append(paths, p)
+			}
+		}
+	}
+	return paths, nil
+}
+
 func (w *Workspace) Prune(ctx context.Context, repo string) {
 	unlock := w.lock(repo)
 	defer unlock()

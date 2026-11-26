@@ -183,6 +183,16 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                                 TintedButton(onClick = { scope.launch { model.interrupt(s) } }, destructive = true) { Text(t("Interrupt", "中断")) }
                             }
                         }
+                        // Archived with its worktree kept (Session.workspace_kept): said here, as on the desktop.
+                        s.status == io.aide.android.api.SessionStatus.ARCHIVED && s.workspaceKept -> Column(Modifier.background(aide.bar)) {
+                            Hairline()
+                            Text(
+                                t("Archived: read-only. Its worktree is kept: it had uncommitted changes, not in the last turn's snapshot. Unarchiving goes on with them.",
+                                    "已归档：只读。工作区保留着：归档时里面有未提交、不在最后一轮快照里的改动，取消归档即可接着用。"),
+                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                     // A session the owner started takes the owner's messages, here, as on the desktop.
                     if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s, open, lastSeq = { feed.lastSeq })
