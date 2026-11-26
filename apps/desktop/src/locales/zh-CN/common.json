@@ -576,7 +576,8 @@
     "deleteWithButton": "删除房间和会话",
     "deleted_other": "已删除房间「{{name}}」：{{count}} 个成员会话留在原项目里",
     "deletedWith": "已删除房间「{{name}}」和它的成员会话",
-    "deletedSomeKept": "已删除房间「{{name}}」；这些成员的会话没删掉：{{names}}"
+    "deletedSomeKept": "已删除房间「{{name}}」；这些成员的会话没删掉：{{names}}",
+    "resend": "重发"
   },
   "errors": {
     "not_execution_machine": "这台设备不能作为执行机器。",

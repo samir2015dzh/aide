@@ -794,6 +794,18 @@ function DirectChat({ b }: { b: Bot }) {
       setState({ kind: "error", text: errorText(err), retry: () => void send() });
     }
   };
+  // A message that reached nobody, sent again as it was (工单 #139 P02): a new message, the failed one kept as it went.
+  const resend = async (m: RoomMessage) => {
+    if (!room || state.kind === "sending") return;
+    setState({ kind: "sending" });
+    try {
+      const again = await local.postRoomMessage({ machineId: room.hostMachineId, roomId: room.roomId, text: m.text, idempotencyKey: crypto.randomUUID(), lightChat: m.lightChat });
+      setMsgs((x) => [...x.filter((y) => y.messageId !== again.messageId), again]);
+      setState({ kind: "idle" });
+    } catch (err) {
+      setState({ kind: "error", text: errorText(err), retry: () => void resend(m) });
+    }
+  };
   const activeRoom = fresh ?? room;
   return (
     <main className="bot-main bot-chat">
@@ -840,7 +852,7 @@ function DirectChat({ b }: { b: Bot }) {
       <div className="bot-stream chat-log" role="log" aria-label={t("bots.chat")}>
         {error && <div className="bot-empty warn" role="alert">{error}</div>}
         {!error && activeRoom && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
-        {activeRoom && <RoomTimeline room={activeRoom} msgs={msgs} />}
+        {activeRoom && <RoomTimeline room={activeRoom} msgs={msgs} resend={(m) => void resend(m)} />}
       </div>
       <Composer value={text} onChange={setText} onSend={() => void send()} placeholder={t("composer.placeholder", { name: b.name })} state={state} disabled={!room} />
     </main>

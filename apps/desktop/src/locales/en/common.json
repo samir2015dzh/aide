@@ -596,7 +596,8 @@
     "deleted_one": "Deleted “{{name}}”: {{count}} member session stays in its project",
     "deleted_other": "Deleted “{{name}}”: {{count}} member sessions stay in their projects",
     "deletedWith": "Deleted “{{name}}” and its members’ sessions",
-    "deletedSomeKept": "Deleted “{{name}}”; these members’ sessions were not deleted: {{names}}"
+    "deletedSomeKept": "Deleted “{{name}}”; these members’ sessions were not deleted: {{names}}",
+    "resend": "Send again"
   },
   "errors": {
     "not_execution_machine": "This device cannot be an execution machine.",

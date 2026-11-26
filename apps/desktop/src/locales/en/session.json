@@ -20,7 +20,7 @@
     "interruptedByYou": "You interrupted this turn. The task remains open, and {{grant}} can send another message to continue.",
     "interrupted": "This turn was interrupted. The task remains open, and {{grant}} can send another message to continue.",
     "interruptedBy": "{{name}} interrupted this turn. The task remains open, and {{grant}} can send another message to continue.",
-    "turnFailed": "Turn {{turn}} failed: {{title}}",
+    "turnFailed": "Turn {{turn}}: {{title}}",
     "copy": "Copy",
     "inProgress": "In progress",
     "truncated": "… (truncated)",

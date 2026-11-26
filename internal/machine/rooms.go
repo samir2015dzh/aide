@@ -769,12 +769,33 @@ func (n *Machine) wakeMember(ctx context.Context, room *machinev1.Room, w wake, 
 	case errors.As(err, &be):
 		return refused(be.category)
 	case err != nil:
-		d.State, d.Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_FAILED, fmt.Sprintf("没发出去：%v", err)
+		// The owner reads why in words and what to do; the error itself, with its IDs, is for the log (工单 #139 P01).
+		n.log.Warn("room message not delivered", "room", room.RoomId, "to", mem.BotKey, "err", err)
+		d.State, d.Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_FAILED, deliveryFailure(mem.Name, err)
 	default:
 		d.State = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT
 	}
-	n.audit.Log(AuditRecord{Kind: "room.out", Subject: "owner", Session: room.RoomId, Decision: "allow", Detail: "to=" + mem.BotKey + " state=" + d.State.String()})
+	detail := "to=" + mem.BotKey + " state=" + d.State.String()
+	if err != nil {
+		detail += " err=" + err.Error()
+	}
+	n.audit.Log(AuditRecord{Kind: "room.out", Subject: "owner", Session: room.RoomId, Decision: "allow", Detail: detail})
 	return d
+}
+
+// deliveryFailure says why a message did not reach name, and what to do,
+// without the error's own words or IDs (工单 #139 P01: "没发出去：c_… has
+// no inbox yet" under a bubble).
+func deliveryFailure(name string, err error) string {
+	switch {
+	case errors.Is(err, errNoInbox):
+		return fmt.Sprintf("没送到 %s：它那边的 Aide 还收不了消息（多半要更新）。更新后可以重发。", name)
+	case errors.Is(err, errNotContact):
+		return fmt.Sprintf("没送到 %s：它已不在你的联系人里，重新连接它之后再发。", name)
+	case errors.Is(err, errNotConnected), errors.Is(err, context.DeadlineExceeded), connect.CodeOf(err) == connect.CodeUnavailable:
+		return fmt.Sprintf("没送到 %s：这台机器现在连不上中继，连上后可以重发。", name)
+	}
+	return fmt.Sprintf("没送到 %s：可以稍后重发；详细原因在这台机器的 Aide 日志里。", name)
 }
 
 // tellOthers gives the room's personal agents not woken what was said, for

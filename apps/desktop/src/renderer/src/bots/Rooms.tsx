@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { agoText, allBots, dateOf, displayTitle, projectTitle, type Bot } from "@aide/core";
-import { RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
+import { RoomDeliveryState, RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { StateText } from "../components";
@@ -140,7 +140,13 @@ export function SidebarRooms() {
 export function DeliveryLine({ d, name }: { d: RoomDelivery; name: string }) {
   const { t } = useTranslation("common");
   const w = deliveryWords(t, d.state, name, d.reason, d.reminded);
-  return <span className={`chat-state ${w.bad ? "warn" : ""}`} data-state={d.state}>{w.text}</span>;
+  const failed = d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED;
+  return (
+    <span className={`chat-state ${w.bad ? "warn" : ""}`} data-state={d.state}>
+      {failed && <Icon name="alert" className="sm" />}
+      {w.text}
+    </span>
+  );
 }
 
 /** A sealed [FINAL] reply: the room's agreed result, to copy or export as Markdown. */
@@ -178,7 +184,7 @@ function FinalCard({ m, room }: { m: RoomMessage; room: Room }) {
  * member's naming another as a suggestion the owner can hand on. For read-only shadow conversations (#124), renders
  * sender -> recipient, timestamp, optional subject, and reply reference.
  */
-export function RoomTimeline({ room, msgs, handOn }: { room: Room; msgs: RoomMessage[]; handOn?: (to: string, m: RoomMessage) => void }) {
+export function RoomTimeline({ room, msgs, handOn, resend }: { room: Room; msgs: RoomMessage[]; handOn?: (to: string, m: RoomMessage) => void; resend?: (m: RoomMessage) => void }) {
   const st = useStore();
   const { t } = useTranslation("common");
   const now = useNow(30_000);
@@ -199,8 +205,11 @@ export function RoomTimeline({ room, msgs, handOn }: { room: Room; msgs: RoomMes
         const session = member?.sessionId ? st.sessions.find((s) => s.sessionId === member.sessionId) : undefined;
         const replyTarget = m.inReplyTo ? byId.get(m.inReplyTo) : undefined;
         const atDate = dateOf(m.at);
+        // One of the owner's that reached nobody it was for: marked as failed, and sent again from here (工单 #139 P02).
+        const failed = mine && m.deliveries.length > 0 && m.deliveries.every((d) => d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED);
+        const resendable = mine && !!resend && m.deliveries.some((d) => d.state === RoomDeliveryState.FAILED);
         return (
-          <div key={m.messageId} className={`chat-msg ${mine ? "mine" : ""} ${m.late ? "late" : ""}`}>
+          <div key={m.messageId} className={`chat-msg ${mine ? "mine" : ""} ${m.late ? "late" : ""} ${failed ? "failed" : ""}`}>
             {!mine && (
               <span className="chat-who">
                 {room.shadow && m.toName ? `${m.fromName} → ${m.toName}` : m.fromName}
@@ -224,6 +233,12 @@ export function RoomTimeline({ room, msgs, handOn }: { room: Room; msgs: RoomMes
               <Markdown text={m.text} />
             </div>
             {mine && m.deliveries.map((d) => <DeliveryLine key={d.botKey} d={d} name={nameOf(d.botKey)} />)}
+            {resendable && (
+              <button className="link chat-state" onClick={() => resend!(m)}>
+                <Icon name="retry" className="sm" />
+                {t("rooms.resend")}
+              </button>
+            )}
             {!mine && m.deliveries.length > 0 && <span className="chat-state">{t("rooms.handedOn", { names: m.deliveries.map((d) => nameOf(d.botKey)).join("、") })}</span>}
             {!mine && session && (
               <button className="link chat-state" onClick={() => st.select(session.sessionId)}>
@@ -393,7 +408,12 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
       <main className="bot-main bot-chat">
         <div className="bot-stream chat-log" role="log" aria-label={t("rooms.timeline")}>
           {msgs.length === 0 && <div className="bot-empty">{t(shadow ? "rooms.shadowEmpty" : table ? "rooms.emptyTable" : "rooms.emptyManual")}</div>}
-          <RoomTimeline room={room} msgs={msgs} handOn={shadow ? undefined : (to, m) => void send({ text: t("rooms.handOnText", { from: m.fromName, text: m.text }), mentions: [to] })} />
+          <RoomTimeline
+            room={room}
+            msgs={msgs}
+            handOn={shadow ? undefined : (to, m) => void send({ text: t("rooms.handOnText", { from: m.fromName, text: m.text }), mentions: [to] })}
+            resend={shadow ? undefined : (m) => void send({ text: m.text, mentions: m.mentions })}
+          />
           {/* Replies that wait for the host to come back (工单 #74): in the timeline, where they will come in. */}
           {waiting.count > 0 && <div className="room-sys" role="note">{t("rooms.waitingInline", { count: waiting.count })}</div>}
         </div>

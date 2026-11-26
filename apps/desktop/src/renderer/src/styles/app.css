@@ -449,6 +449,8 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .am{position:relative;font-size:var(--chat-size);line-height:1.65;color:var(--msg);max-width:var(--size-reading)}
 .um,.am.end{margin-bottom:var(--sp-3)}
 .msg-act{position:absolute;top:100%;padding-top:3px;display:flex;align-items:center;gap:4px;opacity:0;transition:opacity var(--duration-fast)}
+/* 工单 #139 P12: the time, then its icon buttons a step apart, not squeezed against it. */
+.msg-act .msg-time{margin-inline:2px 4px}
 .um .msg-act{right:2px}
 .am .msg-act{left:-2px;flex-direction:row-reverse}
 .um:hover .msg-act,.am:hover .msg-act,.msg-act:focus-within{opacity:1}
@@ -531,6 +533,7 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .qf-line b{font-weight:600}
 .qfail.past .qf-line{font-size:12.5px;color:var(--red-t)}
 .qf-line .chev,.qf-act .chev{transition:transform var(--duration-fast);width:12px;height:12px}
+.qf-line .link{display:inline-flex;align-items:center;gap:2px;white-space:nowrap;font-size:inherit;text-decoration:none}
 .qf-line .chev.open,.qf-act .chev.open{transform:rotate(90deg)}
 /* 出错卡（#105 / #107 §7）：12 圆角 + 左 3px 红边条 + 红圈图标，默认平话摘要、详情可展开原文 */
 .qcard{display:flex;gap:12px;margin-top:8px;padding:14px 16px;border-radius:var(--radius-card);border-left:3px solid var(--color-error);background:var(--surface-card);-webkit-backdrop-filter:blur(var(--blur-acrylic));backdrop-filter:blur(var(--blur-acrylic));box-shadow:var(--rim-top),inset 0 0 0 1px var(--border-acrylic),0 0 0 1px var(--sep),var(--shadow-card)}
