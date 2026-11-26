@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launch, mapHeight, snap, thisComputer, sessionList, navTo } from "./app";
+import { answerMenu, launch, mapHeight, snap, thisComputer, sessionList, navTo } from "./app";
 
 test("map height waits for the first resize delivery after navigation", async () => {
   const { app, page } = await launch();
@@ -251,6 +251,25 @@ test("the overview stays centered when resizing the window or hiding the sidebar
         if (!sidebar) await page.getByRole("button", { name: "显示边栏" }).click();
       }
     }
+  } finally {
+    await app.close();
+  }
+});
+
+// 工单 #165: a session the overview shows as a card (here a failed one) is archived from its card's menu, as from its
+// row in the list; it leaves the overview at once and the line that says so undoes it.
+test("a card's menu archives its session, and the line that says so undoes it", async () => {
+  const { app, page } = await launch();
+  try {
+    const card = page.locator(".wcard", { hasText: "限流" });
+    await expect(card).toHaveCount(1);
+    await answerMenu(app, "archive");
+    await card.click({ button: "right" });
+    const said = page.getByRole("status").filter({ hasText: "已归档「限流」" });
+    await expect(said).toBeVisible();
+    await expect(card).toHaveCount(0);
+    await said.getByRole("button", { name: "撤销" }).click();
+    await expect(card).toHaveCount(1);
   } finally {
     await app.close();
   }

@@ -7,7 +7,7 @@ import { Mark, type GrantLook } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
 import { GrantFaceAt, StatusDot } from "../components";
 import { Icon } from "../icons";
-import { grantLabel, machineName } from "../Sidebar";
+import { grantLabel, machineName, sessionMenu } from "../Sidebar";
 import { useNow, useStore, type Store } from "../store";
 import { liveOnMap, sessionKeys } from "./Map";
 
@@ -90,7 +90,7 @@ function Card({ s, pick }: { s: Session; pick: string }) {
   const local = st.machines.find((x) => x.machineId === s.machineId)?.local;
   const tone = s.status === SessionStatus.WAITING_INPUT ? "w" : isFailed(s) ? "r" : isActive(s) ? "run" : "";
   return (
-    <button className={`wcard ${tone}`} role="listitem" onClick={() => st.select(s.sessionId)}>
+    <button className={`wcard ${tone}`} role="listitem" onClick={() => st.select(s.sessionId)} onContextMenu={(e) => (e.preventDefault(), void sessionMenu(st, s))}>
       <span className="wc-top">
         <Status s={s} />
         <Worked s={s} />

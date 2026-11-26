@@ -278,7 +278,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                         }
                     }
                 }
-                taskItems(b, world, openSession)
+                taskItems(b, world, openSession, model::archiveFromList)
                 if (peerShadows.isNotEmpty()) peerShadowItems(peerShadows, openRoom)
                 if (chat != null) chatItems(model, chat, b, directRooms)
                 if (conv != null) conversationItems(model, conv, b, openSession)
@@ -297,7 +297,7 @@ private const val RECENT_TASKS = 3
  * What it is doing (工单 #97 补充二): its tasks waiting for you, at work, with a result not opened, and the last few done,
  * each with its state — the same buckets and rows as the tasks tab (World.bucketsOf), so a task reads the same on both.
  */
-private fun LazyListScope.taskItems(b: Bot, world: io.aide.android.model.World, openSession: (String) -> Unit) {
+private fun LazyListScope.taskItems(b: Bot, world: io.aide.android.model.World, openSession: (String) -> Unit, archive: (io.aide.android.api.Session) -> Unit) {
     val k = world.bucketsOf(b)
     val rows = k.needsYou + k.inProgress + k.unseen + k.recent.take(RECENT_TASKS)
     val earlier = k.recent.size - RECENT_TASKS
@@ -305,7 +305,7 @@ private fun LazyListScope.taskItems(b: Bot, world: io.aide.android.model.World, 
     if (rows.isEmpty()) item(key = "tasks-none") {
         Text(t("No task for ${b.name} yet.", "${b.name} 还没有任务。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
     }
-    rows.forEachIndexed { i, s -> item(key = "t-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, rows.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
+    rows.forEachIndexed { i, s -> item(key = "t-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, rows.size, inset = 68.dp)) { SessionRow(s, world, { archive(s) }) { openSession(s.sessionId) } } } }
     if (earlier > 0) item(key = "tasks-more") {
         Text(t("$earlier earlier: on the Tasks tab", "还有 $earlier 个更早的：在「任务」页"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp, horizontal = 16.dp))
     }
@@ -373,7 +373,7 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
             )
             if (convs.others.isNotEmpty()) {
                 SectionHeader(t("Handed to it by other agents", "别的 agent 派给它的"), count = convs.others.size)
-                Column { convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
+                Column { convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world, { model.archiveFromList(s) }) { openSession(s.sessionId) } } } }
             }
             // The count and the list say the same (工单 #135 P33): how many are shown of all, and of which kinds.
             io.aide.android.model.convCountHint(convs, rows.size + convs.others.size)?.let {

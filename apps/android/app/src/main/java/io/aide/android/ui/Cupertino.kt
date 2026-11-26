@@ -430,12 +430,18 @@ fun IosSnackbarHost(state: SnackbarHostState, modifier: Modifier = Modifier) {
     SnackbarHost(state, modifier) { d ->
         val shape = RoundedCornerShape(Radius.Lg)
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-            Text(
-                d.visuals.message,
+            Row(
                 Modifier.shadow(16.dp, shape, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.2f))
                     .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape).padding(horizontal = 16.dp, vertical = 12.dp),
-                style = IosType.Subheadline, color = MaterialTheme.colorScheme.onSurface,
-            )
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(d.visuals.message, Modifier.weight(1f, fill = false), style = IosType.Subheadline, color = MaterialTheme.colorScheme.onSurface)
+                // Its action (Undo, 工单 #165), at its end.
+                d.visuals.actionLabel?.let { a ->
+                    Spacer(Modifier.width(16.dp))
+                    Text(a, Modifier.dimPress { d.performAction() }, style = IosType.Subheadline, fontWeight = FontWeight.SemiBold, color = aide.blueOnSubtle)
+                }
+            }
         }
     }
 }

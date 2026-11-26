@@ -426,8 +426,8 @@ export const SessionRow = memo(function SessionRow({ s, sel, sender, meta, renam
   );
 });
 
-/** The session's context menu (native): open, rename, archive, copy its id, delete. */
-async function sessionMenu(st: Store, s: Session) {
+/** The session's context menu (native): open, rename, archive, copy its id, delete; the overview's cards have it too (工单 #165). */
+export async function sessionMenu(st: Store, s: Session) {
   const archived = s.status === SessionStatus.ARCHIVED;
   const id = await window.aide?.popupMenu([
     { id: "open", label: i18n.t("common:sessionMenu.open") },
