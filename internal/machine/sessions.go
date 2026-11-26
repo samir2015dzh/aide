@@ -508,6 +508,11 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 		projectMode = proj.DSHPreset
 	}
 	set.Model, set.Effort, set.Mode = cmp.Or(req.Model, set.Model), cmp.Or(req.Effort, set.Effort), cmp.Or(req.Mode, projectMode, set.Mode)
+	if req.Agent == "antigravity" {
+		// Aide's gate is its only enforcement: no mode is the default it
+		// advertises (workspace-write), recorded as the session's mode.
+		set.Mode = cmp.Or(set.Mode, info.Own.Mode)
+	}
 	if err := checkSettings(req.Agent, info, req.Model, req.Effort, cmp.Or(set.Model, info.Own.Model)); err != nil {
 		return nil, err
 	}

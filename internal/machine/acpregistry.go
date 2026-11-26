@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -69,10 +70,16 @@ func (n *Machine) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.
 		out.SyncedAt = timestamppb.New(res.SyncedAt)
 	}
 	for _, e := range res.Entries {
-		dist, sha256Decl, reason := acpregistry.BestDistribution(e, res.Platform)
+		// sha256Verified: a binary is installed only when the Registry
+		// declares its SHA-256, and checked against it.
+		dist, sha256Verified, reason := acpregistry.BestDistribution(e, res.Platform)
 		installedAs := installedByRegID[e.ID]
-		if installedAs == "" && builtinAvail[e.ID] {
-			installedAs = e.ID
+		if dist != "" {
+			reason = "" // why its binary is not used, when a runner is
+		}
+		builtin := cmp.Or(acpregistry.DedicatedBuiltin(e), e.ID)
+		if installedAs == "" && builtinAvail[builtin] {
+			installedAs = builtin
 		}
 		out.Entries = append(out.Entries, &machinev1.ACPRegistryEntry{
 			Id:                e.ID,
@@ -83,7 +90,7 @@ func (n *Machine) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.
 			License:           e.License,
 			Authors:           e.Authors,
 			Distribution:      dist,
-			Sha256Verified:    sha256Decl,
+			Sha256Verified:    sha256Verified,
 			Supported:         dist != "",
 			UnsupportedReason: reason,
 			Installed:         installedAs != "",
@@ -190,6 +197,12 @@ func (n *Machine) truthfulCapabilities(name string, p provider.Provider, info pr
 		caps = defaultCapabilitiesFor(name, nil)
 	}
 
+	// An ACP agent's efforts and modes are known once a session (or its
+	// presets) showed them: what it offers here, not a fixed claim.
+	if _, isACP := p.(*acp.Provider); isACP || !slices.Contains([]string{"claude", "codex", "fake"}, name) {
+		caps.SelectMode = caps.SelectMode || len(info.Modes) > 0
+		caps.SelectEffort = caps.SelectEffort || slices.ContainsFunc(info.Models, func(m provider.Model) bool { return len(m.Efforts) > 0 })
+	}
 	// Keep rollback capability strictly aligned with CanRollbackConversation (#113).
 	if rc, ok := p.(interface{ CanRollbackConversation() (bool, string) }); ok {
 		canRB, _ := rc.CanRollbackConversation()
@@ -246,18 +259,19 @@ func defaultCapabilitiesFor(name string, p provider.Provider) provider.Capabilit
 			Audio:                false,
 		}
 	default:
-		// Generic ACP (and built-in ACP providers before live initialize observation):
-		// truthfully declare no fork/rollback/steer/in-aide-login/usage until advertised.
-		_, isACP := p.(*acp.Provider)
+		// Generic ACP (and built-in ACP providers before live initialize
+		// observation): efforts and modes as the agent shows them
+		// (truthfulCapabilities), no fork/steer/in-aide-login/usage; rollback
+		// as CanRollbackConversation says (Aide's worktree rollback).
 		return provider.Capabilities{
 			SelectModel:          true,
 			SwitchModelInSession: true,
-			SelectEffort:         true,
-			SelectMode:           isACP || name != "",
+			SelectEffort:         false,
+			SelectMode:           false,
 			LoginInAide:          false,
 			Usage:                false,
 			Fork:                 false,
-			Rollback:             false,
+			Rollback:             p != nil,
 			Steer:                false,
 			Resume:               true,
 			Images:               false,

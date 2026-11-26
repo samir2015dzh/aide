@@ -106,3 +106,37 @@ func TestCustomDir(t *testing.T) {
 		t.Fatalf("messages: %+v (want the session's folder %s, the process's %s)", msgs, f.dir, resolved)
 	}
 }
+
+// 审计 F: Aide speaks ACP version 1 only; an agent that answers another
+// version fails clearly (as the spec says) instead of being taken as one
+// Aide can talk to. Capabilities claim only what Aide does.
+func TestProtocolVersionAndCapabilities(t *testing.T) {
+	ctx := context.Background()
+	state := "FAKE_ACP_STATE=" + t.TempDir()
+	p := &Provider{Agent: Agent{Name: "mine", Command: fakeBin, Custom: true, Env: []string{state, "FAKE_ACP_PROTOCOL=2"}}}
+	if _, err := p.Handshake(ctx, os.Environ(), t.TempDir()); err == nil || !strings.Contains(err.Error(), "ACP protocol version 2, and Aide only version 1") {
+		t.Fatalf("v2-only agent: %v", err)
+	}
+	f := newFixture(t, "FAKE_ACP_PROTOCOL=2")
+	if _, err := f.start("say hi", "", ""); err == nil || !strings.Contains(err.Error(), "protocol version 2") {
+		t.Fatalf("v2-only agent session: %v", err)
+	}
+	p = &Provider{Agent: Agent{Name: "mine", Command: fakeBin, Custom: true, Env: []string{state, "FAKE_ACP_FORK=1"}}}
+	g, err := p.Handshake(ctx, os.Environ(), "")
+	if err != nil || g.ProtocolVersion != 1 {
+		t.Fatalf("v1 agent: %+v %v", g, err)
+	}
+	if c := g.Capabilities; c.Fork || c.SelectEffort || c.SelectMode || !c.Rollback || !c.SelectModel {
+		t.Fatalf("capabilities from initialize: %+v", c)
+	}
+	// A session shows the efforts and modes it offers.
+	f = newFixture(t, "FAKE_ACP_CONFIG=1", "FAKE_ACP_MODELS=m1", "FAKE_ACP_EFFORTS=m1=low|high")
+	s, err := f.start("say hi", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	collect(t, s)
+	if c, v := f.p.ObservedCapabilities(); c == nil || v != 1 || !c.SelectEffort || !c.SelectMode {
+		t.Fatalf("observed after a session: %+v v%d", c, v)
+	}
+}

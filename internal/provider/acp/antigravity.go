@@ -1,6 +1,7 @@
 package acp
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,8 +14,19 @@ import (
 
 // First-class permission presets for Antigravity, aligned with DSH's three-tier
 // presets (工单 #111 升级补充). On the ACP wire Aide keeps modeId="default" so
-// Antigravity always routes tool permissions through Aide's gate, where the
-// selected preset is enforced.
+// Antigravity routes tool permissions through Aide's gate, where the selected
+// preset is enforced. A session started without a mode gets the default it
+// advertises (workspace-write), never a pass-through (审计 C).
+//
+// Antigravity has no sandbox Aide can configure, so the presets are what the
+// gate can check, not what Codex's or DSH's sandboxes do: workspace-write
+// takes edits inside the session's workspace (symlinks resolved), and denies
+// shell commands and network fetches, which Aide cannot confine to the
+// workspace or keep offline (Codex's workspace-write sandbox has no network
+// and cannot write outside the workspace). danger-full-access allows them.
+// A denial stops a call only when the agent asks permission for it; one the
+// agent runs without asking is reported, and its turn cancelled (see
+// session.unaskedDenied).
 var antigravityModes = []provider.Mode{
 	{ID: "read-only", Name: "read-only"},
 	{ID: "workspace-write", Name: "workspace-write"},
@@ -25,7 +37,7 @@ const antigravityDefaultMode = "workspace-write"
 
 func antigravityValidMode(mode string) bool {
 	if mode == "" {
-		return true
+		return true // the default, antigravityDefaultMode
 	}
 	for _, m := range antigravityModes {
 		if m.ID == mode {
@@ -36,42 +48,40 @@ func antigravityValidMode(mode string) bool {
 }
 
 func antigravityPermissionGate(mode, workDir string, next provider.Gate) provider.Gate {
-	if mode == "" || mode == "danger-full-access" {
+	mode = cmp.Or(mode, antigravityDefaultMode)
+	if mode == "danger-full-access" {
 		return next
 	}
 	cleanWork := ""
 	if workDir != "" {
 		if abs, err := filepath.Abs(workDir); err == nil {
-			cleanWork = filepath.Clean(abs)
+			cleanWork = resolveExisting(filepath.Clean(abs))
 		}
 	}
+	deny := func(reason string) provider.Decision { return provider.Decision{Allow: false, Reason: reason} }
 	return func(ctx context.Context, a provider.ToolAction) provider.Decision {
 		switch mode {
 		case "read-only":
 			if a.Kind != provider.ToolRead && a.Kind != provider.ToolSearch {
-				return provider.Decision{
-					Allow:  false,
-					Reason: "read-only mode: modifying files or running commands is not allowed",
-				}
+				return deny("read-only mode: modifying files or running commands is not allowed")
 			}
 		case "workspace-write":
-			if a.Kind == provider.ToolEdit && cleanWork != "" {
-				for _, p := range a.Paths {
-					if p == "" {
-						continue
-					}
-					target := p
-					if !filepath.IsAbs(target) {
-						target = filepath.Join(cleanWork, target)
-					}
-					if abs, err := filepath.Abs(target); err == nil {
-						rel, err := filepath.Rel(cleanWork, filepath.Clean(abs))
-						if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-							return provider.Decision{
-								Allow:  false,
-								Reason: "workspace-write mode: path is outside the session workspace",
-							}
-						}
+			switch a.Kind {
+			case provider.ToolShell:
+				return deny("workspace-write mode: Aide cannot keep shell commands inside the workspace, so they are not allowed; start the session in danger-full-access to allow them")
+			case provider.ToolNetwork:
+				return deny("workspace-write mode: network access is not allowed; start the session in danger-full-access to allow it")
+			case provider.ToolEdit:
+				if cleanWork == "" {
+					return deny("workspace-write mode: the session has no workspace to check the edit against")
+				}
+				paths := editPaths(a)
+				if len(paths) == 0 {
+					return deny("workspace-write mode: the edit names no file, so Aide cannot check that it stays inside the workspace")
+				}
+				for _, p := range paths {
+					if !insideDir(cleanWork, p) {
+						return deny("workspace-write mode: " + p + " is outside the session workspace")
 					}
 				}
 			}
@@ -80,6 +90,68 @@ func antigravityPermissionGate(mode, workDir string, next provider.Gate) provide
 			return next(ctx, a)
 		}
 		return provider.Decision{Allow: true}
+	}
+}
+
+// editPaths are the files an edit names: its locations and diffs, else
+// the path fields of its input (Antigravity's or other agents' spelling).
+func editPaths(a provider.ToolAction) []string {
+	var out []string
+	for _, p := range a.Paths {
+		if strings.TrimSpace(p) != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) > 0 {
+		return out
+	}
+	var in map[string]any
+	if json.Unmarshal(a.Raw, &in) != nil {
+		return nil
+	}
+	for _, k := range []string{"path", "file_path", "filePath", "TargetFile", "target_file", "AbsolutePath", "absolute_path", "source", "destination", "new_path"} {
+		if v, ok := in[k].(string); ok && strings.TrimSpace(v) != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// insideDir reports whether p (relative to dir when not absolute) is dir or
+// below it once symlinks in its existing part are resolved. dir is resolved.
+func insideDir(dir, p string) bool {
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(dir, p)
+	}
+	rel, err := filepath.Rel(dir, resolveExisting(filepath.Clean(p)))
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+}
+
+// resolveExisting resolves the symlinks of p's deepest existing ancestor (p
+// itself when it exists) and appends the rest, which does not exist yet. A
+// dangling symlink is followed to where a write through it would land.
+func resolveExisting(p string) string { return resolveExistingN(p, 0) }
+
+func resolveExistingN(p string, depth int) string {
+	rest := ""
+	for cur := p; ; {
+		if r, err := filepath.EvalSymlinks(cur); err == nil {
+			return filepath.Join(r, rest)
+		}
+		if fi, err := os.Lstat(cur); err == nil && fi.Mode()&os.ModeSymlink != 0 && depth < 40 {
+			if t, err := os.Readlink(cur); err == nil {
+				if !filepath.IsAbs(t) {
+					t = filepath.Join(filepath.Dir(cur), t)
+				}
+				return resolveExistingN(filepath.Join(filepath.Clean(t), rest), depth+1)
+			}
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return p
+		}
+		rest = filepath.Join(filepath.Base(cur), rest)
+		cur = parent
 	}
 }
 

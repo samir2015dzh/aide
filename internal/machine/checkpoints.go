@@ -2,7 +2,9 @@ package machine
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -19,7 +21,10 @@ import (
 const (
 	// checkpointRefRoot stores per-turn workspace checkpoints in a hidden git
 	// namespace (refs/aide/checkpoints/<session_id>/turn-<N>), completely
-	// separate from user branches (refs/heads/*).
+	// separate from user branches (refs/heads/*). Each ref points at a tag
+	// object for the turn's snapshot commit, whose tagger date is when the
+	// checkpoint was written: a turn that changed nothing reuses an older
+	// commit, so its committer date says nothing of the checkpoint's age.
 	checkpointRefRoot = "refs/aide/checkpoints/"
 
 	// DefaultCheckpointMaxCount is the default maximum number of turn
@@ -77,14 +82,39 @@ type gitCheckpoint struct {
 	CreatedAt time.Time
 }
 
-// WriteCheckpoint records a hidden git ref pointing to a turn's snapshot commit
-// without touching any user branch.
+// WriteCheckpoint records a hidden git ref for a turn's snapshot commit,
+// written now, without touching any user branch.
 func (w *Workspace) WriteCheckpoint(ctx context.Context, repo, sessionID string, turn uint32, commit string) error {
+	return w.writeCheckpointAt(ctx, repo, sessionID, turn, commit, time.Now())
+}
+
+func (w *Workspace) writeCheckpointAt(ctx context.Context, repo, sessionID string, turn uint32, commit string, at time.Time) error {
 	if w.none || repo == "" || commit == "" || turn == 0 {
 		return nil
 	}
-	ref := checkpointRefName(sessionID, turn)
-	_, err := git(ctx, repo, "update-ref", ref, commit)
+	full, err := git(ctx, repo, "rev-parse", "--verify", "--end-of-options", commit+"^{commit}")
+	if err != nil {
+		return err
+	}
+	tag := fmt.Sprintf("object %s\ntype commit\ntag aide-checkpoint-turn-%d\ntagger Aide <aide@localhost> %d +0000\n\nAide checkpoint: session %s, turn %d\n",
+		strings.TrimSpace(full), turn, at.Unix(), sessionID, turn)
+	f, err := os.CreateTemp("", "aide-checkpoint-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	_, err = f.WriteString(tag)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return err
+	}
+	obj, err := git(ctx, repo, "hash-object", "-t", "tag", "-w", f.Name())
+	if err != nil {
+		return err
+	}
+	_, err = git(ctx, repo, "update-ref", checkpointRefName(sessionID, turn), strings.TrimSpace(obj))
 	return err
 }
 
@@ -95,7 +125,7 @@ func (w *Workspace) ListCheckpoints(ctx context.Context, repo, sessionID string)
 		return nil, nil
 	}
 	prefix := checkpointSessionPrefix(sessionID)
-	out, err := git(ctx, repo, "for-each-ref", "--format=%(refname)\t%(objectname)\t%(committerdate:unix)", prefix)
+	out, err := git(ctx, repo, "for-each-ref", "--format=%(refname)\t%(objecttype)\t%(objectname)\t%(*objectname)\t%(taggerdate:unix)", prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -105,24 +135,30 @@ func (w *Workspace) ListCheckpoints(ctx context.Context, repo, sessionID string)
 		if line == "" {
 			continue
 		}
-		parts := strings.Split(line, "\t")
-		if len(parts) < 2 {
+		parts := strings.Split(line, "\t") // a commit's has no peeled object or tagger date (trimmed)
+		if len(parts) < 3 {
 			continue
 		}
+		parts = append(parts, "", "")
 		turn, ok := parseCheckpointTurn(sessionID, parts[0])
 		if !ok {
 			continue
 		}
+		// A tag: its commit, and when it was written. A ref straight to a
+		// commit (written before checkpoints were tagged): its write time
+		// is unknown (zero), so it is never pruned for its age.
+		commit := strings.TrimSpace(parts[2])
 		var createdAt time.Time
-		if len(parts) >= 3 {
-			if sec, err := strconv.ParseInt(strings.TrimSpace(parts[2]), 10, 64); err == nil && sec > 0 {
+		if strings.TrimSpace(parts[1]) == "tag" {
+			commit = strings.TrimSpace(parts[3])
+			if sec, err := strconv.ParseInt(strings.TrimSpace(parts[4]), 10, 64); err == nil && sec > 0 {
 				createdAt = time.Unix(sec, 0).UTC()
 			}
 		}
 		cps = append(cps, gitCheckpoint{
 			Turn:      turn,
 			Ref:       parts[0],
-			Commit:    strings.TrimSpace(parts[1]),
+			Commit:    commit,
 			CreatedAt: createdAt,
 		})
 	}
@@ -165,12 +201,15 @@ func (w *Workspace) PruneCheckpoints(ctx context.Context, repo, sessionID string
 		drop = append(drop, kept[:overflow]...)
 	}
 	removed := 0
+	var errs []error
 	for _, cp := range drop {
-		if _, err := git(ctx, repo, "update-ref", "-d", cp.Ref); err == nil {
-			removed++
+		if _, err := git(ctx, repo, "update-ref", "-d", cp.Ref); err != nil {
+			errs = append(errs, err)
+			continue
 		}
+		removed++
 	}
-	return removed, nil
+	return removed, errors.Join(errs...)
 }
 
 // DropCheckpointsAfter removes hidden checkpoint refs with turn > targetTurn
@@ -183,12 +222,15 @@ func (w *Workspace) DropCheckpointsAfter(ctx context.Context, repo, sessionID st
 	if err != nil {
 		return err
 	}
+	var errs []error
 	for _, cp := range cps {
 		if cp.Turn > targetTurn {
-			_, _ = git(ctx, repo, "update-ref", "-d", cp.Ref)
+			if _, err := git(ctx, repo, "update-ref", "-d", cp.Ref); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // ClearCheckpoints removes hidden checkpoint refs for sessionID, optionally
@@ -274,11 +316,8 @@ func (s *Sessions) ListCheckpoints(ctx context.Context, p *Principal, id string)
 	proj, _ := s.st.Project(r.ProjectID)
 	enabled, disabledReason := s.checkpointStatus(ctx, r, proj)
 	canRollback, refusedReason := s.canRollbackConversation(r)
-	if !enabled {
-		canRollback = false
-		if refusedReason == "" {
-			refusedReason = disabledReason
-		}
+	if !enabled { // why there are no checkpoints comes first (in place, not git)
+		canRollback, refusedReason = false, disabledReason
 	}
 	resp := &sessionv1.ListCheckpointsResponse{
 		SessionId:             id,

@@ -1,15 +1,21 @@
 // Package acpregistry fetches, caches, verifies, and installs agents from the
 // official Agent Client Protocol Registry (agentclientprotocol/registry, Apache-2.0).
 //
-// Binary archive installs verify SHA-256 digests and extract into machine-isolated
-// subdirectories under <dataDir>/acp-registry/installed/<agent-name>/<version>/.
-// Dedicated built-in providers such as antigravity are explicitly protected from
-// being reinstalled through the generic registry path (工单 #110 / #111).
+// A binary distribution is installed only from an https URL whose Registry entry
+// declares its SHA-256, which the download must match; one without falls back to
+// the entry's npx/uvx distribution, or is not installable. Binaries extract into
+// machine-isolated subdirectories under
+// <dataDir>/acp-registry/installed/<agent-name>/<version>/.
+// Dedicated built-in providers such as antigravity (Registry id antigravity-acp)
+// are explicitly protected from being reinstalled through the generic registry
+// path (工单 #110 / #111, 审计 D).
 package acpregistry
 
 import (
 	"archive/tar"
 	"archive/zip"
+	"bytes"
+	"compress/bzip2"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -19,9 +25,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -37,13 +45,28 @@ import (
 const DefaultRegistryURL = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json"
 
 const (
-	defaultCacheTTL   = 24 * time.Hour
-	maxIndexBytes     = 8 << 20   // 8 MiB
-	maxArchiveBytes   = 256 << 20 // 256 MiB
-	maxExtractedBytes = 512 << 20 // 512 MiB
-	maxExtractedFiles = 4096
+	defaultCacheTTL = 24 * time.Hour
+	// failureTTL: after a failed refresh, how long List serves what it fell
+	// back to before trying the network again (unless forced).
+	failureTTL    = 5 * time.Minute
+	maxIndexBytes = 8 << 20 // 8 MiB
+	// Real agent packages are large (some over 250 MB); still bounded.
+	maxArchiveBytes   = 1 << 30 // 1 GiB
+	maxExtractedBytes = 2 << 30 // 2 GiB
+	maxExtractedFiles = 16384
+	// A download may take as long as it needs while bytes keep arriving: it
+	// fails when connecting, the response headers, or a pause in the body
+	// take longer than these.
+	connectTimeout        = 20 * time.Second
+	responseHeaderTimeout = 30 * time.Second
+	downloadIdleTimeout   = 60 * time.Second
 )
 
+// snapshot.json is the official Registry index (DefaultRegistryURL) as of when
+// it was last regenerated, verbatim; regenerate it with
+//
+//	go test -tags acpregistry_snapshot -run TestRegenerateSnapshot ./internal/acpregistry
+//
 //go:embed snapshot.json
 var embeddedSnapshot []byte
 
@@ -117,7 +140,7 @@ type InstallResult struct {
 type Options struct {
 	DataDir    string
 	URL        string
-	HTTPClient *http.Client
+	HTTPClient *http.Client // index and downloads (tests); default: production clients
 	CacheTTL   time.Duration
 	Platform   string // e.g. "windows-x86_64"; defaults to CurrentPlatform()
 	PathEnv    string
@@ -127,7 +150,9 @@ type Options struct {
 type Registry struct {
 	dataDir  string
 	url      string
-	client   *http.Client
+	client   *http.Client // the index: small, a total timeout
+	download *http.Client // archives: no total timeout (see downloadIdleTimeout)
+	idle     time.Duration
 	ttl      time.Duration
 	platform string
 	pathEnv  string
@@ -137,6 +162,7 @@ type Registry struct {
 	source    string
 	syncedAt  time.Time
 	lastError string
+	failedAt  time.Time // when the last refresh failed (zero: it did not)
 }
 
 type cacheEnvelope struct {
@@ -153,9 +179,14 @@ func New(opts Options) *Registry {
 	if u == "" {
 		u = DefaultRegistryURL
 	}
-	client := opts.HTTPClient
+	client, download := opts.HTTPClient, opts.HTTPClient
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
+		t := http.DefaultTransport.(*http.Transport).Clone()
+		t.DialContext = (&net.Dialer{Timeout: connectTimeout, KeepAlive: 30 * time.Second}).DialContext
+		t.TLSHandshakeTimeout = connectTimeout
+		t.ResponseHeaderTimeout = responseHeaderTimeout
+		download = &http.Client{Transport: t}
 	}
 	ttl := opts.CacheTTL
 	if ttl <= 0 {
@@ -169,6 +200,8 @@ func New(opts Options) *Registry {
 		dataDir:  opts.DataDir,
 		url:      u,
 		client:   client,
+		download: download,
+		idle:     downloadIdleTimeout,
 		ttl:      ttl,
 		platform: plat,
 		pathEnv:  opts.PathEnv,
@@ -219,7 +252,8 @@ func EmbeddedIndex() (Index, error) {
 // transparently falling back to cache or the embedded snapshot on network failure.
 func (r *Registry) List(ctx context.Context, forceRefresh bool) ListResult {
 	r.mu.Lock()
-	if !forceRefresh && r.cached != nil && time.Since(r.syncedAt) < r.ttl {
+	fresh := r.cached != nil && (time.Since(r.syncedAt) < r.ttl || !r.failedAt.IsZero() && time.Since(r.failedAt) < failureTTL)
+	if !forceRefresh && fresh {
 		res := ListResult{
 			Entries:   slices.Clone(r.cached.Agents),
 			Source:    r.source,
@@ -242,6 +276,7 @@ func (r *Registry) List(ctx context.Context, forceRefresh bool) ListResult {
 			r.source = "cache"
 			r.syncedAt = env.SyncedAt
 			r.lastError = ""
+			r.failedAt = time.Time{}
 			r.mu.Unlock()
 			return ListResult{
 				Entries:  slices.Clone(env.Index.Agents),
@@ -261,6 +296,7 @@ func (r *Registry) List(ctx context.Context, forceRefresh bool) ListResult {
 		r.source = "remote"
 		r.syncedAt = now
 		r.lastError = ""
+		r.failedAt = time.Time{}
 		r.mu.Unlock()
 		return ListResult{
 			Entries:  slices.Clone(idx.Agents),
@@ -276,6 +312,7 @@ func (r *Registry) List(ctx context.Context, forceRefresh bool) ListResult {
 			r.source = "cache"
 			r.syncedAt = disk.SyncedAt
 			r.lastError = err.Error()
+			r.failedAt = time.Now()
 			r.mu.Unlock()
 			return ListResult{
 				Entries:   slices.Clone(disk.Index.Agents),
@@ -291,6 +328,7 @@ func (r *Registry) List(ctx context.Context, forceRefresh bool) ListResult {
 		r.source = "embedded"
 		r.syncedAt = time.Time{}
 		r.lastError = err.Error()
+		r.failedAt = time.Now()
 		r.mu.Unlock()
 		return ListResult{
 			Entries:   slices.Clone(emb.Agents),
@@ -369,22 +407,97 @@ func (r *Registry) writeDiskCache(env cacheEnvelope) {
 	}
 }
 
-// BestDistribution chooses the preferred installable distribution for platform:
-// binary (platform-matched) > npx > uvx.
-func BestDistribution(e Entry, platform string) (kind string, sha256Declared bool, reason string) {
-	if strings.EqualFold(e.ID, "antigravity") {
-		return "", false, "antigravity is a dedicated built-in provider in Aide and is not installed via the generic ACP registry"
+// DedicatedBuiltin is the Aide built-in provider that an entry is, when it
+// is one ("antigravity" for the Registry's antigravity-acp, by id or name,
+// however spelled); "" otherwise. Such entries are never installed through
+// the generic path.
+func DedicatedBuiltin(e Entry) string {
+	for _, s := range []string{e.ID, e.Name} {
+		n := NormalizeAgentName(s, nil)
+		n = strings.TrimPrefix(n, "google-")
+		n = strings.TrimSuffix(strings.TrimSuffix(n, "-acp"), "-agent")
+		if n == "antigravity" {
+			return "antigravity"
+		}
 	}
+	return ""
+}
+
+// BestDistribution chooses the preferred installable distribution for platform:
+// binary (platform-matched, https, with a declared SHA-256, in a format Aide
+// installs) > npx > uvx. sha256Verified: the install is checked against the
+// Registry's SHA-256 (binary). reason says why there is none, or why the
+// platform's binary is not used when a runner is.
+func BestDistribution(e Entry, platform string) (kind string, sha256Verified bool, reason string) {
+	if b := DedicatedBuiltin(e); b != "" {
+		return "", false, b + " is a dedicated built-in provider in Aide and is not installed via the generic ACP registry"
+	}
+	binaryWhy := ""
 	if t, ok := e.Distribution.Binary[platform]; ok && strings.TrimSpace(t.Archive) != "" && strings.TrimSpace(t.Cmd) != "" {
-		return "binary", strings.TrimSpace(t.SHA256) != "", ""
+		if binaryWhy = binaryProblem(t); binaryWhy == "" {
+			return "binary", true, ""
+		}
 	}
 	if e.Distribution.NPX != nil && strings.TrimSpace(e.Distribution.NPX.Package) != "" {
-		return "npx", false, ""
+		return "npx", false, binaryWhy
 	}
 	if e.Distribution.UVX != nil && strings.TrimSpace(e.Distribution.UVX.Package) != "" {
-		return "uvx", false, ""
+		return "uvx", false, binaryWhy
+	}
+	if binaryWhy != "" {
+		return "", false, binaryWhy
 	}
 	return "", false, fmt.Sprintf("no distribution available for platform %s", platform)
+}
+
+var sha256RE = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+func declaredSHA256(t BinaryTarget) string {
+	return strings.TrimPrefix(strings.ToLower(strings.TrimSpace(t.SHA256)), "sha256:")
+}
+
+// binaryProblem is why Aide will not install a binary target ("" when it will).
+func binaryProblem(t BinaryTarget) string {
+	u, err := url.Parse(strings.TrimSpace(t.Archive))
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return "its binary download is not an https URL, so Aide will not install it"
+	}
+	if !sha256RE.MatchString(declaredSHA256(t)) {
+		return "the Registry declares no SHA-256 for its binary, so Aide will not install and run it unverified"
+	}
+	if f := archiveFormat(u.Path); f == formatUnsupported {
+		return fmt.Sprintf("its binary package (%s) is in a format Aide cannot unpack (it takes .zip, .tar.gz, .tar.bz2 or a bare executable)", path.Base(u.Path))
+	}
+	return ""
+}
+
+type format int
+
+const (
+	formatSniff format = iota // no archive extension: an archive by its first bytes, else a bare executable
+	formatZip
+	formatTarGz
+	formatTarBz2
+	formatUnsupported
+)
+
+// archiveFormat is the format a download's URL path names.
+func archiveFormat(p string) format {
+	lower := strings.ToLower(p)
+	switch {
+	case strings.HasSuffix(lower, ".zip"):
+		return formatZip
+	case strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
+		return formatTarGz
+	case strings.HasSuffix(lower, ".tar.bz2"), strings.HasSuffix(lower, ".tbz2"), strings.HasSuffix(lower, ".tbz"):
+		return formatTarBz2
+	}
+	for _, ext := range []string{".tar.xz", ".txz", ".tar.zst", ".tzst", ".tar", ".7z", ".rar", ".xz", ".zst", ".gz", ".bz2", ".dmg", ".pkg", ".msi", ".deb", ".rpm"} {
+		if strings.HasSuffix(lower, ext) {
+			return formatUnsupported
+		}
+	}
+	return formatSniff
 }
 
 var nonSlugRE = regexp.MustCompile(`[^a-z0-9-]+`)
@@ -427,15 +540,29 @@ func NormalizeAgentName(registryID string, reserved func(string) bool) string {
 	return s
 }
 
+var agentNameRE = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
+
 // Install downloads (verifying SHA-256 for binary archives) and prepares an
-// official ACP Registry agent in a machine-isolated directory.
+// official ACP Registry agent in a machine-isolated directory. reserved
+// reports names Aide may not use for it (built-in agents, and custom agents
+// other than this entry's earlier install); an explicit desiredName that is
+// reserved is refused, never overwritten.
 func (r *Registry) Install(ctx context.Context, registryID, desiredName string, reserved func(string) bool) (InstallResult, error) {
 	registryID = strings.TrimSpace(registryID)
 	if registryID == "" {
 		return InstallResult{}, errors.New("registry_id is required")
 	}
-	if strings.EqualFold(registryID, "antigravity") {
-		return InstallResult{}, errors.New("antigravity is a dedicated built-in provider in Aide and must not be installed via the generic ACP registry")
+	if b := DedicatedBuiltin(Entry{ID: registryID}); b != "" {
+		return InstallResult{}, fmt.Errorf("%s is a dedicated built-in provider in Aide and must not be installed via the generic ACP registry", b)
+	}
+	name := strings.TrimSpace(desiredName)
+	if name != "" {
+		if !agentNameRE.MatchString(name) {
+			return InstallResult{}, fmt.Errorf("the name %q is not one Aide can use: lower case letters, digits and -, starting with a letter, at most 32", name)
+		}
+		if reserved != nil && reserved(name) {
+			return InstallResult{}, fmt.Errorf("the name %q is already used by another agent on this machine: choose another name, or remove that agent first", name)
+		}
 	}
 
 	listed := r.List(ctx, false)
@@ -462,10 +589,9 @@ func (r *Registry) Install(ctx context.Context, registryID, desiredName string, 
 
 	kind, _, reason := BestDistribution(*entry, r.platform)
 	if kind == "" {
-		return InstallResult{}, errors.New(reason)
+		return InstallResult{}, fmt.Errorf("%s cannot be installed: %s", entry.ID, reason)
 	}
 
-	name := strings.TrimSpace(desiredName)
 	if name == "" {
 		name = NormalizeAgentName(entry.ID, reserved)
 	}
@@ -509,10 +635,10 @@ func (r *Registry) installBinary(ctx context.Context, entry Entry, target Binary
 	if r.dataDir == "" {
 		return InstallResult{}, errors.New("machine data directory is not configured")
 	}
-	u, err := url.Parse(target.Archive)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
-		return InstallResult{}, fmt.Errorf("invalid archive URL %q", target.Archive)
+	if why := binaryProblem(target); why != "" {
+		return InstallResult{}, fmt.Errorf("%s cannot be installed: %s", entry.ID, why)
 	}
+	u, _ := url.Parse(strings.TrimSpace(target.Archive))
 
 	tmpDir, err := os.MkdirTemp("", "aide-acp-install-*")
 	if err != nil {
@@ -526,18 +652,15 @@ func (r *Registry) installBinary(ctx context.Context, entry Entry, target Binary
 		return InstallResult{}, fmt.Errorf("download %s: %w", entry.ID, err)
 	}
 
-	if want := strings.ToLower(strings.TrimSpace(target.SHA256)); want != "" {
-		want = strings.TrimPrefix(want, "sha256:")
-		if sum != want {
-			return InstallResult{}, fmt.Errorf("SHA-256 verification failed for %s: expected %s, got %s", entry.ID, want, sum)
-		}
+	if want := declaredSHA256(target); sum != want {
+		return InstallResult{}, fmt.Errorf("SHA-256 verification failed for %s: expected %s, got %s", entry.ID, want, sum)
 	}
 
 	extractDir := filepath.Join(tmpDir, "extracted")
 	if err := os.MkdirAll(extractDir, 0o700); err != nil {
 		return InstallResult{}, err
 	}
-	if err := extractArchive(archivePath, target.Archive, extractDir); err != nil {
+	if err := extractArchive(archivePath, u.Path, target.Cmd, extractDir); err != nil {
 		return InstallResult{}, fmt.Errorf("extract %s: %w", entry.ID, err)
 	}
 
@@ -591,13 +714,28 @@ func (r *Registry) Uninstall(name string) error {
 	return os.RemoveAll(target)
 }
 
+// errStalled: a download's body made no progress for the idle timeout.
+var errStalled = errors.New("the download stalled")
+
 func (r *Registry) downloadAndHash(ctx context.Context, rawURL, dst string) (string, error) {
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("User-Agent", "aide-acp-registry/1.0")
-	resp, err := r.client.Do(req)
+	c := *r.download
+	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.URL.Scheme != "https" {
+			return fmt.Errorf("refusing a redirect to a non-https URL (%s)", req.URL.Scheme)
+		}
+		if len(via) >= 10 {
+			return errors.New("too many redirects")
+		}
+		return nil
+	}
+	resp, err := c.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -611,8 +749,22 @@ func (r *Registry) downloadAndHash(ctx context.Context, rawURL, dst string) (str
 	}
 	defer f.Close()
 
+	// No total limit: a large package on a slow line takes as long as it
+	// takes, but one that stops sending fails after r.idle.
+	idle := time.AfterFunc(r.idle, func() { cancel(errStalled) })
+	defer idle.Stop()
+	body := &progressReader{r: io.LimitReader(resp.Body, maxArchiveBytes+1), progress: func() { idle.Reset(r.idle) }}
 	h := sha256.New()
-	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(resp.Body, maxArchiveBytes+1))
+	n, err := io.Copy(io.MultiWriter(f, h), body)
+	idle.Stop()
+	// A cancelled request's body can also end in a clean EOF: what
+	// cancelled it decides.
+	if errors.Is(context.Cause(ctx), errStalled) {
+		return "", fmt.Errorf("%w: no data for %s", errStalled, r.idle)
+	}
+	if err == nil {
+		err = ctx.Err()
+	}
 	if err != nil {
 		return "", err
 	}
@@ -622,34 +774,84 @@ func (r *Registry) downloadAndHash(ctx context.Context, rawURL, dst string) (str
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func extractArchive(archivePath, origURL, dst string) error {
-	lower := strings.ToLower(origURL)
-	if idx := strings.IndexByte(lower, '?'); idx >= 0 {
-		lower = lower[:idx]
-	}
-	switch {
-	case strings.HasSuffix(lower, ".zip"):
-		return extractZip(archivePath, dst)
-	case strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
-		return extractTarGz(archivePath, dst)
-	default:
-		// Sniff magic bytes: ZIP starts with PK\x03\x04, gzip with \x1f\x8b.
-		f, err := os.Open(archivePath)
-		if err != nil {
-			return err
-		}
-		var hdr [4]byte
-		_, _ = io.ReadFull(f, hdr[:])
-		_ = f.Close()
-		if hdr[0] == 'P' && hdr[1] == 'K' {
-			return extractZip(archivePath, dst)
-		}
-		if hdr[0] == 0x1f && hdr[1] == 0x8b {
-			return extractTarGz(archivePath, dst)
-		}
-		return fmt.Errorf("unsupported archive format for %q (expected .zip or .tar.gz)", origURL)
-	}
+type progressReader struct {
+	r        io.Reader
+	progress func()
 }
+
+func (p *progressReader) Read(b []byte) (int, error) {
+	n, err := p.r.Read(b)
+	if n > 0 {
+		p.progress()
+	}
+	return n, err
+}
+
+// extractArchive unpacks the download at archivePath (urlPath: its URL's
+// path) into dst. A download whose URL names no archive format and whose
+// first bytes are no archive Aide knows is a bare executable: it is placed
+// as the target's cmd.
+func extractArchive(archivePath, urlPath, cmd, dst string) error {
+	switch archiveFormat(urlPath) {
+	case formatZip:
+		return extractZip(archivePath, dst)
+	case formatTarGz:
+		return extractTar(archivePath, dst, gunzip)
+	case formatTarBz2:
+		return extractTar(archivePath, dst, bunzip2)
+	case formatUnsupported:
+		return fmt.Errorf("unsupported archive format for %q", path.Base(urlPath))
+	}
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return err
+	}
+	var hdr [6]byte
+	n, _ := io.ReadFull(f, hdr[:])
+	_ = f.Close()
+	switch b := hdr[:n]; {
+	case bytes.HasPrefix(b, []byte("PK\x03\x04")):
+		return extractZip(archivePath, dst)
+	case bytes.HasPrefix(b, []byte{0x1f, 0x8b}):
+		return extractTar(archivePath, dst, gunzip)
+	case bytes.HasPrefix(b, []byte("BZh")):
+		return extractTar(archivePath, dst, bunzip2)
+	case bytes.HasPrefix(b, []byte{0xfd, '7', 'z', 'X', 'Z', 0}), bytes.HasPrefix(b, []byte{0x28, 0xb5, 0x2f, 0xfd}), bytes.HasPrefix(b, []byte("7z\xbc\xaf")):
+		return fmt.Errorf("unsupported archive format for %q (xz, zstd or 7z)", path.Base(urlPath))
+	}
+	return placeExecutable(archivePath, cmd, dst)
+}
+
+// placeExecutable puts a bare executable download where cmd names it.
+func placeExecutable(file, cmd, dst string) error {
+	target, err := safeExtractPath(dst, strings.TrimSpace(cmd))
+	if err != nil {
+		return err
+	}
+	if target == dst {
+		return errors.New("registry binary target has empty cmd")
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	in, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
+}
+
+func gunzip(r io.Reader) (io.Reader, error)  { return gzip.NewReader(r) }
+func bunzip2(r io.Reader) (io.Reader, error) { return bzip2.NewReader(r), nil }
 
 func safeExtractPath(root, entryName string) (string, error) {
 	cleaned := filepath.Clean(filepath.FromSlash(entryName))
@@ -721,18 +923,17 @@ func extractZip(archivePath, dst string) error {
 	return nil
 }
 
-func extractTarGz(archivePath, dst string) error {
+func extractTar(archivePath, dst string, decompress func(io.Reader) (io.Reader, error)) error {
 	f, err := os.Open(archivePath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	gz, err := gzip.NewReader(f)
+	dr, err := decompress(f)
 	if err != nil {
 		return err
 	}
-	defer gz.Close()
-	tr := tar.NewReader(gz)
+	tr := tar.NewReader(dr)
 	var total int64
 	count := 0
 	for {

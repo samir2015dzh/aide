@@ -21,7 +21,7 @@ type Greeting struct {
 	Auth []string
 	// Session: it opened a new session.
 	Session bool
-	// ProtocolVersion negotiated during initialize (2 preferred, 1 fallback).
+	// ProtocolVersion negotiated during initialize (Aide speaks 1).
 	ProtocolVersion uint32
 	// Capabilities truthfully derived from initialize's agentCapabilities.
 	Capabilities provider.Capabilities
@@ -112,6 +112,7 @@ func (p *Provider) Handshake(ctx context.Context, env []string, dir string) (Gre
 	_ = json.Unmarshal(res, &cfg)
 	if offers := cfg.offers(); offers != nil {
 		g.Models = offers.Models
+		g.Capabilities.SelectEffort, g.Capabilities.SelectMode = cfg.option("thought_level") != nil, len(offers.Modes) > 0
 	}
 	g.Session = true
 	return g, nil
