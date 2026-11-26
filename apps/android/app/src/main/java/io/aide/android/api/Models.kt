@@ -399,13 +399,55 @@ data class WatchResponse(
     val sessions: List<Session> = emptyList(),
     val deletedSessionIds: List<String> = emptyList(),
     val next: SessionCursor? = null,
+    /** Moves when this device's counts of work changed: ask QueryWork again (工单 #142). */
+    @Serializable(with = Int64::class) val workVersion: Long = 0,
 )
+
+// QueryWork (docs/work-stats.md §7): the work over a range by day, grouped by the dimensions asked (工单 #142).
+
+@Serializable
+data class QueryWorkRequest(
+    val timeZone: String = "",
+    /** YYYY-MM-DD in timeZone, and how many days from it. */
+    val firstDay: String = "",
+    val days: Int = 0,
+    /** WORK_BUCKET_HOUR or WORK_BUCKET_DAY. */
+    val bucket: String = "",
+    /** WORK_DIMENSION_AGENT, WORK_DIMENSION_MACHINE, …; none: everything together. */
+    val groupBy: List<String> = emptyList(),
+)
+
+/** The dimensions asked for; the others are empty. */
+@Serializable
+data class WorkGroup(val client: String = "", val agent: String = "", val machineId: String = "", val projectId: String = "")
+
+@Serializable
+data class SessionCount(val bucket: Int = 0, val group: WorkGroup? = null, val sessions: Int = 0, val done: Int = 0)
+
+@Serializable
+data class TurnCount(
+    val bucket: Int = 0,
+    val group: WorkGroup? = null,
+    val turns: Int = 0,
+    @Serializable(with = Int64::class) val inputTokens: Long = 0,
+    @Serializable(with = Int64::class) val outputTokens: Long = 0,
+)
+
+@Serializable
+data class QueryWorkResponse(val sessions: List<SessionCount> = emptyList(), val turns: List<TurnCount> = emptyList())
 
 // Session events (aide.session.v1.SessionEvent): one of the kinds is set.
 
 @Serializable data class StatusChanged(val status: String = "", val reason: String = "")
 @Serializable data class TurnStarted(val asker: String = "")
-@Serializable data class AttachmentInfo(val name: String = "", val mediaType: String = "", val path: String = "", val image: Boolean = false)
+@Serializable data class AttachmentInfo(
+    val name: String = "",
+    val mediaType: String = "",
+    @Serializable(with = Int64::class) val size: Long = 0,
+    val path: String = "",
+    val sha256: String = "",
+    val image: Boolean = false,
+)
 @Serializable data class UserMessage(val text: String = "", val attachments: List<AttachmentInfo> = emptyList(), val from: String = "", val fromName: String = "")
 @Serializable data class AgentMessage(val text: String = "")
 @Serializable data class AgentDraft(val text: String = "", val whole: Boolean = false)

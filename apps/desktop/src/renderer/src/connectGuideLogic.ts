@@ -70,6 +70,26 @@ export function fixes(line: Line, d: Detected): string[] {
   }
 }
 
+/**
+ * The lines whose program Aide installs itself where the agent finds it, from the official ACP registry, by its id there
+ * (工单 #133): Google's Antigravity ACP server, which neither its desktop app nor agy brings.
+ */
+export const installs: Partial<Record<Line, string>> = { antigravity: "antigravity-acp" };
+
+/**
+ * "Before you start", as keys of the connect texts. Antigravity's say how each thing stands on the machine now (工单 #133
+ * P05: "signed in" stated outright beside "not detected"), and keep apart its server, which Aide installs, and its
+ * sign-in, which only its owner can give.
+ */
+export function needs(line: Line, d: Detected): string[] {
+  if (line === "antigravity") {
+    const server = d === "missing" || d === "appOnly" ? "needServerMissing" : d === "broken" ? "needServerBroken" : d === "offline" || d === "checking" ? "needServer" : "needServerOk";
+    const signIn = d === "ready" ? "needSignInOk" : d === "signIn" ? "needSignInMissing" : d === "unconfirmed" ? "needSignInUnconfirmed" : d === "offline" || d === "checking" ? "needSignIn" : "needSignInLater";
+    return [`antigravity.${server}`, `antigravity.${signIn}`];
+  }
+  return line === "codex" || line === "custom" ? [`${line}.need1`, `${line}.need2`] : [`${line}.need1`, `${line}.need2`, `${line}.need3`];
+}
+
 /** Claude Code's answer says it is not signed in ("Not logged in · Please run /login"): a failure, whatever its exit said. */
 export function notLoggedIn(reply: string): boolean {
   return /not logged in|please run \/login|invalid api key/i.test(reply);

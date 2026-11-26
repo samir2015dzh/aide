@@ -125,6 +125,7 @@ type Machine struct {
 	usageCLI    cliUsageSource              // reads it through Claude Code here (工单 #86)
 	usageCache  cacheUsageSource            // reads what Claude Code here cached of it (工单 #104)
 	usageNoCLI  map[string]bool             // Claude Code binaries@versions without /usage outside a terminal
+	agentUsage  agentUsages                 // other agents' plan usage, as their checks answered it (工单 #143)
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
 	dshBridge   *machinev1.DSHBridge     // the DSH bridge plugin, as the last check of DSH found it
@@ -265,7 +266,7 @@ func Open(cfg Config) (*Machine, error) {
 		return nil, err
 	}
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
-		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{}, kept: map[string]keptModels{},
+		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, agentUsage: agentUsages{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{}, kept: map[string]keptModels{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
@@ -276,7 +277,6 @@ func Open(cfg Config) (*Machine, error) {
 			CachePath:  filepath.Join(cfg.DataDir, "model-catalog.json"),
 			HTTPClient: cfg.HTTPClient,
 			Logger:     n.log,
-			OnUpdate:   n.kickStatus,
 		})
 	}
 	n.loadCustomAgents()
@@ -301,6 +301,7 @@ func Open(cfg Config) (*Machine, error) {
 		n.usageCLI = &claude.CLIUsage{}
 		n.usageCache = &claude.CacheUsage{}
 		n.loadUsage()
+		n.loadAgentUsage()
 	}
 	n.sessions.offered = n.offered
 	n.sessions.signedIn = n.agentSignedIn
@@ -476,7 +477,8 @@ func (n *Machine) providerInfo(name string) provider.Info {
 
 // agentSignedIn is what a session of the agent just showed of its sign-in
 // (工单 #108): one that failed "Not logged in" is signed out now, one that
-// ran a turn is signed in; its status says so at once, not at its next check.
+// ran a turn is signed in; its status says so at once, not at its next check
+// (MachineService.Watch sends it within statusEvery; no ReportStatus, 工单 #143).
 // What it showed is kept (passive.go) for an agent whose check cannot tell
 // (工单 #112: an ACP agent's).
 func (n *Machine) agentSignedIn(name string, in bool) {
@@ -489,11 +491,14 @@ func (n *Machine) agentSignedIn(name string, in bool) {
 		n.infos[name] = i
 	}
 	n.mu.Unlock()
-	if changed {
-		n.kickStatus()
-	}
 }
 
+// kickStatus has ReportStatus sent again (link.go). It carries only the
+// name and the version, so only a rename kicks it (工单 #143): a change to
+// sessions, agents, sign-ins, health or settings is not the relay's to know,
+// and owners see it in MachineService.Watch, which compares the state every
+// statusEvery (feed.go). Each needless kick was a call to the relay and a
+// wake of every owner's WatchOwner for lists that had not changed.
 func (n *Machine) kickStatus() {
 	select {
 	case n.statusKick <- struct{}{}:
@@ -638,6 +643,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 			if !i.CheckedAt.IsZero() {
 				a.CheckedAt = timestamppb.New(i.CheckedAt)
 			}
+			a.Usage = n.agentUsage[name] // asked at its check (工单 #143); Claude Code's below
 			if name == "claude" {
 				a.Usage = n.usage // the last reading; a refresh is kicked below
 				a.Login = n.loginOfLocked(name)

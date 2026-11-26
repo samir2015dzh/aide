@@ -56,6 +56,10 @@ type Info struct {
 	Capabilities *Capabilities
 	// ProtocolVersion is the negotiated ACP protocol version (e.g. 2 or 1), 0 for non-ACP.
 	ProtocolVersion uint32
+	// PlanUsage is what the agent said of its account's plan usage when
+	// this check asked (AskUsage, planusage.go; Claude Code and Codex,
+	// 工单 #143); nil when it was not asked.
+	PlanUsage *PlanUsage
 }
 
 // Capabilities declares what a provider truly supports so Aide hides or disables

@@ -118,6 +118,8 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
             section(t("New Results", "有新结果未看"), b.unseen, world, open, Tone.Live)
             section(t("In Progress", "进行中"), b.inProgress, world, open, Tone.Live)
             section(t("Recent", "最近"), b.recent, world, open, Tone.Quiet)
+            // A year of tokens by coding agent or by machine, last as on the desktop's overview (工单 #142).
+            item(key = "usage") { UsageCard(model) }
             if (world.sessions.isEmpty() && world.watched) {
                 item { Text(t("No sessions yet.", "还没有会话。"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }

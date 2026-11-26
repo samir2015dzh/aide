@@ -14,8 +14,8 @@
     "waitingFor": "Waiting {{seconds}}s"
   },
   "window": {
-    "showSidebar": "Expand Sidebar",
-    "hideSidebar": "Collapse Sidebar",
+    "showSidebar": "Show Sidebar",
+    "hideSidebar": "Hide Sidebar",
     "undo": "Undo",
     "menu": "Menu"
   },
@@ -213,16 +213,6 @@
     "workSummary": "Done {{done}} · {{turns}} turns · {{tokens}} tokens",
     "openWork": "Open Overview"
   },
-  "rail": {
-    "label": "Sidebar Rail",
-    "expand": "Expand Sidebar",
-    "waiting_one": "{{count}} waiting for you",
-    "waiting_other": "{{count}} waiting for you",
-    "failed_one": "{{count}} failed",
-    "failed_other": "{{count}} failed",
-    "unread_one": "{{count}} unread",
-    "unread_other": "{{count}} unread"
-  },
   "needsUpdate": {
     "mark": "Needs update",
     "title": "Aide needs an update",
@@ -340,7 +330,7 @@
   },
   "tasks": {
     "title": "Tasks",
-    "note": "What your agents (Muse and the others) handed out through Aide, and how each is going: from the session itself (its tool now, its last words, its title), never from what an agent says. What needs a look comes first; finished work stays a day. Click a row to open the session.",
+    "note": "What each task your agents started through Aide is doing, and how far it got. Those that need a look come first; finished ones stay a day. Click one to open it.",
     "summary": "Summary",
     "needLook": "{{count}} need a look",
     "atWork": "{{count}} at work",
@@ -348,12 +338,13 @@
     "done": "{{count}} done",
     "dispatchers": "Given out by",
     "everyone": "Everyone · {{count}}",
-    "none": "No work handed out by an agent yet. Sessions Muse and other agents start through Aide show here.",
+    "none": "No tasks from your agents yet",
     "list": "Work handed out",
     "usingTool": "Using {{tool}}",
     "started": "started {{ago}}",
     "lastActivity": "last activity {{ago}}",
-    "open": "Open the session"
+    "open": "Open the session",
+    "noneHint": "Tasks Muse and other agents start through Aide show here."
   },
   "contactsUnavailable": "Contacts need a newer server: the owner's relay doesn't keep them yet. Tasks can still be handed to the agents listed here.",
   "conn": {
@@ -410,7 +401,7 @@
     "grant": "Its grant",
     "cantSend": "{{word}}: can't hand work now ({{line}})",
     "unverified": "Not confirmed lately — it can be sent, but whether it is there is not checked",
-    "noProject": "No project here for this agent yet: add one in Settings › Projects and management.",
+    "noProject": "No project here for this agent yet: add one under Projects and management on its Settings page.",
     "identityAdd": "Add",
     "chat": "Conversation",
     "chatEmpty": "Write to {{name}}: it answers here.",
@@ -459,8 +450,7 @@
       "all": "All tasks",
       "waiting": "Waiting / needs a look",
       "running": "In progress",
-      "done": "Done lately",
-      "none": "Nothing for {{name}} now. Work handed to it through Aide, or that it handed out, shows here; finished work stays a day."
+      "done": "Done lately"
     }
   },
   "avatar": {
@@ -596,7 +586,10 @@
     "deleted_one": "Deleted “{{name}}”: {{count}} member session stays in its project",
     "deleted_other": "Deleted “{{name}}”: {{count}} member sessions stay in their projects",
     "deletedWith": "Deleted “{{name}}” and its members’ sessions",
-    "deletedSomeKept": "Deleted “{{name}}”; these members’ sessions were not deleted: {{names}}"
+    "deletedSomeKept": "Deleted “{{name}}”; these members’ sessions were not deleted: {{names}}",
+    "resend": "Send again",
+    "taskModeHint": "Task: it takes this as work, and starts tasks on your machines when it needs to.",
+    "lightHint": "Chat: just talk or ask; it answers directly and starts no task."
   },
   "errors": {
     "not_execution_machine": "This device cannot be an execution machine.",
@@ -675,7 +668,12 @@
       "review": "Review this session",
       "new": "Start a new conversation",
       "open": "Open the whole conversation"
-    }
+    },
+    "agentsOwn": "{{agent}}’s own",
+    "notChosen": "{{agent}} doesn’t let Aide choose this: its own setting applies",
+    "dropTitle": "Drop to attach",
+    "dropHint": "Files or pictures",
+    "sentFiles": "Files sent with it"
   },
   "conv": {
     "list": "Conversations",

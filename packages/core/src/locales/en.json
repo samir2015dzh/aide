@@ -101,7 +101,7 @@
     "questionBody": "{{title}}: {{text}}",
     "failedTitle": "“{{title}}” failed: {{failure}}",
     "failedBody": "{{grant}} · {{agent}} · {{project}}. {{advice}}",
-    "turnDoneTitle": "“{{title}}” finished turn {{turn}}",
+    "turnDoneTitle": "“{{title}}”: the agent replied",
     "noChanges": "No files changed",
     "changes_one": "{{count}} file +{{insertions}} −{{deletions}}",
     "changes_other": "{{count}} files +{{insertions}} −{{deletions}}",
@@ -116,7 +116,8 @@
     "declinedBy": "{{name}} skipped the question",
     "timedOut": "No response received; the agent continued on its own",
     "withdrawn": "Question withdrawn",
-    "separator": "; "
+    "separator": "; ",
+    "itemSeparator": ", "
   },
   "steps": {
     "read": {
@@ -244,10 +245,13 @@
     "loginNoReason": "no reason given",
     "loginTimedOut": "The last sign-in was not finished within 15 minutes and was stopped. Try again.",
     "loginCancelled": "The last sign-in was cancelled.",
-    "dshModels": "Models: {{models}}",
+    "dshModels": "Models it can use:",
     "bridgeInstalling": "DSH installs the plugin on that computer and restarts DSH Desktop; it tells Aide when it is done, and this line updates by itself.",
     "bridgeInstallFailed": "DSH didn't install it and didn't say why: open its install task to see how far it got.",
-    "bridgeInstallRestart": "Takes effect once DSH Desktop restarts (this line turns “Installed” as soon as the plugin answers)."
+    "bridgeInstallRestart": "Takes effect once DSH Desktop restarts (this line turns “Installed” as soon as the plugin answers).",
+    "dshModelGroup": "{{provider}}: {{models}}",
+    "listSeparator": ", ",
+    "andMore": " and {{count}} more"
   },
   "roster": {
     "online": "Online",
@@ -266,7 +270,8 @@
     "countUnknown": "{{count}} unknown",
     "countOf": "of {{count}}",
     "reconnecting": "Reconnecting",
-    "reconnectingLine": "The link to Aide on this computer broke and is being restored; what it showed before is not known to be current."
+    "reconnectingLine": "The link to Aide on this computer broke and is being restored; what it showed before is not known to be current.",
+    "version": "Version {{version}}"
   },
   "attach": {
     "kind": {

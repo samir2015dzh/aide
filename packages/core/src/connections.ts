@@ -4,6 +4,7 @@ import { kindNamed } from "@aide/ui";
 import { codingAgentTitle } from "./agents";
 import { t } from "./i18n";
 import { agoText } from "./text";
+import { modelGroups } from "./machines";
 
 // Connections (工单 #49): one account of what a machine's coding agents are
 // connected to, worked out from what the machine itself last reported
@@ -223,10 +224,15 @@ function dshRows(a: AgentStatus): ConnRow[] {
       text: a.problem === AgentProblem.NOT_FOUND ? t("conn.notInstalled") : t("conn.broken"),
       lacks: a.problem === AgentProblem.NOT_FOUND ? undefined : a.detail }];
   }
-  const models = [...new Set(a.models.map((x) => x.name || x.id).filter(Boolean))];
+  // A line a provider, its models listed by their IDs (工单 #136 P18), a long list cut with how many more.
+  const models = modelGroups(a.models).map((g) => {
+    const shown = g.models.slice(0, 4).join(t("conn.listSeparator"));
+    const more = g.models.length > 4 ? t("conn.andMore", { count: g.models.length - 4 }) : "";
+    return g.provider ? t("conn.dshModelGroup", { provider: g.provider, models: shown + more }) : shown + more;
+  });
   const rows: ConnRow[] = [{ id: "deepseek", agent: "deepseek", title, state: "ok", checkedAt,
     text: a.version ? t("conn.detectedVersion", { version: a.version }) : t("conn.detected"),
-    note: models.length ? t("conn.dshModels", { models: models.slice(0, 3).join(" · ") }) : undefined }];
+    note: models.length ? `${t("conn.dshModels")}\n${models.join("\n")}` : undefined }];
   const b = a.dshBridge;
   const v = bridgeView(b);
   const bridge: ConnRow = { id: "deepseek-bridge", agent: "deepseek", title: t("conn.bridge"), state: "partial", text: t(`conn.bridgeState.${v}`, { version: b?.version ?? "", latest: b?.latestVersion ?? "" }), checkedAt };

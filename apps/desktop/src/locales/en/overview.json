@@ -90,6 +90,11 @@
     "days_other": "{{count}} days",
     "cells": "{{tokens}} tokens in the past year, used on {{active}} days",
     "byAgent": "By coding agent",
+    "group": "Group",
+    "byMachine": "By machine",
+    "byMachineHint": "A personal agent follows the account, not a machine: what it asks for is counted on the machine whose coding agent did the work",
+    "other": "Other",
+    "goneMachine": "Removed machine",
     "empty": "Once you start, the days light up here one by one.",
     "less": "Less",
     "more": "More",
@@ -123,7 +128,7 @@
     "done": "Done",
     "running": "Running",
     "machines": "Machines online",
-    "offline_one": "{{count}} offline",
-    "offline_other": "{{count}} offline"
+    "machinesOffline_one": "Machines online · {{count}} offline",
+    "machinesOffline_other": "Machines online · {{count}} offline"
   }
 }

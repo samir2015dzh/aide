@@ -489,7 +489,7 @@ from the sessions in the replica.
 | An agent's turns; its cells by hour or day | `range_turns` and `sessions` by agent |
 | Clients that asked for nothing | the grants, less the clients in `range_turns` |
 | A machine offline or syncing | `sources`: "vps-1 is offline; counted up to Oct 29" |
-| Account and Mac usage: tokens per day and agent, active days, streak, share | `turns` by day and agent over 18 or 53 weeks |
+| Account and Mac usage: tokens per day and agent, active days, streak, share (by agent or by machine, 工单 #142) | `turns` by day, agent and machine over 18 or 53 weeks |
 | Mac link map: today's tokens | `range_turns` for today |
 
 One call per screen state: the overview asks once with

@@ -2,6 +2,7 @@ package machine
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/claude"
 )
 
@@ -104,7 +106,6 @@ func (n *Machine) refreshUsage() {
 		}
 	}
 	n.logUsage(pb, prev)
-	n.kickStatus()
 }
 
 // readUsage reads the usage once, from the first source that has it. When
@@ -207,6 +208,7 @@ func usageToProto(u claude.Usage, prev *machinev1.ClaudeUsage) *machinev1.Claude
 		Renew:       u.Renew,
 		Detail:      u.Detail,
 		Source:      u.Source,
+		Plan:        u.Plan,
 	}
 	for _, w := range u.Windows {
 		uw := &machinev1.UsageWindow{Key: w.Key, Utilization: w.Utilization}
@@ -237,5 +239,122 @@ func (n *Machine) logUsage(now, prev *machinev1.ClaudeUsage) {
 	}
 	if now.Renew != "" && now.Renew != prevRenew {
 		n.log.Info("Claude plan usage token auto-renew", "outcome", now.Renew)
+	}
+}
+
+// Asked when the agents are checked (工单 #143, after upstream 1c862bde):
+// a check on purpose starts Claude Code and Codex anyway, for their models,
+// and while the machine reads plan usage the same processes are asked it
+// too (provider.AskUsage): Claude Code's get_usage, Codex's
+// account/rateLimits/read. What they answer is no second source beside
+// the one above but enters it:
+//
+//   - Claude Code's is the same reading as the chain's (the usage endpoint,
+//     through Claude Code's own sign-in, read into the same windows), so it
+//     is taken as the reading when it is newer than the one held, and the
+//     chain's next refresh waits its usageEvery from it: the owner's Check
+//     Again freshens the reading at no extra process. An answer without
+//     windows changes nothing; the chain still asks its sources in turn.
+//   - Codex has no chain: its reading is only what its checks answered, in
+//     the same message and the same window names, kept the same way (on
+//     disk, a failed ask keeping the last one as stale). An answer that it
+//     has no window (an API key) clears it; until one with windows came it
+//     says nothing, so no "not read yet" for an agent that may have none.
+
+// agentUsages are the agents' readings but Claude Code's, by name.
+type agentUsages = map[string]*machinev1.ClaudeUsage
+
+// kAgentUsage keeps an agent's last good reading but Claude Code's.
+const kAgentUsage = "agent_usage/"
+
+// checkedUsage are the agents but Claude Code whose checks are asked their
+// plan usage.
+var checkedUsage = []string{"codex"}
+
+// usageOn: this machine reads plan usage (Config.ClaudeUsage).
+func (n *Machine) usageOn() bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.usageSrc != nil || n.usageCLI != nil || n.usageCache != nil
+}
+
+// noteCheckedUsage takes what an agent's check answered of its plan usage.
+func (n *Machine) noteCheckedUsage(name string, i provider.Info) {
+	u := i.PlanUsage
+	switch {
+	case u == nil:
+	case name == "claude":
+		n.noteClaudeChecked(*u)
+	case slices.Contains(checkedUsage, name):
+		n.noteAgentChecked(name, *u)
+	}
+}
+
+func (n *Machine) noteClaudeChecked(u provider.PlanUsage) {
+	if u.Unavailable != "" {
+		n.log.Debug("Claude Code's check gave no plan usage; the usage sources stand", "detail", u.Detail)
+		return
+	}
+	n.mu.Lock()
+	prev := n.usage
+	if prev != nil && len(prev.Windows) > 0 && !prev.Stale && prev.FetchedAt.AsTime().After(u.At) {
+		n.mu.Unlock()
+		return // a newer reading is held
+	}
+	pb := usageToProto(claude.Usage{Windows: u.Windows, FetchedAt: u.At, Source: "claude_code_check", Plan: u.Plan}, nil)
+	n.usage = pb
+	n.usageAt = time.Now()
+	n.mu.Unlock()
+	if b, err := proto.Marshal(pb); err == nil {
+		n.st.Set(kClaudeUsage, b)
+	}
+	n.logUsage(pb, prev)
+	n.kickStatus()
+}
+
+func (n *Machine) noteAgentChecked(name string, u provider.PlanUsage) {
+	n.mu.Lock()
+	prev := n.agentUsage[name]
+	var pb *machinev1.ClaudeUsage
+	switch {
+	case u.Unavailable == "":
+		pb = usageToProto(claude.Usage{Windows: u.Windows, FetchedAt: u.At, Source: name + "_check", Plan: u.Plan}, nil)
+	case u.Unavailable == provider.UsageFailed && prev != nil:
+		pb = usageToProto(claude.Usage{Unavailable: u.Unavailable, Detail: u.Detail}, prev)
+	}
+	if pb == nil && prev == nil {
+		n.mu.Unlock()
+		return
+	}
+	if pb == nil {
+		delete(n.agentUsage, name)
+	} else {
+		n.agentUsage[name] = pb
+	}
+	n.mu.Unlock()
+	switch {
+	case pb == nil:
+		n.st.Set(kAgentUsage+name, []byte{}) // cleared
+	case u.Unavailable == "":
+		if b, err := proto.Marshal(pb); err == nil {
+			n.st.Set(kAgentUsage+name, b)
+		}
+	}
+	n.kickStatus()
+}
+
+// loadAgentUsage reads the agents' last good readings kept, as stale until
+// a check asks again.
+func (n *Machine) loadAgentUsage() {
+	for _, name := range checkedUsage {
+		b, err := n.st.Get(kAgentUsage + name)
+		if err != nil || len(b) == 0 {
+			continue
+		}
+		u := &machinev1.ClaudeUsage{}
+		if proto.Unmarshal(b, u) == nil && len(u.Windows) > 0 {
+			u.Stale = true
+			n.agentUsage[name] = u
+		}
 	}
 }

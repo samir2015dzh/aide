@@ -131,6 +131,10 @@ func TestDesktop(t *testing.T) {
 			}
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "AIDE_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
+				// Antigravity's server is not, and the Connect page installs it from a registry of the test's into a home of its own (工单 #133).
+				home := t.TempDir()
+				registry, _ := fakeAntigravityRegistry(t)
+				more = append(more, "HOME="+home, "USERPROFILE="+home, "AIDE_ACP_REGISTRY_URL="+registry)
 			}
 			if name == "batchj-botsettings" { // DSH on this Mac, for its bot page and its settings page (工单 #97)
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))

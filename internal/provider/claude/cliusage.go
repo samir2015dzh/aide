@@ -151,17 +151,7 @@ func usageFromCLI(out []byte) Usage {
 		}
 		if l.UsageReport != nil && l.UsageReport.RateLimits != nil && !structured {
 			structured = true
-			for _, r := range l.UsageReport.RateLimits.Limits {
-				key := r.windowKey()
-				if key == "" || r.Percent == nil {
-					continue
-				}
-				w := Window{Key: key, Utilization: *r.Percent}
-				if r.ResetsAt != nil {
-					w.ResetsAt, _ = time.Parse(time.RFC3339Nano, *r.ResetsAt)
-				}
-				windows = append(windows, w)
-			}
+			windows = append(windows, rowWindows(l.UsageReport.RateLimits.Limits)...)
 		}
 		if l.Message != nil {
 			for _, c := range l.Message.Content {
@@ -199,13 +189,44 @@ func usageFromCLI(out []byte) Usage {
 		}
 		return Usage{Unavailable: CLISessionOnly, Detail: "claude -p /usage: no plan windows in its answer"}
 	}
+	return Usage{Windows: orderWindows(windows)}
+}
+
+// rowWindows reads the plan's usage rows into windows; a row of another
+// kind, or without its percent, is left out.
+func rowWindows(rows []cliLimit) []Window {
+	var windows []Window
+	for _, r := range rows {
+		key := r.windowKey()
+		if key == "" || r.Percent == nil {
+			continue
+		}
+		w := Window{Key: key, Utilization: *r.Percent}
+		if r.ResetsAt != nil {
+			w.ResetsAt, _ = time.Parse(time.RFC3339Nano, *r.ResetsAt)
+		}
+		windows = append(windows, w)
+	}
+	return windows
+}
+
+// windowsFromRows reads the plan's usage rows as every source reads them
+// (/usage's twin, get_usage's limits: 工单 #143): one window a key, in the
+// usage endpoint's order.
+func windowsFromRows(rows []cliLimit) []Window {
+	return orderWindows(rowWindows(rows))
+}
+
+// orderWindows keeps the first window of each key, in the usage endpoint's
+// order.
+func orderWindows(windows []Window) []Window {
 	byKey := map[string]*windowJSON{}
 	for _, w := range windows {
 		if _, ok := byKey[w.Key]; !ok {
 			byKey[w.Key] = &windowJSON{Utilization: w.Utilization, ResetsAt: w.ResetsAt}
 		}
 	}
-	return Usage{Windows: windowsFromResponse(byKey)}
+	return windowsFromResponse(byKey)
 }
 
 // windowKey names a usage row as the usage endpoint's windows are named

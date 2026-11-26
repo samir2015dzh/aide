@@ -8,7 +8,7 @@ import { AgentTile, Mark } from "@aide/ui";
 import { projectsFor, whyBroken } from "./AgentList";
 import { ConnectionsCard } from "./Connections";
 import { local } from "./api";
-import { agentOf, detect, fixes, formOf, formProblem, lines, looksSecret, notLoggedIn, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
+import { agentOf, detect, fixes, formOf, formProblem, installs, lines, looksSecret, needs, notLoggedIn, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
 import { Icon } from "./icons";
 import { needsUpdate } from "./skew";
 import { errorText, useStore } from "./store";
@@ -81,14 +81,18 @@ export function ConnectGuide({ line, place }: { line: Line; place: Place }) {
           <span className="cg-note">{t("machineNote")}</span>
         </div>
       )}
-      <Steps title={t("before")} items={needs(line).map((k) => t(k as never))} />
+      {/* What Aide already knows comes first: the form below is for what it doesn't (工单 #136 P09). */}
+      {line === "custom" && <KnownAgents m={m} />}
+      <Steps title={t("before")} items={needs(line, lineState(m, line)).map((k) => t(k as never, { machine: m.machineName }))} />
       <Steps title={t("steps")} items={[1, 2, 3, 4, 5].map((n) => t(`${line}.step${n}` as never))} ordered />
       {line === "custom" ? <Customs m={m} place={place} /> : <Agent m={m} agent={line} line={line} place={place} />}
     </div>
   );
 }
 
-const needs = (line: Line) => (line === "codex" || line === "antigravity" || line === "custom" ? [`${line}.need1`, `${line}.need2`] : [`${line}.need1`, `${line}.need2`, `${line}.need3`]);
+/** How a line's agent stands on m now (the custom line has none of its own). */
+const lineState = (m: Machine, line: Line) =>
+  line === "custom" ? "checking" : detect(m.status?.agents.find((x) => x.name === line), m.online || m.local, !!m.status?.agents.length);
 
 function Steps({ title, items, ordered }: { title: string; items: ReactNode[]; ordered?: boolean }) {
   const List = ordered ? "ol" : "ul";
@@ -140,6 +144,7 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
             </button>
           )}
         </div>
+        {installs[line] && (d === "missing" || d === "appOnly" || d === "broken") && <Install m={m} line={line} registryId={installs[line]} />}
         {fixes(line, d).length > 0 && (
           <div className="cg-fix">
             <span>{t("tryThis")}</span>
@@ -159,7 +164,8 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
       {(agent === "claude" || agent === "deepseek" || agent === "antigravity") && d !== "offline" && (
         <section className="cg-sec" aria-label={t("details")}>
           <div className="fhead">{t("details")}</div>
-          <ConnectionsCard m={m} only={(r) => r.agent === agent} />
+          {/* Its main row's name and state are the status above: here only what it adds (工单 #137 P17). */}
+          <ConnectionsCard m={m} only={(r) => r.agent === agent} bare={(r) => r.id === (agent === "claude" ? "claude-cli" : agent)} />
         </section>
       )}
       {/* A trial run is what confirms an ACP agent's sign-in (工单 #112): offered while it is unconfirmed too. */}
@@ -182,6 +188,35 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
       )}
       {line === "claude" && <p className="cg-note">{t("claude.assistant")}</p>}
     </>
+  );
+}
+
+/**
+ * Installs the agent's program on m from the official ACP registry, where the agent finds it (工单 #133): one button, its
+ * download checked against the registry's SHA-256, done only once the machine finds the agent there; else why not.
+ */
+function Install({ m, line, registryId }: { m: Machine; line: Line; registryId: string }) {
+  const { t } = useTranslation("connect");
+  const [state, setState] = useState<{ busy: boolean; error?: string }>({ busy: false });
+  const install = async () => {
+    setState({ busy: true });
+    try {
+      await local.installMachineACPRegistryAgent({ machineId: m.machineId, registryId });
+      await recheck(m).catch(() => {}); // the next status says it is detected
+      setState({ busy: false });
+    } catch (e) {
+      setState({ busy: false, error: errorText(e) });
+    }
+  };
+  return (
+    <div className="cg-install" role="group" aria-label={t(`${line}.install` as never)}>
+      <p>{t(`${line}.installWhat` as never, { machine: m.machineName })}</p>
+      <button className="btn primary" disabled={state.busy} onClick={install}>
+        {state.busy ? <Mark size={12} variant="seq" /> : <Icon name="arrowDown" />}
+        {state.busy ? t(`${line}.installing` as never) : t(`${line}.install` as never)}
+      </button>
+      {state.error && <p className="cg-err" role="alert">{t("installFailed", { reason: state.error })}</p>}
+    </div>
   );
 }
 
@@ -252,21 +287,38 @@ function Verify({ m, agent, line, ready, place }: { m: Machine; agent: string; l
     await st.run(() => local.addProject({ machineId: m.machineId, projectId, path, agents: [agent] }));
     setAdding(false);
   };
-  const names = projects.map(projectTitle).join(", ");
+  const names = projects.map(projectTitle).join(t("listSeparator")); // 、 in Chinese (工单 #136 P32)
+  const addButton = (
+    <div className="cg-acts">
+      <button className="btn" onClick={add} disabled={adding}>
+        <Icon name="plus" />
+        {adding ? t("project.adding") : t("project.add")}
+      </button>
+    </div>
+  );
+  // Not usable yet: one line saying where to go (the status above), no buttons that can't be pressed (工单 #136 P16).
+  if (!ready)
+    return (
+      <section className="cg-sec" aria-label={t("verify")}>
+        <div className="fhead">{t("verify")}</div>
+        <div className="cg-box">
+          <p className="cg-note">{t("test.notReady", { agent: title, machine: m.machineName })}</p>
+        </div>
+      </section>
+    );
   return (
     <section className="cg-sec" aria-label={t("verify")}>
       <div className="fhead">{t("verify")}</div>
       <div className="cg-box">
-        <p>{projects.length ? t("project.some", { count: projects.length, agent: title, machine: m.machineName, names }) : t("project.none", { agent: title, machine: m.machineName })}</p>
-        <div className="cg-acts">
-          <button className="btn" onClick={add} disabled={adding}>
-            <Icon name="plus" />
-            {adding ? t("project.adding") : t("project.add")}
-          </button>
-        </div>
+        {projects.length > 0 && (
+          <>
+            <p>{t("project.some", { count: projects.length, agent: title, machine: m.machineName, names })}</p>
+            {addButton}
+          </>
+        )}
         <p className="cg-note">{t("test.runNote")}</p>
         <div className="cg-acts">
-          <button className="btn primary" onClick={run} disabled={!ready || test.busy}>
+          <button className="btn primary" onClick={run} disabled={test.busy}>
             {test.busy ? t("test.running", { agent: title }) : t("test.run")}
           </button>
         </div>
@@ -276,23 +328,82 @@ function Verify({ m, agent, line, ready, place }: { m: Machine; agent: string; l
             {!test.ok && line !== "custom" && <span className="cg-note"> {t(`${line}.testFailedHint`)}</span>}
           </p>
         )}
-        <p className="cg-note">{projects.length ? t("test.startNote", { project: projects[0].projectId }) : t("test.needsProject")}</p>
-        <div className="cg-acts">
-          <button className="btn" onClick={start} disabled={!ready || !projects.length || starting || !!started}>
-            {starting ? t("test.starting") : t("test.start")}
-          </button>
-          {started && (
-            <button className="btn primary" onClick={() => place.openSession(started)}>
-              {t("test.open")}
-            </button>
-          )}
-        </div>
+        {projects.length ? (
+          <>
+            <p className="cg-note">{t("test.startNote", { project: projects[0].projectId })}</p>
+            <div className="cg-acts">
+              <button className="btn" onClick={start} disabled={starting || !!started}>
+                {starting ? t("test.starting") : t("test.start")}
+              </button>
+              {started && (
+                <button className="btn primary" onClick={() => place.openSession(started)}>
+                  {t("test.open")}
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* No project: the test task's one step, not a button that can't be pressed. */}
+            <p className="cg-note">{t("project.none", { agent: title, machine: m.machineName })}</p>
+            {addButton}
+          </>
+        )}
       </div>
     </section>
   );
 }
 
 const builtIn = codingAgentIds;
+
+/** Other names an agent goes by, as its owner may know it (WorkBuddy is Tencent's app around CodeBuddy Code). */
+const alsoKnownAs: Record<string, string> = { codebuddy: "WorkBuddy" };
+
+/**
+ * Every coding agent Aide knows besides the lines above, each with its own row and how it stands on m now (工单 #136
+ * P09: WorkBuddy had no entry here, only a mention): detected (and its version), found but not signed in, broken (why),
+ * or not there; with one check again for them all.
+ */
+function KnownAgents({ m }: { m: Machine }) {
+  const { t } = useTranslation("connect");
+  const tf = useTranslation("firstrun").t;
+  const [checking, setChecking] = useState(false);
+  const check = async () => {
+    setChecking(true);
+    await recheck(m).catch(() => {});
+    setChecking(false);
+  };
+  const ids = builtIn.filter((x) => !(lines as readonly string[]).includes(x));
+  return (
+    <section className="cg-sec" aria-label={t("known.title")}>
+      <div className="fhead">{t("known.title")}</div>
+      <p className="cg-note">{t("known.note", { machine: m.machineName })}</p>
+      <div className="fgroup">
+        {ids.map((id) => {
+          const a = m.status?.agents.find((x) => x.name === id);
+          const d = detect(a, m.online || m.local, !!m.status?.agents.length);
+          const name = alsoKnownAs[id] ? `${codingAgentTitle(id)}（${alsoKnownAs[id]}）` : codingAgentTitle(id);
+          const v = { machine: m.machineName, agent: name, version: a?.version ?? "", app: a?.detail.replace(/\.app$/, "") ?? "" };
+          const state = d === "ready" && a?.version ? t("state.readyVersion", v) : t(`state.${d}`, v);
+          const hint = d === "missing" ? t("known.installHint", v) : d === "broken" && a ? whyBroken(a, tf) : d === "signIn" ? t("known.signInHint", v) : "";
+          return (
+            <div key={id} className="frow cg-known" role="group" aria-label={name} data-state={d}>
+              <AgentTile agent={id} size={20} />
+              <span className="ft">
+                <b>{name}</b>
+                <span className="fdesc">{state}</span>
+                {hint && <span className="fdesc">{hint}</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="cg-acts">
+        <button className="btn sm" disabled={checking} onClick={check}>{checking ? t("checking") : t("checkAgain")}</button>
+      </div>
+    </section>
+  );
+}
 
 /** The agents the owner added on a machine: each one's status and test, and the form to add or change one. */
 function Customs({ m, place }: { m: Machine; place: Place }) {
@@ -547,7 +658,7 @@ function CustomFormView({ m, agent, close }: { m: Machine; agent?: CustomAgent; 
         ok: r.ok,
         text: r.ok
           ? `${baseOk}${protoSuffix}`
-          : [t("custom.testFailed", { reason: r.reason }), r.authMethods.length ? t("custom.testAuth", { methods: r.authMethods.join(", ") }) : ""].filter(Boolean).join(" "),
+          : [t("custom.testFailed", { reason: r.reason }), r.authMethods.length ? t("custom.testAuth", { methods: r.authMethods.join(t("listSeparator")) }) : ""].filter(Boolean).join(" "),
       });
     } catch (e) {
       setTest({ ok: false, text: t("custom.testFailed", { reason: needsUpdate(e) ? t("custom.update", { machine: m.machineName }) : errorText(e) }) });

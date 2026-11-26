@@ -25,7 +25,7 @@ func TestListModelsNeverHangs(t *testing.T) {
 	bin := filepath.Join(dir, "claude")
 	os.WriteFile(bin, []byte("#!/bin/sh\nsleep 600 &\necho $! > "+pidFile+"\nwait\n"), 0o755)
 	start := time.Now()
-	if m, own := listModels(context.Background(), os.Environ(), bin); m != nil || own != "" {
+	if m, own, _ := listModels(context.Background(), os.Environ(), bin, false); m != nil || own != "" {
 		t.Fatalf("got %+v %q", m, own)
 	}
 	if d := time.Since(start); d > 5*time.Second {

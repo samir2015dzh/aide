@@ -460,13 +460,11 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 		if err := n.setAgentDefaults(c.SetAgentDefaults); err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		n.kickStatus()
 		return "defaults set for " + c.SetAgentDefaults.Agent, nil
 	case *identityv1.AdminCommand_SetAgentHidden:
 		if err := n.setAgentHidden(c.SetAgentHidden); err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		n.kickStatus()
 		if c.SetAgentHidden.Hidden {
 			return c.SetAgentHidden.Agent + " hidden", nil
 		}
@@ -509,13 +507,11 @@ func (n *Machine) execAdmin(ctx context.Context, cmd *identityv1.AdminCommand) (
 		if err := n.setAgentCategory(c.SetAgentCategory); err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		n.kickStatus()
 		return c.SetAgentCategory.Agent + " filed as " + cmp.Or(c.SetAgentCategory.Category, "told from what it is"), nil
 	case *identityv1.AdminCommand_SetAgentPaused:
 		if err := n.setAgentPaused(c.SetAgentPaused); err != nil {
 			return "", connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		n.kickStatus()
 		if c.SetAgentPaused.Paused {
 			return c.SetAgentPaused.Agent + " paused", nil
 		}

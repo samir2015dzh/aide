@@ -100,7 +100,6 @@ func (n *Machine) offered(agent string, o provider.Offers) {
 			n.log.Warn("storing what an agent offers", "agent", agent, "err", err)
 		}
 	}
-	n.kickStatus()
 }
 
 // withOffers is i with what the agent's sessions offered, for an agent that

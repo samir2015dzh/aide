@@ -9,6 +9,16 @@ Keep both files in the same directory.
 
 ## Install on the machine that runs the work
 
+**From Aide** (工单 #133): Connect › Antigravity › *Install Antigravity ACP
+Server*. The machine reads the official ACP registry afresh, downloads its
+`antigravity-acp` archive for the platform from Google, checks it against
+the registry's SHA-256, unpacks it whole (with `localharness_external`, its
+files' modes kept) into the folder below where the built-in agent looks
+(`~/.local/share/antigravity-acp/`, Windows `%LOCALAPPDATA%\antigravity-acp\`),
+and is done only once the agent is detected there. It is never installed as
+a custom agent beside the built-in one. What is left is signing in, which
+only the owner can do (below). By hand:
+
 Download the archive for your platform from the registry. Check its SHA-256
 against that entry before extracting it. Aide finds the server on the
 login shell's PATH, or under `~/.local/share/antigravity-acp/` (the same

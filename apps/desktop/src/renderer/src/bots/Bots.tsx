@@ -8,8 +8,7 @@ import { RoomDeliveryState, RoomMode, type Room, type RoomMessage } from "@aide/
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
   allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
-  type Bot, type ConvParams, type Roster,
-} from "@aide/core";
+  type Bot, type ConvParams, type Roster, stateDetail } from "@aide/core";
 import { botLook, botMood, botSeed, botSessions, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
@@ -270,7 +269,7 @@ export function SidebarRoster() {
                 <b>{short ? b.shortName : b.name}</b>
                 <span className="bot-word" data-usable={b.state.usable}>{b.state.word}</span>
               </span>
-              <span className="bot-l2">{b.doing || b.state.line}</span>
+              {(b.doing || stateDetail(b.state)) && <span className="bot-l2">{b.doing || stateDetail(b.state)}</span>}
             </span>
             {b.waiting > 0 && <span className="cnt-w">{b.waiting}</span>}
           </button>
@@ -347,7 +346,7 @@ export function BotPage({ botKey, native, settings = false }: { botKey: string; 
             <BotPill b={b} />
           </div>
           <div className="bot-head-l2">
-            <span>{b.state.line}</span>
+            <span>{stateDetail(b.state)}</span>
             {fix && !login && <button className="link" onClick={() => window.aide?.openSettings(`machines/${m!.machineId}`)}>{t("bots.fixOnDevices")}</button>}
           </div>
           {login && <ClaudeLogin m={m!} waiting={claudeLoginWaiting(m!)} />}
@@ -388,13 +387,14 @@ function TaskBoard({ b }: { b: Bot }) {
     { id: "running" as const, rows: rows.filter((r) => r.rank === 1) },
     { id: "done" as const, rows: rows.filter((r) => r.rank >= 2) },
   ].filter((g) => g.rows.length > 0);
+  // Nothing on it: no column of two sentences (工单 #140 P26: 320 × 919 for "none yet"); 任务动态 still has them all.
+  if (groups.length === 0) return null;
   return (
     <aside className="bot-bench bot-board" aria-label={t("bots.board.title")}>
       <div className="bot-sec-h">
         {t("bots.board.title")}
         <button className="link" onClick={() => st.set({ selection: { kind: "tasks" } })}>{t("bots.board.all")}</button>
       </div>
-      {groups.length === 0 && <div className="bot-empty">{t("bots.board.none", { name: b.name })}</div>}
       {groups.map((g) => (
         <section key={g.id} aria-label={t(`bots.board.${g.id}`)}>
           <div className="bot-sec-h">{t(`bots.board.${g.id}`)} · {g.rows.length}</div>
@@ -518,7 +518,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
       : stuck
         ? { text: t(stuck === "projectGone" ? "conv.stuckProject" : "conv.stuckAgent"), tone: "warn" as const }
         : projects.length === 0
-          ? { text: t("bots.noProject"), tone: "quiet" as const }
+          ? { text: t("bots.noProject"), tone: "quiet" as const, action: { label: t("bots.settings"), run: () => st.set({ selection: { kind: "bot", key: b.key, pane: "settings" } }) } }
           : permission.above
             ? { text: permission.above, tone: "warn" as const }
             : b.state.usable === "unverified"
@@ -533,18 +533,31 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const models: PickerOption<string>[] = [...modelOptions(t, a, params.model), ...(modelsLater ? [{ value: "\0later", label: modelsLater, disabled: true }] : [])];
   const efforts = a?.models.find((x) => x.id === params.model)?.efforts ?? [];
   const modes: PickerOption<string>[] = [{ value: "", label: permission.defaultLabel ?? t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: modeLabel(b.agent, x) }))];
+  // The same four, in the same order, for every coding agent (工单 #140 P11: three on one page, four on another), each
+  // saying what it is; what an agent does not let Aide choose shows as its own default, not as a missing slot.
+  const fixed = (label: string) => (
+    <span className="picker chip sm picker-fixed" title={t("composer.notChosen", { agent: codingAgentTitle(b.agent) })}>
+      <span className="picker-k">{label}</span>
+      <span className="picker-v">{t("composer.agentsOwn", { agent: codingAgentTitle(b.agent) })}</span>
+    </span>
+  );
+  const modeLabelText = t(b.agent === dshAgent ? "composer.permission" : "composer.param.mode");
   const chips = (
     <>
       {projects.length > 0 && (
-        <Picker chip size="sm" label={t("composer.param.projectId")} value={params.projectId} onChange={(v) => setParams({ ...params, projectId: v })}
+        <Picker chip showLabel size="sm" label={t("composer.param.projectId")} value={params.projectId} onChange={(v) => setParams({ ...params, projectId: v })}
           options={projects.map((p) => ({ value: p.projectId, label: projectTitle(p), icon: <Icon name="folder" className="sm" /> }))} />
       )}
-      {((a?.models.length ?? 0) > 0 || modelsLater) && <Picker chip size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} />}
-      {efforts.length > 0 && (
-        <Picker chip size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}
-          options={[{ value: "", label: t("composer.defaultEffort") }, ...efforts.map((e) => ({ value: e, label: e }))]} />
-      )}
-      {(a?.modes.length ?? 0) > 0 && <Picker chip size="sm" label={t(b.agent === dshAgent ? "composer.permission" : "composer.param.mode")} value={params.mode} options={modes} onChange={(v) => setParams({ ...params, mode: v })} />}
+      {(a?.models.length ?? 0) > 0 || modelsLater
+        ? <Picker chip showLabel size="sm" label={t("composer.param.model")} value={params.model} options={models} onChange={(v) => setParams({ ...params, model: v, effort: "" })} />
+        : fixed(t("composer.param.model"))}
+      {efforts.length > 0 ? (
+        <Picker chip showLabel size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}
+          options={[{ value: "", label: t("composer.defaultEffort") }, ...efforts.map((e) => ({ value: e, label: t(`firstrun:prepare.efforts.${e}`, { defaultValue: e }) }))]} />
+      ) : fixed(t("composer.param.effort"))}
+      {(a?.modes.length ?? 0) > 0
+        ? <Picker chip showLabel size="sm" label={modeLabelText} value={params.mode} options={modes} onChange={(v) => setParams({ ...params, mode: v })} />
+        : fixed(modeLabelText)}
     </>
   );
   const row = (s: Session, archived = false) => {
@@ -639,9 +652,12 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
                 <Icon name="expand" className="sm" />
                 {t("conv.open")}
               </button>
-              <button className="btn sm" onClick={() => void archive(current, current.status !== SessionStatus.ARCHIVED)}>
-                {t(current.status === SessionStatus.ARCHIVED ? "conv.unarchive" : "conv.archive")}
-              </button>
+              {/* Unarchiving is where the owner meets it, under the composer (工单 #137 P13): not here too. */}
+              {current.status !== SessionStatus.ARCHIVED && (
+                <button className="btn sm" onClick={() => void archive(current, true)}>
+                  {t("conv.archive")}
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -792,6 +808,18 @@ function DirectChat({ b }: { b: Bot }) {
       setState({ kind: "error", text: errorText(err), retry: () => void send() });
     }
   };
+  // A message that reached nobody, sent again as it was (工单 #139 P02): a new message, the failed one kept as it went.
+  const resend = async (m: RoomMessage) => {
+    if (!room || state.kind === "sending") return;
+    setState({ kind: "sending" });
+    try {
+      const again = await local.postRoomMessage({ machineId: room.hostMachineId, roomId: room.roomId, text: m.text, idempotencyKey: crypto.randomUUID(), lightChat: m.lightChat });
+      setMsgs((x) => [...x.filter((y) => y.messageId !== again.messageId), again]);
+      setState({ kind: "idle" });
+    } catch (err) {
+      setState({ kind: "error", text: errorText(err), retry: () => void resend(m) });
+    }
+  };
   const activeRoom = fresh ?? room;
   return (
     <main className="bot-main bot-chat">
@@ -816,8 +844,9 @@ function DirectChat({ b }: { b: Bot }) {
         )}
         <div className="bot-chat-acts">
           <div className="seg" role="group" aria-label={t("rooms.chatMode")}>
-            <button type="button" className={!light ? "on" : ""} aria-pressed={!light} onClick={() => toggleMode(false)}>{t("rooms.taskMode")}</button>
-            <button type="button" className={light ? "on" : ""} aria-pressed={light} onClick={() => toggleMode(true)}>{t("rooms.light")}</button>
+            {/* What each mode does, said where it is chosen (工单 #140 P27). */}
+            <button type="button" className={!light ? "on" : ""} aria-pressed={!light} title={t("rooms.taskModeHint")} onClick={() => toggleMode(false)}>{t("rooms.taskMode")}</button>
+            <button type="button" className={light ? "on" : ""} aria-pressed={light} title={t("rooms.lightHint")} onClick={() => toggleMode(true)}>{t("rooms.light")}</button>
           </div>
           <button type="button" className="btn sm" disabled={creating} onClick={() => void startNewChat()}>
             <Icon name="plus" className="sm" />
@@ -838,8 +867,9 @@ function DirectChat({ b }: { b: Bot }) {
       <div className="bot-stream chat-log" role="log" aria-label={t("bots.chat")}>
         {error && <div className="bot-empty warn" role="alert">{error}</div>}
         {!error && activeRoom && msgs.length === 0 && <div className="bot-empty">{t("bots.chatEmpty", { name: b.name })}</div>}
-        {activeRoom && <RoomTimeline room={activeRoom} msgs={msgs} />}
+        {activeRoom && <RoomTimeline room={activeRoom} msgs={msgs} resend={(m) => void resend(m)} />}
       </div>
+      <p className="bot-mode-note">{t(light ? "rooms.lightHint" : "rooms.taskModeHint")}</p>
       <Composer value={text} onChange={setText} onSend={() => void send()} placeholder={t("composer.placeholder", { name: b.name })} state={state} disabled={!room} />
     </main>
   );

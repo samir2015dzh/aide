@@ -12,8 +12,8 @@ test("the roster by machine; a project's menu in plain words; DSH's permission s
   const roster = page.getByRole("region", { name: "Bot" });
   const mac = roster.getByRole("group", { name: "owner-mac", exact: true });
   await expect(mac.getByRole("button", { name: "owner-mac", exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(roster.getByRole("group", { name: "个人 agent", exact: true })).toBeVisible();
-  for (const word of ["跟账号走", "跟机器走", "编码 agent"]) await expect(roster).not.toContainText(word);
+  await expect(roster.getByRole("group", { name: "个人 Agent", exact: true })).toBeVisible();
+  for (const word of ["跟账号走", "跟机器走", "编码 Agent"]) await expect(roster).not.toContainText(word);
   await mac.getByRole("button", { name: /^DSH/ }).click({ timeout: 30_000 });
   await snap(page, "batchi-roster");
 
@@ -40,7 +40,7 @@ test("the roster by machine; a project's menu in plain words; DSH's permission s
     "工作区内修改",
     "完全权限",
     "✓ 不指定：按 DSH 自己的设置",
-    "给哪些 agent 用： (off)",
+    "给哪些 Agent 用： (off)",
     "✓ DSH",
     "✓ Gemini CLI",
     "从 Aide 里移除这个项目（文件夹和里面的文件不动）",
@@ -51,7 +51,8 @@ test("the roster by machine; a project's menu in plain words; DSH's permission s
 
   // The box: DSH's permission chip has the project's as its default, and the task runs with it.
   const chip = bot.getByRole("button", { name: "权限", exact: true });
-  await expect(chip).toHaveText("项目默认：仅可查看");
+  await expect(chip.locator(".picker-v")).toHaveText("项目默认：仅可查看");
+  await expect(chip.locator(".picker-k")).toHaveText("权限"); // 工单 #140 P11
   await snap(page, "batchi-permission");
   const box = bot.getByRole("textbox", { name: /^给 DSH/ });
   await box.fill("config");

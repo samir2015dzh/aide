@@ -64,6 +64,18 @@ function stateOf(main: ConnRow, reachable: boolean, paused: boolean): BotState {
   }
 }
 
+/**
+ * What a state's line says beyond its word, for where both show side by side (工单 #137 P10: "已登录" beside "已登录 ·
+ * 2.1.3" said it twice): "版本 2.1.3", the rest of a longer line, or "" when the word says it all.
+ */
+export function stateDetail(s: Pick<BotState, "word" | "line">): string {
+  // "现在连着你的账号" is "在线" again, and the same for every personal agent (工单 #140 P24): nothing to add.
+  if (s.line === s.word || s.line === t("roster.onlineLine")) return "";
+  if (!s.line.startsWith(`${s.word} · `)) return s.line;
+  const rest = s.line.slice(s.word.length + 3);
+  return /^v?\d+(\.\d+)+\S*$/.test(rest) ? t("roster.version", { version: rest.replace(/^v/, "") }) : rest;
+}
+
 /** "Signed in · 2.1.3" → "Signed in": the version goes on the line, not in the pill. */
 function firstWord(text: string): string {
   return text.split(" · ")[0];

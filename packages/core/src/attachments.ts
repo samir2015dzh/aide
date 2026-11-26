@@ -60,3 +60,23 @@ export function admitAttachments<T extends PendingFile>(have: readonly T[], add:
   }
   return { take, refused };
 }
+
+/**
+ * Whether a paste attaches its files (工单 #143, after upstream fb7b9fc0): a screenshot, a picture copied or files
+ * copied in the file manager do. One with words does not when none of its files is a file on this computer: an app
+ * that copies words (a spreadsheet's cells, a slide's text) adds a picture of them, and the owner meant the words.
+ */
+export function pasteAttaches(text: string, files: number, paths: readonly string[]): boolean {
+  if (files === 0) return false;
+  return text.trim() === "" || paths.some((p) => p !== "");
+}
+
+/**
+ * The new files that are not already there (工单 #143): the same file picked, pasted or dropped twice goes once. The
+ * same is its name, type and size (a paste gives the same picture a new time each time).
+ */
+export function freshFiles<T extends PendingFile>(have: readonly T[], add: readonly T[]): T[] {
+  const key = (f: T) => `${f.name}\n${f.type}\n${f.size}`;
+  const seen = new Set(have.map(key));
+  return add.filter((f) => !seen.has(key(f)) && (seen.add(key(f)), true));
+}

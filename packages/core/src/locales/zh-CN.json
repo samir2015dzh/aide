@@ -47,10 +47,10 @@
     "refused": "模型拒绝执行",
     "limitReached": "达到步数上限",
     "resumeRejected": "无法恢复任务",
-    "agentCrashed": "agent 进程意外退出",
+    "agentCrashed": "Agent 进程意外退出",
     "stalled": "长时间无进展",
     "timeout": "超过时长上限",
-    "startFailed": "无法启动 agent",
+    "startFailed": "无法启动 Agent",
     "baseRefUnavailable": "找不到基准引用",
     "other": "失败",
     "missingCredentials": "未配置密钥"
@@ -101,7 +101,7 @@
     "questionBody": "{{title}}：{{text}}",
     "failedTitle": "「{{title}}」出错了：{{failure}}",
     "failedBody": "{{grant}} · {{agent}} · {{project}}。{{advice}}",
-    "turnDoneTitle": "「{{title}}」第 {{turn}} 轮完成",
+    "turnDoneTitle": "「{{title}}」：Agent 回复了",
     "noChanges": "没有改动文件",
     "changes_other": "{{count}} 个文件 +{{insertions}} −{{deletions}}",
     "roomNew": "房间里有新消息",
@@ -115,7 +115,8 @@
     "declinedBy": "{{name}} 跳过了回答",
     "timedOut": "无人回答，Agent 已自行继续",
     "withdrawn": "问题已撤回",
-    "separator": "；"
+    "separator": "；",
+    "itemSeparator": "、"
   },
   "steps": {
     "read": {
@@ -235,10 +236,13 @@
     "loginNoReason": "没有给出原因",
     "loginTimedOut": "上次登录 15 分钟内没有完成，已停止。可以再试一次。",
     "loginCancelled": "上次登录已取消。",
-    "dshModels": "模型：{{models}}",
+    "dshModels": "它可用的模型：",
     "bridgeInstalling": "DSH 在那台电脑上装插件、重启 DSH Desktop，装完会告诉 Aide，这一行会自己更新。",
     "bridgeInstallFailed": "DSH 没装上，也没说原因：打开它的安装任务看做到了哪一步。",
-    "bridgeInstallRestart": "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。"
+    "bridgeInstallRestart": "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。",
+    "dshModelGroup": "{{provider}}：{{models}}",
+    "listSeparator": "、",
+    "andMore": " 等 {{count}} 个"
   },
   "roster": {
     "online": "在线",
@@ -257,7 +261,8 @@
     "countUnknown": "未知 {{count}}",
     "countOf": "共 {{count}}",
     "reconnecting": "正在重连",
-    "reconnectingLine": "与这台电脑上 Aide 后台的连接中断，正在重连；它之前的状态现在未必还对。"
+    "reconnectingLine": "与这台电脑上 Aide 后台的连接中断，正在重连；它之前的状态现在未必还对。",
+    "version": "版本 {{version}}"
   },
   "attach": {
     "kind": {

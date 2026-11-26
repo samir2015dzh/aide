@@ -57,7 +57,10 @@ test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude an
     await main.getByRole("tab", { name: "Codex" }).click();
     await expect(main.getByRole("status").filter({ hasText: "在 owner-mac 上找到了，但还没登录" })).toBeVisible({ timeout: 30_000 });
     await expect(main.locator("code").filter({ hasText: /codex" login$/ })).toBeVisible();
-    await expect(main.getByRole("button", { name: "运行测试" })).toBeDisabled();
+    // Not usable yet: one line pointing at the status, no buttons that can't be pressed (工单 #136 P16).
+    const verify = main.getByRole("region", { name: "确认能用" });
+    await expect(verify).toHaveText(/^确认能用Codex 在 owner-mac 上能用了，才能在这里测试：先按上面「状态」里说的处理。$/);
+    await expect(verify.getByRole("button")).toHaveCount(0);
   }
   await app.close();
 });
@@ -138,4 +141,73 @@ test("the guide from the sidebar, and opened at a line: the assistants' shows on
   const { clients } = await api<{ clients: { grantId: string; label: string }[] }>(settings, "ListClients");
   await api(settings, "RevokeClient", { grantId: clients.find((c) => c.label === name)!.grantId });
   await app.close();
+});
+
+// 工单 #133: a computer with Antigravity's desktop app only has no ACP server for Aide. Its line says so as it is — not
+// "signed in" beside "not detected" — and installs the server itself, one button, from the ACP registry (here the
+// test's: e2e/desktop_test.go); then it is detected, and what is left is the sign-in, which only its owner can give.
+test("Antigravity's line installs its ACP server with one button, and says what is left as it stands", async () => {
+  const { app, page } = await launch();
+  try {
+    const settings = await openSettings(app, page, "connect/antigravity");
+    const main = settings.getByRole("main", { name: "连接" });
+    await expect(main.getByRole("tab", { name: "Antigravity" })).toHaveAttribute("aria-selected", "true");
+    const before = main.getByRole("region", { name: "开始之前" });
+    const status = main.getByRole("status");
+    await expect(status).toContainText("没有检测到", { timeout: 30_000 });
+    await expect(before).toContainText("还没有 Google 官方的 Antigravity ACP 服务");
+    await expect(before).toContainText("服务装好后再登录");
+    await expect(before).not.toContainText("已完成登录");
+    await snap(settings, "connect-133-antigravity-missing");
+
+    const install = main.getByRole("group", { name: "安装 Antigravity ACP 服务" });
+    await install.getByRole("button", { name: "安装 Antigravity ACP 服务" }).click();
+    await expect(status).toContainText("找到了，但还没登录", { timeout: 60_000 });
+    await expect(install).toHaveCount(0);
+    await expect(before).toContainText("已装好 Google 官方的 Antigravity ACP 服务");
+    await expect(before).toContainText("还没登录：这一步只能你本人完成");
+    await expect(main.getByText("aide agent login antigravity").first()).toBeVisible();
+    await snap(settings, "connect-133-antigravity-installed");
+  } finally {
+    await app.close();
+  }
+});
+
+// 工单 #136: every coding agent Aide knows has a
+// row of its own with how it stands — WorkBuddy among them (P09) — and a project list reads as Chinese (P32).
+test("the Connect pages list every known coding agent with its state, and name projects as Chinese does", async () => {
+  const { app, page } = await launch();
+  try {
+    // (P07's directions are checked over every text in renderer/src/directions.test.ts.)
+    const settings = await openSettings(app, page, "connect/custom");
+    const main = settings.getByRole("main", { name: "连接" });
+    await expect(main.getByRole("tab", { name: "其他 Agent" })).toHaveAttribute("aria-selected", "true");
+    const known = main.getByRole("region", { name: "Aide 认识的其他编码 Agent" });
+    const workbuddy = known.getByRole("group", { name: "CodeBuddy Code（WorkBuddy）" });
+    await expect(workbuddy).toBeVisible();
+    await expect(workbuddy).toContainText(/owner-mac/, { timeout: 30_000 });
+    for (const name of ["Gemini CLI", "Cursor", "Qwen Code"]) await expect(known.getByRole("group", { name })).toBeVisible();
+    await expect(known.getByRole("group", { name: "DSH" })).toHaveCount(0); // its own line above
+    await expect(main).not.toContainText("例如 WorkBuddy");
+    await snap(settings, "connect-136-known-agents");
+
+    // DSH's line: its projects named with 、, never ", ".
+    await main.getByRole("tab", { name: "DSH", exact: true }).click();
+    const verify = main.getByRole("region", { name: "确认能用" });
+    await expect(verify).toContainText("可以用", { timeout: 30_000 });
+    await expect(verify).not.toContainText(", ");
+    // 工单 #137 P17: "detected" once, in the status; the details below say what they add.
+    await expect(main.getByRole("status").filter({ hasText: "已在 owner-mac 上检测到" })).toBeVisible();
+    await expect(main.getByRole("region", { name: "连接细项" })).not.toContainText("已检测到");
+
+    // 工单 #137 P10: the bot page's head says its state once — the word, then what the line adds, not the word again.
+    await page.bringToFront();
+    const head = page.getByRole("region", { name: /^DSH/ }).locator(".bot-head");
+    await page.getByRole("button", { name: /^DSH/ }).first().click();
+    await expect(head).toBeVisible({ timeout: 30_000 });
+    const word = (await head.locator(".bot-pill").innerText()).trim();
+    expect(((await head.innerText()).match(new RegExp(word, "g")) ?? []).length, `"${word}" in the head`).toBe(1);
+  } finally {
+    await app.close();
+  }
 });

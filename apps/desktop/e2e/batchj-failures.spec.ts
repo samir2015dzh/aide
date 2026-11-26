@@ -62,3 +62,28 @@ test("a failure that can't be told apart says so, and that the original is under
   await snap(page, "batchj-105-unknown-details");
   await app.close();
 });
+
+// 工单 #139 P12: a failure a later turn went past stays as one quiet line that says what happened in words — not
+// "第 1 轮出错：失败 ›" with the reason only once opened — DSH's own message under 详情.
+test("an earlier turn's failure says what happened in its line, the agent's words under 详情", async () => {
+  const { app, page } = await launch();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await failOnDSH(page, odd);
+  // Goes on from its bot page, in the same conversation; then its session again.
+  const roster = page.getByRole("region", { name: "Bot" });
+  await roster.getByRole("group", { name: "owner-mac", exact: true }).getByRole("button", { name: /^DSH/ }).click();
+  const bot = page.getByRole("region", { name: /^DSH/ });
+  const box = bot.getByRole("textbox", { name: /^给 DSH/ });
+  await box.fill("say 接着来");
+  await box.press("Enter");
+  await bot.locator(".conv-head-t").click();
+  await expect(page.getByRole("log", { name: "对话" })).toContainText("接着来", { timeout: 30_000 });
+  const line = page.locator(".qfail.past").first();
+  await expect(line).toBeVisible({ timeout: 30_000 });
+  await expect(line).toContainText("第 1 轮：DSH 出了个内部错误");
+  await expect(line).not.toContainText("Internal error");
+  await line.getByRole("button", { name: /详情/ }).click();
+  await expect(line.locator(".qf-raw")).toContainText(odd);
+  await snap(page, "batchj-139-earlier-failure");
+  await app.close();
+});

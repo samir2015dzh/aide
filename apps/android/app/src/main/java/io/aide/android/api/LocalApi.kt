@@ -88,6 +88,9 @@ class LocalApi(port: Long, token: String) {
     suspend fun interruptDSHSession(machineId: String, sessionId: String): InterruptDSHSessionResponse =
         call("InterruptDSHSession", InterruptDSHSessionRequest(machineId, sessionId), timeoutSeconds = 30)
 
+    /** The work over a range, counted by aided from what it holds (工单 #142). */
+    suspend fun queryWork(req: QueryWorkRequest): QueryWorkResponse = call("QueryWork", req)
+
     suspend fun listSessions(before: SessionCursor? = null): ListSessionsResponse =
         call("ListSessions", ListSessionsRequest(before = before))
 

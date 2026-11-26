@@ -14,8 +14,8 @@
     "waitingFor": "已等待 {{seconds}} 秒"
   },
   "window": {
-    "showSidebar": "展开边栏",
-    "hideSidebar": "收成窄栏",
+    "showSidebar": "显示边栏",
+    "hideSidebar": "隐藏边栏",
     "undo": "撤销",
     "menu": "菜单"
   },
@@ -91,7 +91,7 @@
     "more": "更多操作",
     "renameLabel": "任务标题",
     "deleteTitle": "删除「{{title}}」？",
-    "deleteMessage": "任务记录、对话和工作区会被永久删除，无法恢复。agent 做的改动仍保留在分支 {{branch}} 上。",
+    "deleteMessage": "任务记录、对话和工作区会被永久删除，无法恢复。Agent 做的改动仍保留在分支 {{branch}} 上。",
     "deleteMessageNoBranch": "任务记录和对话会被永久删除，无法恢复。",
     "deleteRunning": "这一轮还在进行，会先被打断。",
     "deleteButton": "删除",
@@ -100,7 +100,7 @@
   "filter": {
     "grant": "授权",
     "project": "项目",
-    "agent": "编码 agent",
+    "agent": "编码 Agent",
     "machine": "机器"
   },
   "listView": {
@@ -149,9 +149,9 @@
       "setup": "未设置",
       "daemon": "未运行"
     },
-    "online_other": "你的 agent 能用 {{count}} 台机器",
+    "online_other": "你的 Agent 能用 {{count}} 台机器",
     "noneOnline": "还没有在线的机器",
-    "down": "已断开，agent 暂时用不了你的机器",
+    "down": "已断开，Agent 暂时用不了你的机器",
     "setup": "打开 Aide，完成设置",
     "daemon": "后台服务没有响应"
   },
@@ -160,10 +160,10 @@
     "thisMac_win": "这台电脑",
     "processesTitle": "{{name}} 开不了新程序了",
     "processesTitleNear": "{{name}} 的进程数快满了",
-    "processesBody": "进程数到了上限（{{used}} / {{limit}}），Aide 启动不了编码 agent，派来的任务会失败。占用进程的程序退出后会自动恢复。",
-    "processesBodyCulprit": "进程数到了上限（{{used}} / {{limit}}），其中 {{count}} 个是 {{culprit}} 结束后没回收的。Aide 启动不了编码 agent，派来的任务会失败。退出 {{culprit}} 后会自动恢复。",
-    "processesBodyNear": "进程数快到上限了（{{used}} / {{limit}}）。到上限后，Aide 就启动不了编码 agent。",
-    "processesBodyNearCulprit": "进程数快到上限了（{{used}} / {{limit}}），其中 {{count}} 个是 {{culprit}} 结束后没回收的。趁 Aide 还能启动编码 agent，先退出 {{culprit}}。",
+    "processesBody": "进程数到了上限（{{used}} / {{limit}}），Aide 启动不了编码 Agent，派来的任务会失败。占用进程的程序退出后会自动恢复。",
+    "processesBodyCulprit": "进程数到了上限（{{used}} / {{limit}}），其中 {{count}} 个是 {{culprit}} 结束后没回收的。Aide 启动不了编码 Agent，派来的任务会失败。退出 {{culprit}} 后会自动恢复。",
+    "processesBodyNear": "进程数快到上限了（{{used}} / {{limit}}）。到上限后，Aide 就启动不了编码 Agent。",
+    "processesBodyNearCulprit": "进程数快到上限了（{{used}} / {{limit}}），其中 {{count}} 个是 {{culprit}} 结束后没回收的。趁 Aide 还能启动编码 Agent，先退出 {{culprit}}。",
     "diskTitle": "{{name}} 的磁盘快满了",
     "diskBody": "只剩 {{free}}。磁盘满了以后，新的任务建不了副本，任务记录也存不下。",
     "filesTitle": "{{name}} 上的 Aide 快打不开新文件了",
@@ -205,13 +205,6 @@
     "workSummary": "已完成 {{done}} · {{turns}} 轮 · {{tokens}} token",
     "openWork": "打开概览"
   },
-  "rail": {
-    "label": "窄栏",
-    "expand": "展开边栏",
-    "waiting_other": "{{count}} 个在等你",
-    "failed_other": "{{count}} 个出错",
-    "unread_other": "{{count}} 条未读"
-  },
   "needsUpdate": {
     "mark": "需更新",
     "title": "需要更新 Aide",
@@ -220,14 +213,14 @@
   },
   "held": {
     "title": "等你放行的消息",
-    "note": "其他 agent 写给会话、按你的规则先拦下来等你确认的消息：刚接入不满 7 天的 agent 发来的、经过 3 个及以上 agent 转手的，或碰到你定的信息边界的。放行后照常送进会话；丢弃后发信方会收到说明。一天内不处理即过期。",
+    "note": "其他 Agent 写给会话、按你的规则先拦下来等你确认的消息：刚接入不满 7 天的 Agent 发来的、经过 3 个及以上 Agent 转手的，或碰到你定的信息边界的。放行后照常送进会话；丢弃后发信方会收到说明。一天内不处理即过期。",
     "none": "没有等你放行的消息。",
     "release": "放行",
     "discard": "丢弃",
     "expires": "{{time}} 过期",
     "to": "写给 {{session}}",
-    "reason_new_agent": "刚接入不久的 agent，先经你确认",
-    "reason_long_chain": "经过太多 agent 转手",
+    "reason_new_agent": "刚接入不久的 Agent，先经你确认",
+    "reason_long_chain": "经过太多 Agent 转手",
     "reason_boundary": "碰到你定的信息边界"
   },
   "claude": {
@@ -327,7 +320,7 @@
   },
   "tasks": {
     "title": "任务动态",
-    "note": "你的 agent（Muse 等）经 Aide 派出去的活，正在干什么、到哪一步：内容取自会话本身（当前工具、最后的话、标题），不靠 agent 自报。需要你看一眼的排在最前；已完成的保留一天。点一行打开会话。",
+    "note": "Agent 经 Aide 派出的任务各自在做什么、到了哪一步。要你看一眼的排在前面，已完成的保留一天；点一行打开。",
     "summary": "概况",
     "needLook": "{{count}} 个要看一眼",
     "atWork": "{{count}} 个在干活",
@@ -335,12 +328,13 @@
     "done": "{{count}} 个已完成",
     "dispatchers": "派活方",
     "everyone": "全部 · {{count}}",
-    "none": "还没有 agent 派出的活。Muse 等 agent 经 Aide 开会话后，会出现在这里。",
+    "none": "还没有 Agent 派出的任务",
     "list": "派出的活",
     "usingTool": "正在用 {{tool}}",
     "started": "{{ago}}开始",
     "lastActivity": "最近动静 {{ago}}",
-    "open": "打开会话"
+    "open": "打开会话",
+    "noneHint": "Muse 等 Agent 经 Aide 开了任务后，会出现在这里。"
   },
   "contactsUnavailable": "联系人功能待中继升级：你的服务器（中继）还不支持保存联系人。下面列出的 Agent 照样可以直接派活。",
   "conn": {
@@ -355,7 +349,7 @@
     "grantOnline": "正连着",
     "grantIdle": "已连接（空闲）",
     "localGrant": "这台机器上自己连到 Aide 的编码 Agent（有它自己的授权）。",
-    "personalNote": "个人 Agent（Muse、Grok Bot 等）连在你的账号上，不属于哪台机器：在 设置 › 访问 里。",
+    "personalNote": "个人 Agent（Muse、Grok Bot 等）连在你的账号上，不属于哪台机器：在 设置 › 授权 里。",
     "recheck": "重新检测",
     "fixClaudeCLI": "先在 Claude Desktop 里打开一次 Code 页，让它下载命令行；装好后这里会出现「登录」按钮。",
     "thisComputer": "这台电脑",
@@ -374,7 +368,7 @@
     "aideClientOnline": "现在连着你的账号",
     "aideClientSeen": "上次连上：{{when}}",
     "aideClientNever": "还没连上过",
-    "aideClientNote": "这台机器上的 Aide 命令行以「{{label}}」登录你的账号：它是这台设备的连接，不是 agent，不会出现在 Bot 名册里。"
+    "aideClientNote": "这台机器上的 Aide 命令行以「{{label}}」登录你的账号：它是这台设备的连接，不是 Agent，不会出现在 Bot 名册里。"
   },
   "category": {
     "label": "类别",
@@ -390,14 +384,14 @@
   },
   "bots": {
     "title": "Bot",
-    "personal": "个人 agent",
+    "personal": "个人 Agent",
     "noWork": "{{name}} 还没有任务：在下面写一个派给它。",
     "connection": "连接",
     "manage": "项目与管理",
     "grant": "接入凭据",
     "cantSend": "{{word}}：现在派不了（{{line}}）",
     "unverified": "还没确认状态——能派，但对方在不在没核实",
-    "noProject": "这台机器上还没有给它用的项目：在「设置 › 项目与管理」里添加一个。",
+    "noProject": "这台机器上还没有给它用的项目：在它的「设置」页的「项目与管理」里添加一个。",
     "identityAdd": "新建",
     "chat": "对话",
     "chatEmpty": "给 {{name}} 写点什么：它的回信会出现在这里。",
@@ -413,7 +407,7 @@
     "unpin": "取消置顶",
     "open": "打开",
     "noneTitle": "还没有 bot",
-    "noneBody": "在电脑上连接一个编码 agent，或把个人 agent 连到你的账号。",
+    "noneBody": "在电脑上连接一个编码 Agent，或把个人 Agent 连到你的账号。",
     "noneConnect": "怎么连接",
     "fixOnDevices": "去设备页处理",
     "identityFirst": "给它起名字、换头像",
@@ -428,7 +422,7 @@
       "onlineButton": "断开并删除",
       "done": "已删除 {{name}}",
       "localTitle": "从名册移除 {{name}}？",
-      "localMessage": "{{name}} 是 {{machine}} 上检测到的编码 agent。移除后它在这台机器上被隐藏，名册里不再显示；它的会话和这台机器上的程序都不受影响。想找回：在设备页这台机器下「已隐藏」那一行点「显示」。",
+      "localMessage": "{{name}} 是 {{machine}} 上检测到的编码 Agent。移除后它在这台机器上被隐藏，名册里不再显示；它的会话和这台机器上的程序都不受影响。想找回：在设备页这台机器下「已隐藏」那一行点「显示」。",
       "localButton": "从名册移除",
       "localDone": "已把 {{name}} 移出名册"
     },
@@ -446,8 +440,7 @@
       "all": "全部任务动态",
       "waiting": "等待 / 要看一眼",
       "running": "进行中",
-      "done": "最近完成",
-      "none": "{{name}} 现在没有任务。经 Aide 派给它、或由它派出去的活会出现在这里；已完成的保留一天。"
+      "done": "最近完成"
     }
   },
   "avatar": {
@@ -576,7 +569,10 @@
     "deleteWithButton": "删除房间和会话",
     "deleted_other": "已删除房间「{{name}}」：{{count}} 个成员会话留在原项目里",
     "deletedWith": "已删除房间「{{name}}」和它的成员会话",
-    "deletedSomeKept": "已删除房间「{{name}}」；这些成员的会话没删掉：{{names}}"
+    "deletedSomeKept": "已删除房间「{{name}}」；这些成员的会话没删掉：{{names}}",
+    "resend": "重发",
+    "taskModeHint": "派活：它把这条当任务来做，需要时会在你的机器上开任务。",
+    "lightHint": "轻聊：只聊天、问问题，它直接回话，不开任务。"
   },
   "errors": {
     "not_execution_machine": "这台设备不能作为执行机器。",
@@ -602,7 +598,7 @@
     "project_gone": "项目「{{project}}」已经不在了。",
     "session_archived": "这条对话已归档（只读）：先取消归档再续聊。",
     "turn_in_progress": "它还在忙上一轮：等它做完，或先打断它。",
-    "room_no_grant": "这个 agent 的授权还没到负责这个房间的机器：等一会儿再试。",
+    "room_no_grant": "这个 Agent 的授权还没到负责这个房间的机器：等一会儿再试。",
     "room_needs_name": "房间要有个名字。",
     "room_members_count": "一个房间要有 1 到 {{max}} 个成员。",
     "room_not_in_charter": "{{agent}}（项目 {{project}}）不在这个房间的成员名单里。",
@@ -655,7 +651,12 @@
       "review": "复盘这个会话",
       "new": "开启新对话",
       "open": "打开完整对话"
-    }
+    },
+    "agentsOwn": "跟随 {{agent}}",
+    "notChosen": "{{agent}} 不让在 Aide 里选这一项：按它自己的设置",
+    "dropTitle": "松手添加附件",
+    "dropHint": "文件或图片",
+    "sentFiles": "随消息发送的附件"
   },
   "conv": {
     "list": "对话",
@@ -672,11 +673,11 @@
     "archived": "已归档「{{title}}」",
     "unarchived": "已取消归档「{{title}}」",
     "archivedGroup_other": "已归档（{{count}}）",
-    "others": "别的 agent 派给它的",
+    "others": "别的 Agent 派给它的",
     "readOnly": "只能看、不能续",
     "archivedNote": "这条对话已归档：发消息会先取消归档，再接着聊。",
     "stuckProject": "这条对话的项目已经不在了：只能看、不能续。",
-    "stuckAgent": "这台机器上已经没有这个 agent：只能看、不能续。",
+    "stuckAgent": "这台机器上已经没有这个 Agent：只能看、不能续。",
     "newWithContext": "带着它的上下文开新对话",
     "willStartNew": "换了{{what}}：下一条会开新对话"
   },
@@ -706,7 +707,7 @@
     "hideTitle": "把 {{name}} 从 Aide 里移除？",
     "hideMessage": "它会从 Aide 的列表里拿掉；{{machine}} 上什么都不会卸载或删除，它的历史也都在。到设备页重新检查这台机器，它就会回来。",
     "hideButton": "移除",
-    "personalMeans": "列在你的个人 agent 里；它仍在原来的机器上运行，给它的活也交到那台机器。",
+    "personalMeans": "列在你的个人 Agent 里；它仍在原来的机器上运行，给它的活也交到那台机器。",
     "usage": "套餐用量"
   }
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AgentStatus, CustomAgent } from "@aide/proto/machine";
-import { agentOf, detect, fixes, formOf, formProblem, joinArgs, looksSecret, splitArgs, terminalCommand } from "./connectGuideLogic.ts";
+import { agentOf, detect, fixes, formOf, formProblem, installs, joinArgs, looksSecret, needs, splitArgs, terminalCommand } from "./connectGuideLogic.ts";
 
 const status = (o: Partial<AgentStatus>) => ({ name: "x", available: false, loggedIn: false, checking: false, problem: 0, detail: "", ...o }) as AgentStatus;
 
@@ -97,4 +97,17 @@ test("#122 onboarding prompts include keepalive, 3-platform inbox watching, and 
   }
   assert.ok(zhConnect.assistants.connectedBody.includes("保活") && zhConnect.assistants.connectedBody.includes("信箱盯守"));
   assert.ok(enConnect.assistants.connectedBody.includes("keepalive") && enConnect.assistants.connectedBody.includes("inbox watching"));
+});
+
+test("needs: Antigravity's say how its server and sign-in stand now, the sign-in apart as its owner's (工单 #133)", () => {
+  assert.deepEqual(needs("antigravity", "missing"), ["antigravity.needServerMissing", "antigravity.needSignInLater"]);
+  assert.deepEqual(needs("antigravity", "appOnly"), ["antigravity.needServerMissing", "antigravity.needSignInLater"]);
+  assert.deepEqual(needs("antigravity", "broken"), ["antigravity.needServerBroken", "antigravity.needSignInLater"]);
+  assert.deepEqual(needs("antigravity", "signIn"), ["antigravity.needServerOk", "antigravity.needSignInMissing"]);
+  assert.deepEqual(needs("antigravity", "unconfirmed"), ["antigravity.needServerOk", "antigravity.needSignInUnconfirmed"]);
+  assert.deepEqual(needs("antigravity", "ready"), ["antigravity.needServerOk", "antigravity.needSignInOk"]);
+  assert.deepEqual(needs("antigravity", "checking"), ["antigravity.needServer", "antigravity.needSignIn"]);
+  assert.deepEqual(needs("codex", "missing"), ["codex.need1", "codex.need2"]);
+  assert.deepEqual(needs("deepseek", "ready"), ["deepseek.need1", "deepseek.need2", "deepseek.need3"]);
+  assert.deepEqual(installs, { antigravity: "antigravity-acp" });
 });

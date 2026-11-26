@@ -41,6 +41,8 @@
 .bot-head-l2{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--l2)}
 .bot-where{display:inline-flex;align-items:center;gap:5px}
 .bot-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) var(--size-board)}
+/* No task board when it would hold nothing (工单 #140 P26): the conversation takes the room. */
+.bot-body:not(:has(> .bot-board)){grid-template-columns:minmax(0,1fr)}
 .bot-main{position:relative;display:flex;flex-direction:column;min-height:0;padding:14px 24px 16px}
 .bot-sec-h{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:var(--l2);margin:4px 0 8px}
 .bot-stream{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
@@ -156,3 +158,8 @@
 .shadow-subj { font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--l1); }
 .shadow-reply { font-size: 12px; color: var(--l2); padding: 3px 8px; margin-bottom: 6px; border-left: 2px solid var(--color-fluent-blue); background: var(--surface-hover); border-radius: var(--radius-small); }
 .shadow-ro-foot { padding: 10px 16px; font-size: 12.5px; color: var(--l2); text-align: center; border-top: 1px solid var(--sep); background: var(--surface-card); }
+.chat-msg.mine.failed .chat-bubble{background:var(--win2);color:var(--l1);box-shadow:inset 0 0 0 1px var(--red)}
+.chat-msg.mine.failed .chat-bubble :is(p,strong,em,b,li,h1,h2,h3,h4,h5,h6,blockquote,a){color:var(--l1)}
+.chat-state .ic.sm{vertical-align:-2px;margin-right:3px}
+/* Under the conversation, over the box, where the box's own words begin (工单 #140 P27). */
+.bot-mode-note{margin:0;padding:0 16px 6px;font-size:12px;color:var(--l2)}

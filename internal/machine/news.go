@@ -120,6 +120,14 @@ func (n *Machine) isWoken(a *inboxv1.Address) bool {
 	return slices.Contains(woken, a.GetSession()) || slices.Contains(woken, "")
 }
 
+// Why a message could not be handed to the post office, for what the owner
+// is told (deliveryFailure): the error itself goes to the log.
+var (
+	errNotContact   = errors.New("not a contact")
+	errNoInbox      = errors.New("no inbox")
+	errNotConnected = errors.New("not connected")
+)
+
 // contact finds an inbox among the owner's contacts and checks it.
 func (n *Machine) contact(ctx context.Context, ms relayv1connect.MessageServiceClient, inbox string) (*identity.ContactInfo, error) {
 	n.contacts.mu.Lock()
@@ -142,10 +150,10 @@ func (n *Machine) contact(ctx context.Context, ms relayv1connect.MessageServiceC
 	n.contacts.keep(res)
 	info := find()
 	if info == nil {
-		return nil, fmt.Errorf("%s is not among the owner's contacts", inbox)
+		return nil, fmt.Errorf("%s is not among the owner's contacts: %w", inbox, errNotContact)
 	}
 	if info.InboxKey == nil {
-		return nil, fmt.Errorf("%s has no inbox yet", inbox)
+		return nil, fmt.Errorf("%s has no inbox yet: %w", inbox, errNoInbox)
 	}
 	return info, nil
 }
@@ -226,7 +234,7 @@ func (n *Machine) sendMessage(m *inboxv1.Message) error {
 	conn, cert := n.conn, n.machineCert
 	n.mu.Unlock()
 	if conn == nil || cert == nil {
-		return errors.New("not connected")
+		return errNotConnected
 	}
 	if m.TraceId == "" {
 		m.TraceId, m.Hop = n.chainFrom(m.GetFrom().GetSession())
