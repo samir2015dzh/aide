@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"math"
 	"net/http"
 	"os"
@@ -34,6 +35,9 @@ const (
 
 	// DefaultSyncInterval is how often background sync refreshes open model data.
 	DefaultSyncInterval = 24 * time.Hour
+	// DefaultRetryInterval is how soon background sync tries again after a
+	// sync in which either source failed.
+	DefaultRetryInterval = time.Hour
 
 	sourceSnapshot = "snapshot"
 	sourceCache    = "cache"
@@ -43,6 +47,9 @@ const (
 	maxBodyBytes = 32 << 20 // 32 MiB guard
 )
 
+// embeddedSnapshot is generated from both upstream catalogs by BuildSnapshot;
+// regenerate it with `go run ./internal/modelcatalog/gen`, never by hand.
+//
 //go:embed snapshot.json
 var embeddedSnapshot []byte
 
@@ -72,12 +79,21 @@ type Options struct {
 	ModelsDevURL string
 	LiteLLMURL   string
 	SyncInterval time.Duration
-	Logger       *slog.Logger
-	OnUpdate     func()
-	Now          func() time.Time
+	// RetryInterval is the wait after a failed or partial sync (default
+	// DefaultRetryInterval, never longer than SyncInterval).
+	RetryInterval time.Duration
+	Logger        *slog.Logger
+	OnUpdate      func()
+	Now           func() time.Time
 }
 
+// cacheVersion marks caches written with first-party-only bare ids (审计 G).
+// Older caches mixed reseller prices into them and are ignored, so the
+// catalog falls back to the snapshot and syncs again at once.
+const cacheVersion = 2
+
 type persistedCatalog struct {
+	Version  int              `json:"version,omitempty"`
 	Source   string           `json:"source"`
 	SyncedAt time.Time        `json:"synced_at,omitempty"`
 	Models   map[string]Entry `json:"models"`
@@ -86,17 +102,18 @@ type persistedCatalog struct {
 // Catalog stores open model metadata in memory, backed by an embedded snapshot
 // and an optional persistent cache refreshed in the background.
 type Catalog struct {
-	mu           sync.RWMutex
-	entries      map[string]Entry
-	status       Status
-	cachePath    string
-	httpClient   *http.Client
-	modelsDevURL string
-	litellmURL   string
-	syncInterval time.Duration
-	log          *slog.Logger
-	onUpdate     func()
-	now          func() time.Time
+	mu            sync.RWMutex
+	entries       map[string]Entry
+	status        Status
+	cachePath     string
+	httpClient    *http.Client
+	modelsDevURL  string
+	litellmURL    string
+	syncInterval  time.Duration
+	retryInterval time.Duration
+	log           *slog.Logger
+	onUpdate      func()
+	now           func() time.Time
 }
 
 // Open initializes a Catalog from the embedded snapshot and overlays any valid
@@ -114,6 +131,12 @@ func Open(opts Options) *Catalog {
 	if opts.SyncInterval <= 0 {
 		opts.SyncInterval = DefaultSyncInterval
 	}
+	if opts.RetryInterval <= 0 {
+		opts.RetryInterval = DefaultRetryInterval
+	}
+	if opts.RetryInterval > opts.SyncInterval {
+		opts.RetryInterval = opts.SyncInterval
+	}
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
 	}
@@ -121,15 +144,16 @@ func Open(opts Options) *Catalog {
 		opts.Now = func() time.Time { return time.Now().UTC() }
 	}
 	c := &Catalog{
-		entries:      map[string]Entry{},
-		cachePath:    opts.CachePath,
-		httpClient:   opts.HTTPClient,
-		modelsDevURL: opts.ModelsDevURL,
-		litellmURL:   opts.LiteLLMURL,
-		syncInterval: opts.SyncInterval,
-		log:          opts.Logger,
-		onUpdate:     opts.OnUpdate,
-		now:          opts.Now,
+		entries:       map[string]Entry{},
+		cachePath:     opts.CachePath,
+		httpClient:    opts.HTTPClient,
+		modelsDevURL:  opts.ModelsDevURL,
+		litellmURL:    opts.LiteLLMURL,
+		syncInterval:  opts.SyncInterval,
+		retryInterval: opts.RetryInterval,
+		log:           opts.Logger,
+		onUpdate:      opts.OnUpdate,
+		now:           opts.Now,
 	}
 	// Cold start: load built-in snapshot first so offline hosts work immediately.
 	if snap, err := decodePersisted(embeddedSnapshot); err == nil && len(snap.Models) > 0 {
@@ -143,7 +167,7 @@ func Open(opts Options) *Catalog {
 	// Overlay persisted cache when available and non-empty.
 	if c.cachePath != "" {
 		if raw, err := os.ReadFile(c.cachePath); err == nil {
-			if cached, err := decodePersisted(raw); err == nil && len(cached.Models) > 0 {
+			if cached, err := decodePersisted(raw); err == nil && cached.Version == cacheVersion && len(cached.Models) > 0 {
 				c.entries = normalizeMap(cached.Models)
 				c.status = Status{
 					Source:     sourceCache,
@@ -212,58 +236,58 @@ func (c *Catalog) EstimateCostUSD(id, resolved string, inputTokens, outputTokens
 
 // Run refreshes the catalog in the background once every syncInterval (and
 // immediately on start when the current data is from the built-in snapshot or
-// older than syncInterval). Errors are logged and reflected in Status without
-// stopping the loop or disturbing callers.
+// older than syncInterval). After a sync in which either source failed it
+// tries again after retryInterval. Errors are logged and reflected in Status
+// without stopping the loop or disturbing callers.
 func (c *Catalog) Run(ctx context.Context) {
 	if c == nil {
 		return
 	}
-	st := c.Status()
-	needsInitial := st.Source != sourceCache || st.SyncedAt.IsZero() || c.now().Sub(st.SyncedAt) >= c.syncInterval
-	if needsInitial {
-		_ = c.Sync(ctx)
+	// Sync at once unless a cached full sync is still fresh; then wait out
+	// the rest of its interval.
+	var wait time.Duration
+	if st := c.Status(); st.Source == sourceCache && !st.SyncedAt.IsZero() {
+		if age := c.now().Sub(st.SyncedAt); age >= 0 && age < c.syncInterval {
+			wait = c.syncInterval - age
+		}
 	}
-	t := time.NewTicker(c.syncInterval)
+	t := time.NewTimer(wait)
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			_ = c.Sync(ctx)
+			// A failed or partial sync is retried after retryInterval, not
+			// a whole syncInterval later.
+			next := c.syncInterval
+			if err := c.Sync(ctx); err != nil {
+				next = c.retryInterval
+			}
+			t.Reset(next)
 		}
 	}
 }
 
-// Sync fetches models.dev and LiteLLM data, merges them with the built-in
-// snapshot baseline, updates in-memory state, and persists the cache. If both
-// upstream sources fail, existing entries remain intact and LastError is set.
+// Sync fetches models.dev and LiteLLM data and merges them with the built-in
+// snapshot baseline, updates in-memory state, and persists the cache.
+//
+// Only a sync in which both sources answer replaces the catalog and advances
+// SyncedAt. When one source fails, the other's fresh data is overlaid on the
+// current catalog, so what the failed source contributed last time (from the
+// previous sync or the cache) stays, SyncedAt keeps the time of the last full
+// sync, and the error is returned so Run retries soon. If both sources fail,
+// existing entries remain intact. LastError records any failure.
 func (c *Catalog) Sync(ctx context.Context) error {
 	attemptAt := c.now()
-	var (
-		modelsDevEntries map[string]Entry
-		litellmEntries   map[string]Entry
-		errs             []string
-	)
-	if c.modelsDevURL != "" {
-		body, err := c.fetch(ctx, c.modelsDevURL)
-		if err != nil {
-			errs = append(errs, "models.dev: "+err.Error())
-		} else if parsed, err := ParseModelsDev(body); err != nil {
-			errs = append(errs, "models.dev parse: "+err.Error())
-		} else {
-			modelsDevEntries = parsed
-		}
+	var errs []string
+	modelsDevEntries, err := c.fetchSource(ctx, c.modelsDevURL, ParseModelsDev)
+	if err != nil {
+		errs = append(errs, "models.dev: "+err.Error())
 	}
-	if c.litellmURL != "" {
-		body, err := c.fetch(ctx, c.litellmURL)
-		if err != nil {
-			errs = append(errs, "litellm: "+err.Error())
-		} else if parsed, err := ParseLiteLLM(body); err != nil {
-			errs = append(errs, "litellm parse: "+err.Error())
-		} else {
-			litellmEntries = parsed
-		}
+	litellmEntries, err := c.fetchSource(ctx, c.litellmURL, ParseLiteLLM)
+	if err != nil {
+		errs = append(errs, "litellm: "+err.Error())
 	}
 
 	if len(modelsDevEntries) == 0 && len(litellmEntries) == 0 {
@@ -282,23 +306,20 @@ func (c *Catalog) Sync(ctx context.Context) error {
 		return errors.New(errMsg)
 	}
 
-	// Start from the built-in snapshot baseline so curated offline models are
-	// never dropped if one upstream omits them, then overlay models.dev and
-	// LiteLLM in deterministic order.
-	merged := map[string]Entry{}
-	if snap, err := decodePersisted(embeddedSnapshot); err == nil {
-		for k, v := range normalizeMap(snap.Models) {
-			merged[k] = v
-		}
-	}
-	for k, v := range modelsDevEntries {
-		merged[k] = mergeEntry(merged[k], v)
-	}
-	for k, v := range litellmEntries {
-		merged[k] = mergeEntry(merged[k], v)
-	}
-
 	partialErr := strings.Join(errs, "; ")
+	c.mu.RLock()
+	prevEntries, prevSyncedAt := c.entries, c.status.SyncedAt
+	c.mu.RUnlock()
+	// A full sync starts from the built-in snapshot baseline so curated
+	// offline models are never dropped if one upstream omits them. A partial
+	// one starts from the current catalog instead, which still holds the
+	// failed source's last synced data.
+	base, syncedAt := snapshotEntries(), attemptAt
+	if partialErr != "" {
+		base, syncedAt = maps.Clone(prevEntries), prevSyncedAt
+	}
+	merged := mergeSources(base, modelsDevEntries, litellmEntries)
+
 	if partialErr != "" {
 		c.log.Warn("model catalog sync completed with partial source error", "models", len(merged), "err", partialErr)
 	} else {
@@ -310,7 +331,7 @@ func (c *Catalog) Sync(ctx context.Context) error {
 	c.status = Status{
 		Source:        sourceSynced,
 		ModelCount:    len(merged),
-		SyncedAt:      attemptAt,
+		SyncedAt:      syncedAt,
 		LastAttemptAt: attemptAt,
 		LastError:     partialErr,
 	}
@@ -318,8 +339,9 @@ func (c *Catalog) Sync(ctx context.Context) error {
 
 	if c.cachePath != "" {
 		if err := c.writeCache(persistedCatalog{
+			Version:  cacheVersion,
 			Source:   sourceSynced,
-			SyncedAt: attemptAt,
+			SyncedAt: syncedAt,
 			Models:   merged,
 		}); err != nil {
 			c.log.Warn("model catalog cache write failed", "err", err)
@@ -332,6 +354,51 @@ func (c *Catalog) Sync(ctx context.Context) error {
 		return errors.New(partialErr)
 	}
 	return nil
+}
+
+// fetchSource downloads and parses one upstream catalog. An unset URL means
+// the source is disabled; a source that parses to no entries is a failure.
+func (c *Catalog) fetchSource(ctx context.Context, rawURL string, parse func([]byte) (map[string]Entry, error)) (map[string]Entry, error) {
+	if rawURL == "" {
+		return nil, nil
+	}
+	body, err := c.fetch(ctx, rawURL)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := parse(body)
+	if err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
+	}
+	if len(parsed) == 0 {
+		return nil, errors.New("no entries")
+	}
+	return parsed, nil
+}
+
+// snapshotEntries decodes the embedded built-in snapshot.
+func snapshotEntries() map[string]Entry {
+	snap, err := decodePersisted(embeddedSnapshot)
+	if err != nil {
+		return map[string]Entry{}
+	}
+	return normalizeMap(snap.Models)
+}
+
+// mergeSources overlays models.dev and then LiteLLM entries onto base. Both
+// sync and the snapshot generator use it, so the two agree field by field.
+func mergeSources(base, modelsDev, litellm map[string]Entry) map[string]Entry {
+	merged := base
+	if merged == nil {
+		merged = map[string]Entry{}
+	}
+	for k, v := range modelsDev {
+		merged[k] = mergeEntry(merged[k], v)
+	}
+	for k, v := range litellm {
+		merged[k] = mergeEntry(merged[k], v)
+	}
+	return merged
 }
 
 func (c *Catalog) fetch(ctx context.Context, rawURL string) ([]byte, error) {
@@ -377,32 +444,26 @@ func (c *Catalog) writeCache(p persistedCatalog) error {
 
 // ParseModelsDev parses anomalyco/models.dev api.json into normalized entries.
 // Pricing in models.dev is already USD per 1M tokens.
+//
+// models.dev lists the same model id under every provider that serves it,
+// resellers included, each with its own price and limits. Every listing is
+// kept under its provider-qualified key ("opencode/kimi-k2"), but the bare id
+// ("kimi-k2") is taken whole from the model's first-party provider only: the
+// publisher named by its family (see families) or, for families not listed
+// there, by models.dev's canonical_model_id. With no first-party listing the
+// bare id is left out rather than borrowed from a reseller.
 func ParseModelsDev(data []byte) (map[string]Entry, error) {
-	var providers map[string]struct {
-		Models map[string]struct {
-			ID         string `json:"id"`
-			ToolCall   bool   `json:"tool_call"`
-			Reasoning  bool   `json:"reasoning"`
-			Attachment bool   `json:"attachment"`
-			Structured bool   `json:"structured_output"`
-			Modalities struct {
-				Input  []string `json:"input"`
-				Output []string `json:"output"`
-			} `json:"modalities"`
-			Limit struct {
-				Context uint32 `json:"context"`
-				Output  uint32 `json:"output"`
-			} `json:"limit"`
-			Cost struct {
-				Input  float64 `json:"input"`
-				Output float64 `json:"output"`
-			} `json:"cost"`
-		} `json:"models"`
-	}
-	if err := json.Unmarshal(data, &providers); err != nil {
+	providers, err := decodeModelsDev(data)
+	if err != nil {
 		return nil, err
 	}
+	type listing struct {
+		provider, key string
+		entry         Entry
+	}
 	out := map[string]Entry{}
+	listings := map[string][]listing{} // bare id -> listings in provider/model order
+	canonical := map[string][]string{} // bare id -> canonical owners named by listings
 	// Deterministic provider ordering so repeated parses yield identical results.
 	provKeys := make([]string, 0, len(providers))
 	for k := range providers {
@@ -411,6 +472,7 @@ func ParseModelsDev(data []byte) (map[string]Entry, error) {
 	slices.Sort(provKeys)
 	for _, pk := range provKeys {
 		p := providers[pk]
+		pk = strings.ToLower(strings.TrimSpace(pk))
 		modelKeys := make([]string, 0, len(p.Models))
 		for mk := range p.Models {
 			modelKeys = append(modelKeys, mk)
@@ -426,53 +488,137 @@ func ParseModelsDev(data []byte) (map[string]Entry, error) {
 			if key == "" {
 				continue
 			}
-			var caps []string
-			if m.Attachment {
-				caps = append(caps, "attachments")
-			}
-			if m.Reasoning {
-				caps = append(caps, "reasoning")
-			}
-			if m.Structured {
-				caps = append(caps, "structured_output")
-			}
-			if m.ToolCall {
-				caps = append(caps, "tools")
-			}
-			for _, mod := range m.Modalities.Input {
-				if strings.EqualFold(mod, "image") {
-					caps = append(caps, "vision")
-					break
-				}
-			}
-			e := Entry{
-				ID:                   id,
-				ContextWindow:        m.Limit.Context,
-				MaxOutputTokens:      m.Limit.Output,
-				Capabilities:         normalizeCaps(caps),
-				InputCostPerMillion:  cleanPrice(m.Cost.Input),
-				OutputCostPerMillion: cleanPrice(m.Cost.Output),
-			}
+			e := m.entry(id)
 			if isEmptyEntry(e) {
 				continue
 			}
-			out[key] = mergeEntry(out[key], e)
-			if pk != "" && !strings.Contains(key, "/") {
-				scoped := strings.ToLower(pk + "/" + key)
-				if _, exists := out[scoped]; !exists {
-					scopedEntry := e
-					scopedEntry.ID = scoped
-					out[scoped] = scopedEntry
+			bare := bareID(key)
+			if bare == "" {
+				continue
+			}
+			if pk != "" {
+				scoped := key
+				if !strings.HasPrefix(key, pk+"/") {
+					scoped = pk + "/" + key
 				}
+				if _, exists := out[scoped]; !exists {
+					se := e
+					se.ID = scoped
+					out[scoped] = se
+				}
+			}
+			listings[bare] = append(listings[bare], listing{provider: pk, key: key, entry: e})
+			if owner, _, ok := strings.Cut(strings.ToLower(strings.TrimSpace(m.Canonical)), "/"); ok && owner != "" && !slices.Contains(canonical[bare], owner) {
+				canonical[bare] = append(canonical[bare], owner)
+			}
+		}
+	}
+	for bare, ls := range listings {
+		var owners []string
+		if f := familyOf(bare); f != nil {
+			owners = f.modelsDev
+		} else {
+			owners = canonical[bare]
+			slices.Sort(owners)
+		}
+		found := false
+		for _, owner := range owners {
+			for _, l := range ls {
+				if l.provider != owner {
+					continue
+				}
+				// A provider may list a model both bare and under its
+				// own namespace; the bare listing is the one to keep.
+				if !found || l.key == bare {
+					e := l.entry
+					if i := strings.LastIndex(e.ID, "/"); i >= 0 {
+						e.ID = e.ID[i+1:]
+					}
+					out[bare] = e
+					found = true
+				}
+			}
+			if found {
+				break
 			}
 		}
 	}
 	return out, nil
 }
 
+type modelsDevModel struct {
+	ID         string `json:"id"`
+	Canonical  string `json:"canonical_model_id"`
+	ToolCall   bool   `json:"tool_call"`
+	Reasoning  bool   `json:"reasoning"`
+	Attachment bool   `json:"attachment"`
+	Structured bool   `json:"structured_output"`
+	Modalities struct {
+		Input  []string `json:"input"`
+		Output []string `json:"output"`
+	} `json:"modalities"`
+	Limit struct {
+		Context uint32 `json:"context"`
+		Output  uint32 `json:"output"`
+	} `json:"limit"`
+	Cost struct {
+		Input  float64 `json:"input"`
+		Output float64 `json:"output"`
+	} `json:"cost"`
+}
+
+type modelsDevProvider struct {
+	Models map[string]modelsDevModel `json:"models"`
+}
+
+func decodeModelsDev(data []byte) (map[string]modelsDevProvider, error) {
+	var providers map[string]modelsDevProvider
+	if err := json.Unmarshal(data, &providers); err != nil {
+		return nil, err
+	}
+	return providers, nil
+}
+
+func (m modelsDevModel) entry(id string) Entry {
+	var caps []string
+	if m.Attachment {
+		caps = append(caps, "attachments")
+	}
+	if m.Reasoning {
+		caps = append(caps, "reasoning")
+	}
+	if m.Structured {
+		caps = append(caps, "structured_output")
+	}
+	if m.ToolCall {
+		caps = append(caps, "tools")
+	}
+	for _, mod := range m.Modalities.Input {
+		if strings.EqualFold(mod, "image") {
+			caps = append(caps, "vision")
+			break
+		}
+	}
+	return Entry{
+		ID:                   id,
+		ContextWindow:        m.Limit.Context,
+		MaxOutputTokens:      m.Limit.Output,
+		Capabilities:         normalizeCaps(caps),
+		InputCostPerMillion:  cleanPrice(m.Cost.Input),
+		OutputCostPerMillion: cleanPrice(m.Cost.Output),
+	}
+}
+
 // ParseLiteLLM parses BerriAI/litellm model_prices_and_context_window.json into
 // normalized entries. LiteLLM stores costs in USD per single token, so they are
 // scaled by 1,000,000 to USD per 1M tokens.
+//
+// Keys are kept as LiteLLM names them ("azure/gpt-5", "deepseek/deepseek-chat").
+// For a model family with a known publisher (see families), the bare id comes
+// only from a first-party litellm_provider: its unprefixed key first, then a
+// first-party prefixed key such as "deepseek/deepseek-chat". An unprefixed key
+// served by someone else (a cloud reseller) is kept under that provider's
+// prefix instead, so it never stands in for the publisher's own entry.
 func ParseLiteLLM(data []byte) (map[string]Entry, error) {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -488,7 +634,14 @@ func ParseLiteLLM(data []byte) (map[string]Entry, error) {
 		SupportsFunctionCalling bool       `json:"supports_function_calling"`
 		SupportsReasoning       bool       `json:"supports_reasoning"`
 		SupportsResponseSchema  bool       `json:"supports_response_schema"`
+		Provider                string     `json:"litellm_provider"`
 	}
+	type candidate struct {
+		prefixed bool
+		rank     int
+		entry    Entry
+	}
+	firstParty := map[string]candidate{} // bare id -> best first-party entry
 	keys := make([]string, 0, len(raw))
 	for k := range raw {
 		keys = append(keys, k)
@@ -538,7 +691,33 @@ func ParseLiteLLM(data []byte) (map[string]Entry, error) {
 		if isEmptyEntry(e) {
 			continue
 		}
+		bare := bareID(key)
+		prefixed := bare != key
+		if f := familyOf(bare); f != nil {
+			prov := strings.ToLower(strings.TrimSpace(item.Provider))
+			if rank := slices.Index(f.litellm, prov); rank >= 0 {
+				c, seen := firstParty[bare]
+				if !seen || (c.prefixed && !prefixed) || (c.prefixed == prefixed && rank < c.rank) {
+					fe := e
+					fe.ID = strings.TrimSpace(k)
+					fe.ID = fe.ID[strings.LastIndex(fe.ID, "/")+1:]
+					firstParty[bare] = candidate{prefixed: prefixed, rank: rank, entry: fe}
+				}
+				if !prefixed {
+					continue
+				}
+			} else if !prefixed {
+				if prov == "" {
+					continue
+				}
+				key = prov + "/" + key
+				e.ID = key
+			}
+		}
 		out[key] = mergeEntry(out[key], e)
+	}
+	for bare, c := range firstParty {
+		out[bare] = c.entry
 	}
 	return out, nil
 }
