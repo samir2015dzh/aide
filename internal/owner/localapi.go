@@ -899,6 +899,23 @@ func (l *localService) ListSessionEvents(ctx context.Context, req *localv1.ListS
 	return &localv1.ListSessionEventsResponse{Events: res.Events, HasMoreBefore: res.HasMoreBefore, HasMoreAfter: res.HasMoreAfter}, nil
 }
 
+func (l *localService) SetSessionMode(ctx context.Context, req *sessionv1.SetSessionModeRequest) (*localv1.SessionResponse, error) {
+	set := l.o().SetSessionMode
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		set = func(ctx context.Context, r *sessionv1.SetSessionModeRequest) (*sessionv1.Session, error) {
+			return m.SetSessionMode(ctx, r.SessionId, r.Mode)
+		}
+	}
+	sess, err := set(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &localv1.SessionResponse{Session: sess}, nil
+}
+
 func (l *localService) ReadAttachment(ctx context.Context, req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
 	if m, ok, err := l.o().onlyMachine(); ok {
 		if err != nil {

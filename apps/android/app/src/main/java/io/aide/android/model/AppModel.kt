@@ -750,6 +750,14 @@ class AppModel(private val context: Context) {
         humanError(e)
     }
 
+    /** Changes a session's mode while it runs (工单 #170); null when it worked, else why. */
+    suspend fun setMode(s: Session, mode: String): String? = try {
+        api!!.setSessionMode(s.sessionId, mode)?.let { replace(it) }
+        null
+    } catch (e: Exception) {
+        humanError(e)
+    }
+
     /** Deletes a room on its host, and with sessions its members' sessions made for it (工单 #73); null, or why not. */
     suspend fun deleteRoom(machineId: String, roomId: String, sessions: List<String>): String? = try {
         api!!.deleteRoom(machineId, roomId)

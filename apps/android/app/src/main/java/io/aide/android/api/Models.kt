@@ -383,6 +383,8 @@ data class Session(
     val seen: SessionSeen? = null,
     /** Archived, its worktree kept: it had changes not in the last turn's snapshot (Session.workspace_kept). */
     val workspaceKept: Boolean = false,
+    /** The mode it runs with (工单 #170): "" from an older machine, or none chosen. */
+    val mode: String = "",
 )
 
 @Serializable
@@ -527,6 +529,7 @@ data class SessionEvent(
 @Serializable data class RemoveDeviceRequest(val keyId: String, val eraseHer: Boolean = false)
 @Serializable data class RemoveDeviceResponse(val reissuedMachines: Int = 0, val reissuedGrants: Int = 0)
 @Serializable data class SessionIdRequest(val sessionId: String)
+@Serializable data class SetSessionModeRequest(val sessionId: String, val mode: String)
 @Serializable data class SessionResponse(val session: Session? = null)
 @Serializable data class StreamSessionEventsRequest(
     val sessionId: String,

@@ -15,7 +15,7 @@ import { Insights } from "./Insights";
 import { Checkpoints } from "./Checkpoints";
 import { claudeResumeURL } from "../../../shared/claudeDesktop";
 
-type Menu = { of: "project" | "branch"; anchor: HTMLElement; keyboard: boolean };
+type Menu = { of: "project" | "branch" | "mode"; anchor: HTMLElement; keyboard: boolean };
 
 /**
  * The session's settings, in the menu from the toolbar's gear (工单 #90;
@@ -55,8 +55,18 @@ export function Inspector({ s }: { s: Session }) {
       },
       (e) => st.show(errorText(e)),
     );
+  // Its mode (an ACP agent's permission preset), changed while it lives (工单 #170): the next tool call is decided by
+  // the new one. DSH chooses its preset as a session starts and keeps it: said, not offered.
+  const modes = m?.status?.agents.find((a) => a.name === s.agent)?.modes ?? [];
+  const modeName = (id: string) => modes.find((x) => x.id === id)?.name || id;
+  const fixedMode = s.agent === "deepseek";
+  const changeable = !fixedMode && modes.length > 0 && s.status !== SessionStatus.ARCHIVED;
+  const setMode = (mode: string) =>
+    st.run(() => local.setSessionMode({ sessionId: s.sessionId, mode }), t("inspector.modeChanged", { mode: modeName(mode) }));
   const items: MenuEntry[] =
-    menu?.of === "project"
+    menu?.of === "mode"
+      ? modes.filter((x) => x.id !== s.mode).map((x) => ({ id: x.id, label: x.name || x.id, run: () => setMode(x.id) }))
+      : menu?.of === "project"
       ? [
           { id: "copy", label: t("inspector.copyPath"), run: () => copy(st, path) },
           ...(here ? [
@@ -129,6 +139,23 @@ export function Inspector({ s }: { s: Session }) {
                   <Icon name="branch" />
                   <span>{branch}</span>
                 </button>
+              )}
+            </li>
+          )}
+          {(modes.length > 0 || s.mode !== "") && (
+            <li>
+              {changeable ? (
+                <button className="insp-pick" title={t("inspector.modeHint")} aria-haspopup="menu" aria-expanded={menu?.of === "mode"} onClick={toggle("mode")}>
+                  <Icon name="shield" />
+                  <span><Trans t={t} i18nKey="inspector.mode" values={{ mode: s.mode === "" ? t("inspector.modeDefault") : modeName(s.mode) }} components={{ b: <b /> }} /></span>
+                </button>
+              ) : (
+                <>
+                  <Icon name="shield" />
+                  <span className="dim" title={fixedMode ? t("inspector.modeFixed") : undefined}>
+                    <Trans t={t} i18nKey="inspector.mode" values={{ mode: s.mode === "" ? t("inspector.modeDefault") : modeName(s.mode) }} components={{ b: <b /> }} />
+                  </span>
+                </>
               )}
             </li>
           )}

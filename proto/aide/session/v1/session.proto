@@ -141,6 +141,16 @@ service SessionService {
   rpc ReadAttachment(ReadAttachmentRequest) returns (ReadAttachmentResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // SetSessionMode changes a session's mode (an ACP agent's permission or
+  // approval preset, AgentStatus.modes) while it lives (工单 #170). One
+  // running takes it now: where Aide's own gate enforces it (Antigravity),
+  // its next tool call is decided by it; another agent's is set over ACP.
+  // A call already decided is not. One not running starts with it. An
+  // agent whose mode is set as its process starts (DeepSeek Harness's
+  // presets) refuses it (reason mode_fixed).
+  rpc SetSessionMode(SetSessionModeRequest) returns (Session) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
 }
 
 enum SessionStatus {
@@ -519,6 +529,10 @@ message Session {
   // changes and all, and unarchiving goes on in it. False from older
   // machines, which freed it anyway.
   bool workspace_kept = 28;
+  // The mode it runs with (an ACP agent's permission or approval preset):
+  // the one it started with, or changed to (SetSessionMode, 工单 #170); ""
+  // when none was chosen (the agent's own default).
+  string mode = 29;
 }
 
 // SessionSeen is what the owner's devices have seen of a session, kept by
@@ -842,6 +856,12 @@ message TurnCompleted {
   // path is as the reply wrote it; ReadAttachment gives each back by its
   // sha256. Pictures that are the same file are one.
   repeated AttachmentInfo shown = 8;
+}
+
+message SetSessionModeRequest {
+  string session_id = 1;
+  // One of the agent's modes (AgentStatus.modes).
+  string mode = 2;
 }
 
 message ReadAttachmentRequest {

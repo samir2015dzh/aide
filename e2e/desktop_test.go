@@ -129,6 +129,9 @@ func TestDesktop(t *testing.T) {
 			if name == "newsession" { // its Gemini tells the machine its models, as Gemini CLI does
 				more = append(more, "FAKE_ACP_CONFIG=1")
 			}
+			if name == "sessionmode" { // its Gemini offers modes, to change a session's while it runs (工单 #170)
+				more = append(more, "FAKE_ACP_MODES=ask,auto")
+			}
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe), "AIDE_CLAUDE_BIN="+filepath.Join(t.TempDir(), "claude"))
 				// Antigravity's server is not, and the Connect page installs it from a registry of the test's into a home of its own (工单 #133).

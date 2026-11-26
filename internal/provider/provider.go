@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"strings"
 	"time"
@@ -377,6 +378,23 @@ type Provider interface {
 	Name() string
 	Discover(ctx context.Context) Info
 	Start(ctx context.Context, spec StartSpec) (Session, error)
+}
+
+// ModeSetter is a Session whose mode (an ACP agent's permission or approval
+// preset) can change while it runs (工单 #170): its next tool call is
+// decided by the new one; a call already decided is not. ErrModeFixed: this
+// agent's mode is set when its process starts, and stays.
+type ModeSetter interface {
+	SetMode(ctx context.Context, mode string) error
+}
+
+// ErrModeFixed is a SetMode on an agent whose mode can't change once it runs.
+var ErrModeFixed = errors.New("this agent's mode is chosen when its session starts and can't change while it runs")
+
+// FixedModes is a Provider whose sessions keep the mode they started with
+// (DeepSeek Harness's presets, 工单 #170), resumed ones too.
+type FixedModes interface {
+	ModesFixed() bool
 }
 
 // Titler is a Session that can rename its conversation in the agent's own

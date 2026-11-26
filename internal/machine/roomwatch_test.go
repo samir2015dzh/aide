@@ -137,3 +137,59 @@ func TestRoomWatch(t *testing.T) {
 		t.Fatalf("still waiting once taken: %v", out)
 	}
 }
+
+// 工单 #168: letters to agents that never take them hold no place once a day
+// at the post office has said they may not arrive (工单 #160): the wakes
+// waiting behind them go.
+func TestRoomUntakenHoldsNoPlace(t *testing.T) {
+	h := newHarness(t, Limits{})
+	n := h.n
+	ctx := context.Background()
+	var clients []string
+	n.mu.Lock()
+	for i := range roomMaxBusy + 2 {
+		id := fmt.Sprintf("c_%02d", i)
+		clients = append(clients, id)
+		n.grants = append(n.grants, &identityv1.Grant{GrantId: "g" + id, ClientId: id, ClientLabel: "Bot " + id, MachineIds: []string{"*"}})
+	}
+	n.mu.Unlock()
+	b := n.roomBook()
+	var sent []*inboxv1.Message
+	b.send = func(m *inboxv1.Message) error { sent = append(sent, m); return nil }
+	b.states = func(_ context.Context, ids []string) (map[string]string, error) {
+		out := map[string]string{}
+		for _, id := range ids {
+			out[id] = "waiting" // none ever taken
+		}
+		return out, nil
+	}
+	var rooms []*machinev1.Room
+	for _, c := range clients {
+		r, err := n.OpenDirectRoom(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := n.PostRoomMessage(ctx, &machinev1.PostRoomMessageRequest{RoomId: r.RoomId, Text: "在吗"}); err != nil {
+			t.Fatal(err)
+		}
+		rooms = append(rooms, r)
+	}
+	state := func(i int) *machinev1.RoomDelivery {
+		l, _ := n.ListRoomMessages(&machinev1.ListRoomMessagesRequest{RoomId: rooms[i].RoomId})
+		return l.Messages[0].Deliveries[0]
+	}
+	if len(sent) != roomMaxBusy || state(roomMaxBusy).State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_QUEUED {
+		t.Fatalf("%d woken, the next %v", len(sent), state(roomMaxBusy))
+	}
+	// An hour on, nothing changes: they may still come.
+	n.roomTick(ctx, time.Now().Add(time.Hour))
+	if len(sent) != roomMaxBusy {
+		t.Fatalf("%d woken an hour on", len(sent))
+	}
+	// A day on, the first ones may not arrive: they hold no place, and the two waiting go.
+	n.roomTick(ctx, time.Now().Add(roomUntaken+time.Minute))
+	if !state(0).Untaken || len(sent) != roomMaxBusy+2 || state(roomMaxBusy).State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT ||
+		state(roomMaxBusy+1).State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT {
+		t.Fatalf("a day on: %d woken, %v %v %v", len(sent), state(0), state(roomMaxBusy), state(roomMaxBusy+1))
+	}
+}

@@ -92,6 +92,8 @@ type Provider struct {
 	catalogs     map[string]cachedCatalog
 	lastCaps     *provider.Capabilities
 	lastProtoVer uint32
+	// probe: what DSH's sessions here offer, found before any (工单 #166).
+	probe dshProbe
 }
 
 // ObservedCapabilities returns the latest negotiated ACP capabilities and protocol
@@ -356,8 +358,16 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 		p.discoverModels(ctx, bin, pre, env)
 	}
 	if p.DSHPresets { // known before any session
-		if ps, _ := readDSHPresets(ctx, env, append([]string{bin}, append(pre, p.Args...)...)); ps != nil {
-			info.Modes, info.Own.Mode = ps.modes, ps.own
+		dump, err := dumpDSH(ctx, env, append([]string{bin}, append(pre, p.Args...)...))
+		if err == nil {
+			if ps, _ := parseDSHPresets(dump); ps != nil {
+				info.Modes, info.Own.Mode = ps.modes, ps.own
+			}
+		}
+		// Its models too, before its first session here (工单 #166).
+		if o := p.dshOffers(ctx, bin, pre, env, dump); o != nil {
+			info.Models, info.Own.Model, info.Own.Effort = o.Models, o.Own.Model, o.Own.Effort
+			info.SomeEfforts = slices.ContainsFunc(o.Models, func(m provider.Model) bool { return len(m.Efforts) > 0 })
 		}
 	}
 	return info
@@ -423,12 +433,16 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 			spec.Mode = "" // not set over ACP
 		}
 	}
+	// The mode Aide's own gate enforces, changed while it runs (工单 #170).
+	var live *atomic.Value
 	if p.Name() == "antigravity" {
+		live = &atomic.Value{}
 		if !antigravityValidMode(spec.Mode) {
 			return nil, provider.Fail(sessionv1.FailureKind_FAILURE_KIND_INVALID_REQUEST,
 				fmt.Sprintf("%s: mode %q: not offered by the agent (available: read-only, workspace-write, danger-full-access)", p.Name(), spec.Mode))
 		}
-		spec.Gate = antigravityPermissionGate(spec.Mode, spec.WorkDir, spec.Gate)
+		live.Store(cmp.Or(spec.Mode, antigravityDefaultMode))
+		spec.Gate = antigravityLiveGate(func() string { return live.Load().(string) }, spec.WorkDir, spec.Gate)
 		spec.Mode = "" // enforced through Aide's gate while wire mode stays "default"
 	}
 	proc, err := provider.StartProc(ctx, bin, args, cmp.Or(p.Dir, spec.WorkDir), spec.Env)
@@ -436,7 +450,8 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 		return nil, err
 	}
 	s := &session{name: p.Name(), proc: proc, events: make(chan provider.Event, 256), pending: map[int64]func(rpcResult){},
-		gate: spec.Gate, ctx: ctx, known: map[string]*toolCall{}, calls: map[string]provider.Decision{}, finished: map[string]bool{}}
+		gate: spec.Gate, ctx: ctx, known: map[string]*toolCall{}, calls: map[string]provider.Decision{}, finished: map[string]bool{},
+		liveMode: live, fixedMode: p.DSHPresets}
 	if p.Name() == "antigravity" {
 		key := modelContext(bin, spec.Env)
 		scope := spec.ModelScope
@@ -540,6 +555,9 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	if err := s.configure(ctx, &cfg, spec); err != nil {
 		return fail(err)
 	}
+	s.cfgMu.Lock()
+	s.cfg = &cfg
+	s.cfgMu.Unlock()
 	if offers != nil {
 		cfg.addEfforts(offers) // those of the model chosen, too
 		p.refineCapabilities(cfg.option("thought_level") != nil, len(offers.Modes) > 0)
@@ -961,6 +979,14 @@ type session struct {
 	audio     bool
 	closes    bool
 	replaying atomic.Bool
+	// liveMode: the mode Aide's own gate enforces (Antigravity), changed
+	// while it runs; fixedMode: the agent's mode is set as its process
+	// starts (DSH's presets). cfg: what the session said of its options,
+	// for a mode changed over ACP (工单 #170).
+	liveMode  *atomic.Value
+	fixedMode bool
+	cfgMu     sync.Mutex
+	cfg       *sessionConfig
 	// closeMu orders emits from Start against the reader closing events.
 	closeMu sync.RWMutex
 	closed  bool
@@ -1788,3 +1814,29 @@ func firstNonEmpty(ss ...string) string {
 	}
 	return ""
 }
+
+// SetMode changes the running session's mode (工单 #170): Aide's own gate's
+// (Antigravity) at once, its next tool call decided by it; another agent's
+// through ACP, as it set it at the start.
+func (s *session) SetMode(ctx context.Context, mode string) error {
+	if s.liveMode != nil {
+		if !antigravityValidMode(mode) {
+			return fmt.Errorf("mode %q: not offered by the agent (available: read-only, workspace-write, danger-full-access)", mode)
+		}
+		s.liveMode.Store(cmp.Or(mode, antigravityDefaultMode))
+		return nil
+	}
+	if s.fixedMode {
+		return provider.ErrModeFixed
+	}
+	s.cfgMu.Lock()
+	defer s.cfgMu.Unlock()
+	if s.cfg == nil {
+		return errors.New("the session is not started yet")
+	}
+	return s.set(ctx, s.cfg, "mode", mode, "session/set_mode", "modeId")
+}
+
+// ModesFixed: DSH's preset is chosen as its process starts and stays, a
+// resumed session's too (工单 #170).
+func (p *Provider) ModesFixed() bool { return p.DSHPresets }

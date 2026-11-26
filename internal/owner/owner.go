@@ -2933,6 +2933,18 @@ func (o *Owner) ListSessionEvents(ctx context.Context, req *sessionv1.ListEvents
 	return res, err
 }
 
+// SetSessionMode changes a session's mode on its machine (工单 #170).
+func (o *Owner) SetSessionMode(ctx context.Context, req *sessionv1.SetSessionModeRequest) (*sessionv1.Session, error) {
+	if l := o.localSession(req.SessionId); l != nil {
+		return l.SetSessionMode(ctx, req.SessionId, req.Mode)
+	}
+	n, err := o.sessionMachine(ctx, req.SessionId)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.SetSessionMode(ctx, req)
+}
+
 // ReadAttachment gives back a file a session keeps, from its machine
 // (工单 #156). A machine too old for it says Unimplemented: the apps then
 // show the file by its name, as before.

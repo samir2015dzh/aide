@@ -189,7 +189,9 @@ func paramsForOptions(options json.RawMessage) json.RawMessage {
 }
 
 // discoverModels only uses the public initialize and (advertised, currently
-// unstable) session/options methods. NEVER fall back to session/new or prompt.
+// unstable) session/options methods. NEVER fall back to session/new or prompt:
+// a session would stay in the agent's own records. (DeepSeek Harness's one
+// exception, its sessions kept out of the owner's records, is dshOffers.)
 // It starts the agent: on purpose (工单 #112) past its catalog's TTL, else
 // only when there is no catalog yet; what it found stands meanwhile.
 func (p *Provider) discoverModels(ctx context.Context, bin string, pre, env []string) {
