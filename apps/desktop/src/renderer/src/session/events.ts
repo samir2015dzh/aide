@@ -3,6 +3,7 @@ import { fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { EventView, SessionEventSchema, type SessionEvent } from "@aide/proto/session";
 import { mergeSessionEvents } from "@aide/core";
 import { local } from "../api";
+import { keptRecord, readKeptRecord, resumeAfter } from "./keep";
 import { followAgainIn } from "./retry";
 
 /** A session's stored events, and the reply the agent is still writing ("" when none). */
@@ -12,36 +13,33 @@ export type Conversation = { events: SessionEvent[]; draft: string };
  * The conversations opened last, the newest last: going back to one shows
  * it at once (also while its machine cannot be reached), and its stream
  * picks up after what it holds. Also persisted to localStorage (工单 #115)
- * so restarting the app resumes from lastSeq without gaps or duplicates.
+ * so restarting the app shows them at once: a conversation kept whole
+ * resumes after its last event; one kept only in part (its last
+ * persistMaxEvents) is read again from its start, so that no earlier turn
+ * goes missing.
  */
-const kept = new Map<string, SessionEvent[]>();
+export type Held = { events: SessionEvent[]; whole: boolean };
+const kept = new Map<string, Held>();
 const keepAtMost = 10;
 const persistPrefix = "aide.sessionEvents.v1:";
 const persistIndexKey = "aide.sessionEvents.v1:index";
 const persistMaxEvents = 250;
 
-function loadPersisted(id: string): SessionEvent[] {
+function loadPersisted(id: string): Held {
   try {
-    if (typeof localStorage === "undefined") return [];
-    const raw = localStorage.getItem(persistPrefix + id);
-    if (!raw) return [];
-    const arr = JSON.parse(raw) as unknown;
-    if (!Array.isArray(arr)) return [];
-    const events: SessionEvent[] = [];
-    for (const s of arr) {
-      if (typeof s === "string") events.push(fromJsonString(SessionEventSchema, s));
-    }
-    return mergeSessionEvents([], events).events;
+    if (typeof localStorage === "undefined") return { events: [], whole: false };
+    const rec = readKeptRecord(localStorage.getItem(persistPrefix + id));
+    const events = rec.events.map((s) => fromJsonString(SessionEventSchema, s));
+    return { events: mergeSessionEvents([], events).events, whole: rec.whole };
   } catch {
-    return [];
+    return { events: [], whole: false };
   }
 }
 
-function savePersisted(id: string, events: SessionEvent[]) {
+function savePersisted(id: string, held: Held) {
   try {
     if (typeof localStorage === "undefined") return;
-    const slice = events.length > persistMaxEvents ? events.slice(-persistMaxEvents) : events;
-    localStorage.setItem(persistPrefix + id, JSON.stringify(slice.map((e) => toJsonString(SessionEventSchema, e))));
+    localStorage.setItem(persistPrefix + id, keptRecord(held.whole, held.events.map((e) => toJsonString(SessionEventSchema, e)), persistMaxEvents));
     const rawIdx = localStorage.getItem(persistIndexKey);
     const idx: string[] = rawIdx ? (JSON.parse(rawIdx) as string[]).filter((x) => x !== id) : [];
     idx.push(id);
@@ -55,19 +53,40 @@ function savePersisted(id: string, events: SessionEvent[]) {
   }
 }
 
-function cached(id: string): SessionEvent[] {
+function cached(id: string): Held {
   const mem = kept.get(id);
   if (mem) return mem;
   const disk = loadPersisted(id);
-  if (disk.length > 0) kept.set(id, disk);
+  if (disk.events.length > 0) kept.set(id, disk);
   return disk;
 }
 
-function keep(id: string, events: SessionEvent[]) {
+function keep(id: string, held: Held) {
   kept.delete(id);
-  kept.set(id, events);
+  kept.set(id, held);
   if (kept.size > keepAtMost) kept.delete(kept.keys().next().value!);
-  savePersisted(id, events);
+  savePersisted(id, held);
+}
+
+/** Forgets every conversation kept on this device, in memory and on disk (signing out). */
+export function clearSessionEventCache() {
+  kept.clear();
+  dropPersistedSessionEvents();
+}
+
+/** Frees the disk copies of conversations (the ones in memory stay): storage is needed for something else. */
+export function dropPersistedSessionEvents() {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const gone: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(persistPrefix)) gone.push(k);
+    }
+    for (const k of gone) localStorage.removeItem(k);
+  } catch {
+    // Nothing kept to remove.
+  }
 }
 
 /**
@@ -79,7 +98,7 @@ function keep(id: string, events: SessionEvent[]) {
  * up to it show as soon as they are all in.
  */
 export function useSessionEvents(sessionId: string, last: bigint): Conversation {
-  const [got, setGot] = useState<Conversation & { id: string }>(() => ({ id: sessionId, events: cached(sessionId), draft: "" }));
+  const [got, setGot] = useState<Conversation & { id: string }>(() => ({ id: sessionId, events: cached(sessionId).events, draft: "" }));
   const known = useRef(last);
   const wakeRef = useRef<(() => void) | null>(null);
   known.current = last;
@@ -90,8 +109,11 @@ export function useSessionEvents(sessionId: string, last: bigint): Conversation 
   useEffect(() => {
     const stop = new AbortController();
     const held = cached(sessionId);
-    let caughtUp = held.length > 0;
-    if (caughtUp) setGot((g) => (g.id === sessionId ? g : { id: sessionId, events: held, draft: "" }));
+    // Held in part: read again from the start, the held tail showing meanwhile.
+    let whole = held.whole || held.events.length === 0;
+    const firstHeld = held.events.find((e) => e.seq > 0n)?.seq ?? 0n;
+    let caughtUp = held.events.length > 0 && held.whole;
+    if (held.events.length > 0) setGot((g) => (g.id === sessionId ? g : { id: sessionId, events: held.events, draft: "" }));
     let batch: SessionEvent[] = [];
     let draft = "";
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -100,9 +122,9 @@ export function useSessionEvents(sessionId: string, last: bigint): Conversation 
       const add = batch;
       batch = [];
       setGot((g) => {
-        const base = g.id === sessionId ? g.events : held;
+        const base = g.id === sessionId ? g.events : held.events;
         const merged = add.length ? mergeSessionEvents(base, add).events : base;
-        if (merged !== base) keep(sessionId, merged);
+        if (merged !== base) keep(sessionId, { events: merged, whole });
         return { id: sessionId, events: merged, draft };
       });
     };
@@ -118,7 +140,7 @@ export function useSessionEvents(sessionId: string, last: bigint): Conversation 
     if (typeof window !== "undefined") window.addEventListener("online", onOnline);
 
     (async () => {
-      let after = held.reduce((m, e) => (e.seq > m ? e.seq : m), 0n);
+      let after = resumeAfter(held.events.map((e) => e.seq), held.whole);
       let broken = 0; // times in a row the stream broke with nothing received
       while (!stop.signal.aborted) {
         let again = 3000;
@@ -132,6 +154,8 @@ export function useSessionEvents(sessionId: string, last: bigint): Conversation 
             }
             if (e.seq > 0n && e.seq <= after) continue; // strict seq deduplication on reconnect overlap
             if (e.seq > after) after = e.seq;
+            // Read from the start up to the held tail: what is held is now the whole conversation.
+            if (!whole && e.seq >= firstHeld) whole = true;
             batch.push(e);
             draft = "";
             if (!caughtUp && e.seq >= known.current) {
@@ -145,19 +169,15 @@ export function useSessionEvents(sessionId: string, last: bigint): Conversation 
         }
         if (stop.signal.aborted) break;
         await new Promise<void>((resolve) => {
-          const t = setTimeout(() => {
-            wakeSleep = null;
-            resolve();
-          }, again);
-          wakeSleep = () => {
+          const done = () => {
             clearTimeout(t);
+            wakeSleep = null;
+            stop.signal.removeEventListener("abort", done);
             resolve();
           };
-          stop.signal.addEventListener("abort", () => {
-            clearTimeout(t);
-            wakeSleep = null;
-            resolve();
-          }, { once: true });
+          const t = setTimeout(done, again);
+          wakeSleep = done;
+          stop.signal.addEventListener("abort", done, { once: true });
         });
       }
     })();
@@ -168,5 +188,5 @@ export function useSessionEvents(sessionId: string, last: bigint): Conversation 
       clearTimeout(timer);
     };
   }, [sessionId]);
-  return got.id === sessionId ? got : { events: cached(sessionId), draft: "" };
+  return got.id === sessionId ? got : { events: cached(sessionId).events, draft: "" };
 }

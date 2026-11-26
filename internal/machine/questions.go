@@ -86,7 +86,7 @@ func (s *Sessions) ask(l *live, ps provider.Session, pq *provider.Question) {
 }
 
 // reply sends a question's resolution to the agent; the turn goes on.
-func (s *Sessions) reply(l *live, w *question, r provider.Reply, res sessionv1.QuestionResolution, by string, answers []*sessionv1.Answer) {
+func (s *Sessions) reply(l *live, w *question, r provider.Reply, res sessionv1.QuestionResolution, by string, answers []*sessionv1.Answer, clientIDs ...string) {
 	now := time.Now()
 	l.mu.Lock()
 	for i, x := range l.questions {
@@ -119,7 +119,7 @@ func (s *Sessions) reply(l *live, w *question, r provider.Reply, res sessionv1.Q
 		s.log.Warn("could not answer the agent's question", "session", sessionID, "question", w.q.QuestionId, "err", err)
 	}
 	s.emit(l, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_QuestionResolved{QuestionResolved: &sessionv1.QuestionResolved{
-		QuestionId: w.q.QuestionId, Resolution: res, By: by, Answers: redactAnswers(w.q, answers)}}})
+		QuestionId: w.q.QuestionId, Resolution: res, By: by, Answers: redactAnswers(w.q, answers), ClientMessageIds: clientIDs}}})
 	s.audit.Log(AuditRecord{Kind: "session.question", Subject: by, Session: sessionID, Action: w.q.QuestionId,
 		Decision: strings.ToLower(strings.TrimPrefix(res.String(), "QUESTION_RESOLUTION_")), Detail: answersDetail(answers)})
 }
@@ -198,7 +198,7 @@ func (s *Sessions) AnswerQuestion(ctx context.Context, p *Principal, req *sessio
 
 // answerWithText answers the pending question with a message's text (a
 // message sent while the agent waits is its answer). false: no question.
-func (s *Sessions) answerWithText(l *live, by, text string) bool {
+func (s *Sessions) answerWithText(l *live, by, text string, clientIDs []string) bool {
 	l.mu.Lock()
 	if len(l.questions) == 0 {
 		l.mu.Unlock()
@@ -216,7 +216,7 @@ func (s *Sessions) answerWithText(l *live, by, text string) bool {
 		}
 		answers = append(answers, a)
 	}
-	s.reply(l, w, provider.Reply{Answers: providerAnswers(answers)}, sessionv1.QuestionResolution_QUESTION_RESOLUTION_ANSWERED, by, answers)
+	s.reply(l, w, provider.Reply{Answers: providerAnswers(answers)}, sessionv1.QuestionResolution_QUESTION_RESOLUTION_ANSWERED, by, answers, clientIDs...)
 	return true
 }
 

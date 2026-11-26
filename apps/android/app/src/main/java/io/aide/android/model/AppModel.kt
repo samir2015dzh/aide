@@ -73,10 +73,25 @@ class AppModel(private val context: Context) {
     /** Persistent per-session event cache directory for kill/relaunch catch-up (工单 #115). */
     val sessionEventsDir: File = File(context.filesDir, "session_events")
     private val outboxFile: File = File(context.filesDir, "outbox.json")
-    private val _outbox = MutableStateFlow(OutboxCodec.recoverOnBoot(OutboxCodec.load(outboxFile)))
+    /** Read off the main thread when the app starts (start), before any page can enqueue. */
+    private val _outbox = MutableStateFlow(OutboxState())
     val outbox = _outbox.asStateFlow()
+    /** The queued messages whose files are in memory only (too large to keep), or null when the queue could not be written at all. */
+    private val _outboxMemoryOnly = MutableStateFlow<Set<String>?>(emptySet())
+    val outboxMemoryOnly = _outboxMemoryOnly.asStateFlow()
     private val flushingSessions = mutableSetOf<String>()
     private var outboxRetryJob: Job? = null
+    private var outboxSaveJob: Job? = null
+    private var outboxDirty = false
+    private var outboxLoaded = false
+    /** One write of the queue at a time, in order. */
+    private val outboxWrites = Dispatchers.IO.limitedParallelism(1)
+    /** The account the kept queue and conversations belong to (its owner id; "" for none), as last seen. */
+    private val conversationsOwnerFile: File = File(context.filesDir, "conversations_owner")
+    private var conversationsOwner: String? = null
+    /** Changes each time the kept conversations are forgotten: a page opened before writes none of its cache after. */
+    @Volatile var conversationsEpoch = 0
+        private set
     var startError: String? = null
         private set
 
@@ -99,6 +114,13 @@ class AppModel(private val context: Context) {
 
     fun start() {
         scope.launch {
+            val (loaded, owner) = withContext(Dispatchers.IO) {
+                OutboxCodec.recoverOnBoot(OutboxCodec.load(outboxFile)) to
+                    runCatching { if (conversationsOwnerFile.exists()) conversationsOwnerFile.readText() else null }.getOrNull()
+            }
+            _outbox.value = loaded
+            conversationsOwner = owner
+            outboxLoaded = true
             try {
                 val dir = File(context.filesDir, "aide").apply { mkdirs() }
                 val info = withContext(Dispatchers.IO) { Aidecore.start(dir.absolutePath) }
@@ -117,7 +139,7 @@ class AppModel(private val context: Context) {
             follow() // the connection service may have started first (the system restarted it)
             scope.launch { keepConnected() }
             // Persist boot-recovered outbox and flush any messages queued before process kill (工单 #115).
-            OutboxCodec.save(outboxFile, _outbox.value)
+            scheduleOutboxSave()
             flushOutbox()
         }
     }
@@ -194,7 +216,10 @@ class AppModel(private val context: Context) {
                     // A room with more the owner has not read tells of it (G2-b/c), as the machines' status brings it;
                     // not what was unread before the first look.
                     if (wasWatched) roomNotices(roomsBefore, _world.value.rooms, roomOpen).forEach { Push.notify(context, show(it)) }
-                    if (r.status != null) phaseFor(r.status.initialized, r.status.removed)
+                    if (r.status != null) {
+                        phaseFor(r.status.initialized, r.status.removed)
+                        guardLocalConversations(r.status)
+                    }
                     if (_world.value.watched) notify(live.look(_world.value))
                 }
             } catch (e: ApiError) {
@@ -210,6 +235,7 @@ class AppModel(private val context: Context) {
             val st = api.status()
             _world.value = _world.value.copy(status = st)
             phaseFor(st.initialized, st.removed)
+            guardLocalConversations(st)
         } catch (e: ApiError) {
             if (_phase.value == Phase.Starting) {
                 delay(300)
@@ -552,12 +578,55 @@ class AppModel(private val context: Context) {
     private fun updateOutbox(next: OutboxState) {
         if (next === _outbox.value) return
         _outbox.value = next
-        OutboxCodec.save(outboxFile, next)
+        scheduleOutboxSave()
+    }
+
+    /**
+     * Writes the queue off the main thread, a moment after the last change: a burst of changes (sending, sent,
+     * the next one) is one write, and the write after it always takes the newest queue.
+     */
+    private fun scheduleOutboxSave() {
+        if (!outboxLoaded) return // nothing read yet: writing now would lose what is on disk
+        outboxDirty = true
+        if (outboxSaveJob?.isActive == true) return
+        outboxSaveJob = scope.launch {
+            while (outboxDirty) {
+                delay(OUTBOX_SAVE_DELAY_MS)
+                outboxDirty = false
+                val snapshot = _outbox.value
+                val kept = withContext(outboxWrites) { OutboxCodec.save(outboxFile, snapshot) }
+                _outboxMemoryOnly.value = kept
+            }
+        }
+    }
+
+    /**
+     * The queue and the conversations kept on this phone are the signed-in account's (工单 #115): signing out,
+     * this phone being removed, or another account signing in forgets them.
+     */
+    private fun guardLocalConversations(st: io.aide.android.api.GetStatusResponse) {
+        val member = st.initialized && !st.signedOut && !st.removed && st.ownerId.isNotEmpty()
+        val owner = if (member) st.ownerId else ""
+        val kept = conversationsOwner
+        if (kept == owner) return
+        // Kept for no account known yet (a first start after an update): it is this account's.
+        if (kept != null || !member) clearLocalConversations()
+        conversationsOwner = owner
+        scope.launch(outboxWrites) { runCatching { conversationsOwnerFile.writeText(owner) } }
+    }
+
+    /** Forgets the queue and every conversation's cached events, in memory and on disk. */
+    fun clearLocalConversations() {
+        conversationsEpoch++
+        outboxRetryJob?.cancel()
+        _outbox.value = OutboxState()
+        scheduleOutboxSave()
+        scope.launch(outboxWrites) { runCatching { sessionEventsDir.deleteRecursively() } }
     }
 
     /** Enqueues a message locally first with monotonic clientSeq, then flushes in order (工单 #115). */
-    fun enqueueMessage(sessionId: String, text: String, files: List<io.aide.android.api.AttachmentIn> = emptyList()): OutboxMessage {
-        val (next, item) = OutboxCodec.enqueue(_outbox.value, sessionId, text, files)
+    fun enqueueMessage(sessionId: String, text: String, files: List<io.aide.android.api.AttachmentIn> = emptyList(), afterSeq: Long? = null): OutboxMessage {
+        val (next, item) = OutboxCodec.enqueue(_outbox.value, sessionId, text, files, afterSeq = afterSeq)
         updateOutbox(next)
         flushOutbox(sessionId)
         return item
@@ -575,8 +644,8 @@ class AppModel(private val context: Context) {
         if (sid != null) flushOutbox(sid)
     }
 
-    fun reconcileOutbox(sessionId: String, items: List<Item>) {
-        updateOutbox(OutboxCodec.reconcileWithTranscript(_outbox.value, sessionId, items))
+    fun reconcileOutbox(sessionId: String, events: List<io.aide.android.api.SessionEvent>) {
+        updateOutbox(OutboxCodec.reconcileWithEvents(_outbox.value, sessionId, events))
     }
 
     fun flushOutbox(sessionId: String? = null) {
@@ -604,6 +673,8 @@ class AppModel(private val context: Context) {
                     try {
                         localApi.sendMessage(head.sessionId, head.text, head.attachments, head.id, head.clientSeq)?.let { replace(it) }
                         updateOutbox(OutboxCodec.markSent(_outbox.value, head.id))
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         val transient = OutboxCodec.isTransientError(e) || !_online.value
                         updateOutbox(OutboxCodec.markError(_outbox.value, head.id, humanError(e), transient))
@@ -754,3 +825,6 @@ fun reasonText(reason: String, args: Map<String, String>, raw: String): String? 
         else -> null
     }
 }
+
+/** The queue is written this long after its last change, so that a burst of changes is one write. */
+private const val OUTBOX_SAVE_DELAY_MS = 100L
