@@ -7914,7 +7914,10 @@ type RoomDelivery struct {
 	// answer is in reply to.
 	CopyId string `protobuf:"bytes,4,opt,name=copy_id,json=copyId,proto3" json:"copy_id,omitempty"`
 	// Woken and quiet for two minutes: the owner was told, once (工单 #70).
-	Reminded      bool `protobuf:"varint,5,opt,name=reminded,proto3" json:"reminded,omitempty"`
+	Reminded bool `protobuf:"varint,5,opt,name=reminded,proto3" json:"reminded,omitempty"`
+	// Sent and still not taken from the post office a day on: the owner was
+	// told it may not arrive, once (工单 #160).
+	Untaken       bool `protobuf:"varint,6,opt,name=untaken,proto3" json:"untaken,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7980,6 +7983,13 @@ func (x *RoomDelivery) GetCopyId() string {
 func (x *RoomDelivery) GetReminded() bool {
 	if x != nil {
 		return x.Reminded
+	}
+	return false
+}
+
+func (x *RoomDelivery) GetUntaken() bool {
+	if x != nil {
+		return x.Untaken
 	}
 	return false
 }
@@ -9471,13 +9481,14 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x06 \x01(\tR\tsessionId\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\a \x01(\tR\tmachineId\"\xae\x01\n" +
+	"machine_id\x18\a \x01(\tR\tmachineId\"\xc8\x01\n" +
 	"\fRoomDelivery\x12\x17\n" +
 	"\abot_key\x18\x01 \x01(\tR\x06botKey\x128\n" +
 	"\x05state\x18\x02 \x01(\x0e2\".aide.machine.v1.RoomDeliveryStateR\x05state\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x17\n" +
 	"\acopy_id\x18\x04 \x01(\tR\x06copyId\x12\x1a\n" +
-	"\breminded\x18\x05 \x01(\bR\breminded\"\x92\x04\n" +
+	"\breminded\x18\x05 \x01(\bR\breminded\x12\x18\n" +
+	"\auntaken\x18\x06 \x01(\bR\auntaken\"\x92\x04\n" +
 	"\vRoomMessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x17\n" +

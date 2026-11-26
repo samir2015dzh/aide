@@ -261,6 +261,8 @@ data class Client(
     val categoryMachineId: String = "",
     /** The icon the owner picked: "bot:<shape>:<colour>" its character's look (工单 #83); else its seed's. */
     val icon: String = "",
+    /** Whether a message can go to it: its inbox is registered at the post office (工单 #161); null from an older relay. */
+    val mailable: Boolean? = null,
 )
 
 @Serializable
@@ -714,7 +716,7 @@ data class TalkToPersonaResponse(
     /** Read-only shadow conversation aggregating 1:1 agent mailbox traffic (工单 #124). */
     val shadow: Boolean = false,
 )
-@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "", val reminded: Boolean = false)
+@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "", val reminded: Boolean = false, val untaken: Boolean = false)
 @Serializable data class RoomMessage(
     val messageId: String = "", val roomId: String = "", val from: String = "", val fromName: String = "", val text: String = "", val at: String = "",
     val deliveries: List<RoomDelivery> = emptyList(), val inReplyTo: String = "", val mentions: List<String> = emptyList(), val round: Int = 0,

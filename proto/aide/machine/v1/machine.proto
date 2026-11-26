@@ -1530,6 +1530,9 @@ message RoomDelivery {
   string copy_id = 4;
   // Woken and quiet for two minutes: the owner was told, once (工单 #70).
   bool reminded = 5;
+  // Sent and still not taken from the post office a day on: the owner was
+  // told it may not arrive, once (工单 #160).
+  bool untaken = 6;
 }
 
 message RoomMessage {

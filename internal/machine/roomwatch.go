@@ -25,6 +25,10 @@ import (
 //   - 工单 #71: what the post office says of each copy that went there: the
 //     member took it ("taken", or further) — the copy is then taken, not
 //     just sent; the post office refused or let it expire — said so.
+//   - 工单 #160: a copy still not taken roomUntaken on is told of to the
+//     owner, once: it may not arrive (the post office keeps it for its
+//     retention, a month, before it expires); and one that expired is told
+//     of too, not only marked failed.
 //   - 工单 #74: what this machine's coding agents said for a room another
 //     machine hosts, while that host is away, waits at the post office: the
 //     status lists it (RoomOutbox) until the host takes it, so the owner's
@@ -34,6 +38,9 @@ const (
 	roomMaxBusy  = 8
 	roomQuiet    = 2 * time.Minute
 	roomWatchGap = 5 * time.Second
+	// roomUntaken: sent and not taken for so long, a copy may not arrive (工单 #160); what the owner is told says
+	// "a day".
+	roomUntaken = 24 * time.Hour
 )
 
 // roomQueued is a wake waiting for a free place (工单 #70), kept with its room.
@@ -219,6 +226,8 @@ func (n *Machine) roomTick(ctx context.Context, now time.Time) {
 		woke       time.Time
 	}
 	var cands []cand
+	type told struct{ room, name, line string }
+	var tell []told
 	b.mu.Lock()
 	live := map[string]bool{}
 	for id, o := range b.outbox {
@@ -228,8 +237,14 @@ func (n *Machine) roomTick(ctx context.Context, now time.Time) {
 	}
 	for _, st := range b.rooms {
 		changed := false
+		// The owner is told, in the room and on their devices (工单 #160).
+		notice := func(line string) {
+			st.room.Notice, st.room.NoticeAt = line, timestamppb.New(now)
+			tell = append(tell, told{st.room.RoomId, st.room.Name, line})
+		}
 		for _, m := range st.msgs {
 			for _, d := range m.Deliveries {
+				mem := memberOf(st.room, d.BotKey)
 				if d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT {
 					switch states[d.CopyId] {
 					case "taken", "handed", "handled", "held":
@@ -238,19 +253,30 @@ func (n *Machine) roomTick(ctx context.Context, now time.Time) {
 						d.State, d.Reason, changed = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REFUSED, "对方没有收下这条", true
 					case "expired":
 						d.State, d.Reason, changed = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_FAILED, "在邮局放太久过期了，对方一直没来取", true
+						if mem != nil {
+							notice(fmt.Sprintf("%s 一直没来取信：消息在邮局放到过期，没有送到", mem.Name))
+						}
 					}
 				}
 				if d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN {
 					live[d.CopyId] = true
 				}
-				if d.Reminded || !live[d.CopyId] {
+				if !live[d.CopyId] {
 					continue
 				}
 				woke := m.At.AsTime()
 				if w, ok := b.woken[d.CopyId]; ok {
 					woke = w
 				}
-				if mem := memberOf(st.room, d.BotKey); mem != nil && now.Sub(woke) >= roomQuiet {
+				// At the post office a day and not taken: it may not arrive. Said instead of quiet, were that not said yet.
+				if d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT && !d.Untaken && mem != nil && now.Sub(woke) >= roomUntaken {
+					d.Untaken, d.Reminded, changed = true, true, true
+					notice(fmt.Sprintf("%s 已一天没来取信，这条消息可能送不到", mem.Name))
+				}
+				if d.Reminded {
+					continue
+				}
+				if mem != nil && now.Sub(woke) >= roomQuiet {
 					cands = append(cands, cand{room: st.room.RoomId, copy: d.CopyId, mem: proto.Clone(mem).(*machinev1.RoomMember), state: d.State, woke: woke})
 				}
 			}
@@ -274,8 +300,6 @@ func (n *Machine) roomTick(ctx context.Context, now time.Time) {
 			quiet[c.copy] = true
 		}
 	}
-	type told struct{ room, name, line string }
-	var tell []told
 	b.mu.Lock()
 	for _, c := range cands {
 		st := b.rooms[c.room]

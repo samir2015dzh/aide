@@ -396,7 +396,7 @@ internal fun OwnBubble(text: String, failed: Boolean) {
 internal fun OwnDeliveries(m: RoomMessage, shadow: Boolean, nameOf: (String) -> String, resend: () -> Unit) {
     val failed = reachedNobody(m, shadow)
     m.deliveries.forEach { d ->
-        val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)
+        val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded, d.untaken)
         val color = if (!bad) aide.faint else if (failed) aide.redText else Warning
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (d.state == DELIVERY_FAILED || d.state == DELIVERY_REFUSED) {

@@ -415,7 +415,8 @@
       "replied": "{{name}} answered",
       "taken": "{{name}} took it",
       "queued": "Queued: as many bots as can work at once are busy; {{name}} is woken when its turn comes",
-      "quiet": "{{name}} has been quiet for two minutes: you were told"
+      "quiet": "{{name}} has been quiet for two minutes: you were told",
+      "untaken": "{{name}} hasn't taken it for a day: it may not arrive"
     },
     "pinned": "Pinned",
     "pin": "Pin",

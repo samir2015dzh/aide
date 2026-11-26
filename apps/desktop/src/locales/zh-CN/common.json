@@ -405,7 +405,8 @@
       "replied": "{{name}} 已回复",
       "taken": "{{name}} 已取信",
       "queued": "排队中：同时在忙的 bot 已到上限，轮到时自动叫醒 {{name}}",
-      "quiet": "{{name}} 两分钟没动静，已提醒你"
+      "quiet": "{{name}} 两分钟没动静，已提醒你",
+      "untaken": "{{name}} 已一天没来取信，可能送不到"
     },
     "pinned": "置顶",
     "pin": "置顶",

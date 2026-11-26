@@ -5555,7 +5555,11 @@ type Client struct {
 	CategoryMachineId string `protobuf:"bytes,16,opt,name=category_machine_id,json=categoryMachineId,proto3" json:"category_machine_id,omitempty"`
 	// Online by what it did lately, with no connection now
 	// (relay.v1.ClientEntry.recent, 工单 #94): last_seen is when.
-	Recent        bool `protobuf:"varint,17,opt,name=recent,proto3" json:"recent,omitempty"`
+	Recent bool `protobuf:"varint,17,opt,name=recent,proto3" json:"recent,omitempty"`
+	// Whether a message can go to it: its inbox is registered at the post
+	// office (relay.v1.ClientEntry.mailable, 工单 #161). False: online or not,
+	// what is sent to it does not arrive. Unset from relays before.
+	Mailable      *bool `protobuf:"varint,18,opt,name=mailable,proto3,oneof" json:"mailable,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5705,6 +5709,13 @@ func (x *Client) GetCategoryMachineId() string {
 func (x *Client) GetRecent() bool {
 	if x != nil {
 		return x.Recent
+	}
+	return false
+}
+
+func (x *Client) GetMailable() bool {
+	if x != nil && x.Mailable != nil {
+		return *x.Mailable
 	}
 	return false
 }
@@ -11635,7 +11646,7 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x1d\n" +
 	"\n" +
 	"dsh_preset\x18\x03 \x01(\tR\tdshPreset\"\x1e\n" +
-	"\x1cSetProjectPermissionResponse\"\xc3\x04\n" +
+	"\x1cSetProjectPermissionResponse\"\xf1\x04\n" +
 	"\x06Client\x12\x1b\n" +
 	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x19\n" +
 	"\bgrant_id\x18\x02 \x01(\tR\agrantId\x12\x14\n" +
@@ -11655,7 +11666,9 @@ const file_aide_local_v1_local_proto_rawDesc = "" +
 	"\x0eher_machine_id\x18\x0e \x01(\tR\fherMachineId\x12\x1a\n" +
 	"\bcategory\x18\x0f \x01(\tR\bcategory\x12.\n" +
 	"\x13category_machine_id\x18\x10 \x01(\tR\x11categoryMachineId\x12\x16\n" +
-	"\x06recent\x18\x11 \x01(\bR\x06recent\"\x14\n" +
+	"\x06recent\x18\x11 \x01(\bR\x06recent\x12\x1f\n" +
+	"\bmailable\x18\x12 \x01(\bH\x00R\bmailable\x88\x01\x01B\v\n" +
+	"\t_mailable\"\x14\n" +
 	"\x12ListClientsRequest\"F\n" +
 	"\x13ListClientsResponse\x12/\n" +
 	"\aclients\x18\x01 \x03(\v2\x15.aide.local.v1.ClientR\aclients\"^\n" +
@@ -12806,6 +12819,7 @@ func file_aide_local_v1_local_proto_init() {
 	if File_aide_local_v1_local_proto != nil {
 		return
 	}
+	file_aide_local_v1_local_proto_msgTypes[96].OneofWrappers = []any{}
 	file_aide_local_v1_local_proto_msgTypes[101].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

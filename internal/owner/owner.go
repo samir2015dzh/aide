@@ -2396,7 +2396,7 @@ func clientsFrom(res *relayv1.ListClientsResponse, ownerID string, trust *identi
 		a := &localv1.Client{ClientId: g.ClientId, GrantId: g.GrantId, Label: g.ClientLabel, Fingerprint: identity.ShortFingerprint(g.ClientPublicKey),
 			Spec: specFromGrant(g), GrantVersion: g.Version, ExpiresAt: g.ExpiresAt, Online: c.Online && !expired, Recent: c.Recent && !expired, LastSeen: c.LastSeen, Revoked: c.Revoked || revoked[g.GrantId],
 			Custodian: g.Custodian, Icon: g.ClientIcon, Image: g.ClientImage, HerMachineId: g.HerMachineId,
-			Category: g.ClientCategory, CategoryMachineId: g.ClientCategoryMachineId}
+			Category: g.ClientCategory, CategoryMachineId: g.ClientCategoryMachineId, Mailable: c.Mailable}
 		if len(c.MachineIds) > 0 { // without removed machines; an update signs them away
 			a.Spec.MachineIds = c.MachineIds
 		}

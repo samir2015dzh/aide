@@ -105,3 +105,48 @@ func TestOnlineByLastCall(t *testing.T) {
 		t.Fatalf("an agent of its own, gone: %v", e)
 	}
 }
+
+// An agent is mailable once its inbox is registered (工单 #161): before that, online or not, the owner's list says a
+// message cannot go to it.
+func TestMailable(t *testing.T) {
+	s, pub := newTestServer(t)
+	ctx := context.Background()
+	code, _ := s.SetupCode()
+	_, dj := joiner(relayv1.JoinKind_JOIN_KIND_DEVICE)
+	if _, err := pub.SetUp(ctx, &relayv1.SetUpRequest{SetupCode: code, Account: "me", Password: "correct horse", Joiner: dj}); err != nil {
+		t.Fatal(err)
+	}
+	owner := s.SingleOwner()
+	key, _ := identity.GenerateKey()
+	sg, _, err := s.IssueGrant("me", "correct horse", identity.MarshalPublicKey(key.Public()), "Bot", "https://gateway.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &identityv1.Grant{}
+	identity.Unverified(sg, g)
+	mailable := func() *bool {
+		t.Helper()
+		entries, err := s.ClientEntries(owner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			eg := &identityv1.Grant{}
+			if identity.Unverified(e.Grant, eg) == nil && eg.ClientId == g.ClientId {
+				return e.Mailable
+			}
+		}
+		t.Fatal("not listed")
+		return nil
+	}
+	s.ClientActive(owner, g.ClientId, time.Now())
+	if m := mailable(); m == nil || *m {
+		t.Fatalf("online with no inbox: mailable %v", m)
+	}
+	if err := s.messageStore().PutRegistration(owner, g.ClientId, &identityv1.Signed{Body: []byte("reg")}); err != nil {
+		t.Fatal(err)
+	}
+	if m := mailable(); m == nil || !*m {
+		t.Fatalf("with its inbox registered: mailable %v", m)
+	}
+}

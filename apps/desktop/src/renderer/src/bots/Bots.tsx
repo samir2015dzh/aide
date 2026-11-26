@@ -710,10 +710,14 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   );
 }
 
-/** What became of the owner's message for a member, in words (工单 #71: sent → it took it → it answered). */
-export function deliveryWords(t: TFunction<"common">, state: RoomDeliveryState, name: string, reason: string, reminded = false): { text: string; bad: boolean } {
+/**
+ * What became of the owner's message for a member, in words (工单 #71: sent → it took it → it answered); still not
+ * taken a day on, that it may not arrive (工单 #160).
+ */
+export function deliveryWords(t: TFunction<"common">, state: RoomDeliveryState, name: string, reason: string, reminded = false, untaken = false): { text: string; bad: boolean } {
   switch (state) {
     case RoomDeliveryState.SENT:
+      if (untaken) return { text: t("bots.delivery.untaken", { name }), bad: true };
       return { text: reminded ? t("bots.delivery.quiet", { name }) : t("bots.delivery.sent", { name }), bad: reminded };
     case RoomDeliveryState.TAKEN:
       return { text: reminded ? t("bots.delivery.quiet", { name }) : t("bots.delivery.taken", { name }), bad: reminded };
@@ -844,6 +848,9 @@ function DirectChat({ b }: { b: Bot }) {
     }
   };
   const activeRoom = fresh ?? room;
+  // A message can't go to it now (its inbox not set up, 工单 #161): said over the box before one is written, not found
+  // out by sending.
+  const cant = b.state.usable === "no" ? { text: b.state.line, tone: "warn" as const } : undefined;
   return (
     <main className="bot-main bot-chat">
       <div className="bot-chat-bar">
@@ -894,7 +901,7 @@ function DirectChat({ b }: { b: Bot }) {
         {activeRoom && <RoomTimeline room={activeRoom} msgs={msgs} resend={(m) => void resend(m)} />}
       </div>
       <p className="bot-mode-note">{t(light ? "rooms.lightHint" : "rooms.taskModeHint")}</p>
-      <Composer value={text} onChange={setText} onSend={() => void send()} placeholder={t("composer.placeholder", { name: b.name })} state={state} disabled={!room} />
+      <Composer value={text} onChange={setText} onSend={() => void send()} placeholder={t("composer.placeholder", { name: b.name })} state={state} disabled={!room || !!cant} why={cant} />
     </main>
   );
 }

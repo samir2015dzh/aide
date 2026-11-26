@@ -550,9 +550,12 @@ private fun rememberDirectChat(model: AppModel, clientId: String): DirectChat {
     return chat
 }
 
-/** What became of the owner's message for a member, in words (工单 #71: sent → it took it → it answered; #70: queued, quiet). */
-fun deliveryWords(state: String, name: String, reason: String, reminded: Boolean): Pair<String, Boolean> = when (state) {
-    "ROOM_DELIVERY_STATE_SENT" -> if (reminded) t("$name has been quiet for two minutes: you were told", "$name 两分钟没动静，已提醒你") to true else t("Sent: waiting for $name to take it", "已发出：等 $name 取信") to false
+/**
+ * What became of the owner's message for a member, in words (工单 #71: sent → it took it → it answered; #70: queued,
+ * quiet; #160: still not taken a day on, it may not arrive), as the desktop's deliveryWords.
+ */
+fun deliveryWords(state: String, name: String, reason: String, reminded: Boolean, untaken: Boolean = false): Pair<String, Boolean> = when (state) {
+    "ROOM_DELIVERY_STATE_SENT" -> if (untaken) t("$name hasn't taken it for a day: it may not arrive", "$name 已一天没来取信，可能送不到") to true else if (reminded) t("$name has been quiet for two minutes: you were told", "$name 两分钟没动静，已提醒你") to true else t("Sent: waiting for $name to take it", "已发出：等 $name 取信") to false
     "ROOM_DELIVERY_STATE_TAKEN" -> if (reminded) t("$name has been quiet for two minutes: you were told", "$name 两分钟没动静，已提醒你") to true else t("$name took it", "$name 已取信") to false
     "ROOM_DELIVERY_STATE_QUEUED" -> t("Queued: as many bots as can work at once are busy; $name is woken when its turn comes", "排队中：同时在忙的 bot 已到上限，轮到时自动叫醒 $name") to false
     "ROOM_DELIVERY_STATE_REPLIED" -> t("$name answered", "$name 已回复") to false
@@ -707,11 +710,14 @@ private fun ChatCompose(model: AppModel, chat: DirectChat, b: Bot) {
             }
         }
     }
+    // A message can't go to it now (its inbox not set up, 工单 #161): said over the box before one is written, as on the
+    // desktop, not found out by sending.
+    val cant = b.state.usable == Usable.NO
     Composer(
         text, { text = it }, { send() },
         if (chat.lightChat) t("Quick chat with ${b.name}…", "和 ${b.name} 轻聊一句…") else t("Message ${b.name}", "给 ${b.name} 发消息"),
         chat.state,
-        enabled = chat.room != null,
-        why = if (chat.lightChat) ComposerWhy(t("Light chat: quick reply with minimal context", "轻聊模式：快速交流，不拖带长上下文")) else null,
+        enabled = chat.room != null && !cant,
+        why = if (cant) ComposerWhy(b.state.line, warn = true) else if (chat.lightChat) ComposerWhy(t("Light chat: quick reply with minimal context", "轻聊模式：快速交流，不拖带长上下文")) else null,
     )
 }

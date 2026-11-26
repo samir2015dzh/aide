@@ -140,7 +140,7 @@ export function SidebarRooms() {
 /** What became of the owner's message for a member, in words. */
 export function DeliveryLine({ d, name }: { d: RoomDelivery; name: string }) {
   const { t } = useTranslation("common");
-  const w = deliveryWords(t, d.state, name, d.reason, d.reminded);
+  const w = deliveryWords(t, d.state, name, d.reason, d.reminded, d.untaken);
   const failed = d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED;
   return (
     <span className={`chat-state ${w.bad ? "warn" : ""}`} data-state={d.state}>

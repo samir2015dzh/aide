@@ -22,7 +22,7 @@ import { agoText } from "./text";
 export type Usable = "yes" | "unverified" | "no";
 
 /** Why work can't go to it, when it can't, or why it is unverified. */
-export type NotReady = "offline" | "signedOut" | "paused" | "missing" | "unknown" | "checking" | "reconnecting";
+export type NotReady = "offline" | "signedOut" | "paused" | "missing" | "unknown" | "checking" | "reconnecting" | "noInbox";
 
 export type BotState = {
   /** The connection state, as its machine's connections say (personal agents: ok online, unknown otherwise). */
@@ -95,6 +95,14 @@ export const justActiveMs = 2 * 60_000;
 export function personalBotState(c: Client, now: Date): BotState {
   const s = c.lastSeen?.seconds;
   const seen = s ? new Date(Number(s) * 1000) : undefined;
+  // No inbox at the post office (工单 #161, Client.mailable): online or not, a message to it does not arrive. Not
+  // usable, said so before anything is sent; unset (an older relay), as before.
+  if (c.mailable === false) {
+    const line = t("roster.noInboxLine");
+    return c.online
+      ? { state: "partial", word: t("roster.onlineNoInbox"), line, usable: "no", why: "noInbox", presence: "unconfirmed" }
+      : { state: "unknown", word: t("roster.noInbox"), line, usable: "no", why: "noInbox", presence: "unknown" };
+  }
   if (c.online && c.recent && seen) {
     const line = t("roster.activeLine", { when: agoText(seen, now) });
     if (now.getTime() - seen.getTime() < justActiveMs) return { state: "ok", word: t("roster.online"), line, usable: "yes", presence: "online" };

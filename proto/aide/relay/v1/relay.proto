@@ -235,6 +235,11 @@ message ClientEntry {
   // while its last call is within the relay's activity window; last_seen is
   // then that call. False while it is connected, and from relays before.
   bool recent = 8;
+  // Whether a message can go to it (工单 #161): its inbox is registered at
+  // the post office, so a sender can seal to it. Connected is not enough: a
+  // connection that never registered one is online and gets no message.
+  // Unset from relays before.
+  optional bool mailable = 9;
 }
 
 service MachineControlService {

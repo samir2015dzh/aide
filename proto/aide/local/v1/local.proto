@@ -933,6 +933,10 @@ message Client {
   // Online by what it did lately, with no connection now
   // (relay.v1.ClientEntry.recent, 工单 #94): last_seen is when.
   bool recent = 17;
+  // Whether a message can go to it: its inbox is registered at the post
+  // office (relay.v1.ClientEntry.mailable, 工单 #161). False: online or not,
+  // what is sent to it does not arrive. Unset from relays before.
+  optional bool mailable = 18;
 }
 
 message ListClientsRequest {}

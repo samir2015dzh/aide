@@ -14,7 +14,7 @@ import java.time.Instant
 // report. And one state per bot (工单 #56): the roster, Hand Work To and the counts all read botState, in the same words.
 
 /** Why work can't go to it, or why it is not confirmed. */
-enum class NotReady { OFFLINE, SIGNED_OUT, PAUSED, MISSING, UNKNOWN, CHECKING }
+enum class NotReady { OFFLINE, SIGNED_OUT, PAUSED, MISSING, UNKNOWN, CHECKING, NO_INBOX }
 
 /** Whether work can go to it now: yes; unverified (it can be sent, but whether it is there is not confirmed); no. */
 enum class Usable { YES, UNVERIFIED, NO }
@@ -66,6 +66,16 @@ val JUST_ACTIVE: java.time.Duration = java.time.Duration.ofMinutes(2)
 
 fun personalBotState(c: Client, now: Instant): BotState {
     val seen = instantOrNull(c.lastSeen)
+    // No inbox at the post office (工单 #161, Client.mailable): online or not, a message to it does not arrive. Not
+    // usable, said so before anything is sent; null (an older relay), as before. As the desktop's core roster.ts.
+    if (c.mailable == false) {
+        val line = t(
+            "Its inbox isn't set up: messages to it don't arrive (Aide on its side most likely needs an update). This changes by itself once it is.",
+            "它的信箱还没开通：发给它的消息送不到（多半要更新它那边的 Aide）。开通后这里会自己变。",
+        )
+        return if (c.online) BotState(ConnState.PARTIAL, t("Online, can't take messages", "在线但收不了消息"), line, Usable.NO, NotReady.NO_INBOX, presence = Presence.UNCONFIRMED)
+        else BotState(ConnState.UNKNOWN, t("Can't take messages", "收不了消息"), line, Usable.NO, NotReady.NO_INBOX, presence = Presence.UNKNOWN)
+    }
     if (c.online && c.recent && seen != null) {
         val line = t("Called ${agoText(seen, now)}", "${agoText(seen, now)}调用过")
         val word = if (java.time.Duration.between(seen, now) < JUST_ACTIVE) t("Online", "在线") else t("Recently active", "最近活跃")
