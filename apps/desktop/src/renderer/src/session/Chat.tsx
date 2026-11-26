@@ -263,7 +263,7 @@ export function ChatFrame<R extends VirtualRow>({ rows, initial, label, row, hea
         </div>}
       </div>
       <button
-        className={`tobottom ${away ? "on" : ""}`}
+        className={`tobottom ${away ? "on" : ""} ${live ? "live" : ""}`}
         style={{ "--dock": `${bottom}px` } as CSSProperties}
         aria-label={t("chat.toBottom")}
         title={t("chat.toBottom")}
@@ -271,7 +271,9 @@ export function ChatFrame<R extends VirtualRow>({ rows, initial, label, row, hea
         aria-hidden={!away}
         onClick={toEnd}
       >
-        <Icon name="arrowDown" />
+        {live && <i className="tobottom-dot" aria-hidden="true" />}
+        <span>{t(live ? "chat.toBottomLive" : "chat.toBottom")}</span>
+        <Icon name="arrowDown" className="sm" />
       </button>
       {control?.(setCtlHeight, dock ? dockHeight : 0)}
       {dock?.(setDockHeight)}
@@ -593,11 +595,29 @@ export function AgentText({ text, end, at, live = false, seq }: { text: string; 
   const reply = useMemo(() => ({ kept: seq === undefined ? undefined : pictures.get(seq), first: new Map<string, number>() }), [pictures, seq]);
   return (
     <div className={end ? "am end" : "am"}>
+      {!live && text.length >= 600 && <TopCopy text={text} />}
       <ReplyContext.Provider value={reply}>
         <Markdown text={text} streaming={live} />
       </ReplyContext.Provider>
       {end && <Copy text={text} at={at} />}
     </div>
+  );
+}
+
+function TopCopy({ text }: { text: string }) {
+  const { t } = useTranslation("session");
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      className={`am-top-copy ${done ? "done" : ""}`}
+      aria-label={t("chat.copy")}
+      title={t("chat.copy")}
+      onClick={() => navigator.clipboard.writeText(text).then(() => (setDone(true), setTimeout(() => setDone(false), 1500)))}
+    >
+      <Icon name={done ? "check" : "copy"} className={`sm ${done ? "tick-in ok-ic" : ""}`} />
+      <span>{t(done ? "chat.copied" : "chat.copy")}</span>
+    </button>
   );
 }
 
@@ -635,7 +655,7 @@ function Copy({ text, at, rollback }: { text: string; at?: Date; rollback?: () =
         title={t("chat.copy")}
         onClick={() => navigator.clipboard.writeText(text).then(() => (setDone(true), setTimeout(() => setDone(false), 1500)))}
       >
-        <Icon name={done ? "check" : "copy"} className="sm" />
+        <Icon name={done ? "check" : "copy"} className={`sm ${done ? "tick-in ok-ic" : ""}`} />
       </button>
     </div>
   );

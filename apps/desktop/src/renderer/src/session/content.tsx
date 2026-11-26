@@ -127,9 +127,9 @@ export function CodeBlock({ lang, text }: { lang: string; text: string }) {
         )}
         {!draft && (
           <span className="cb-acts">
-            <button className="cb-b" onClick={copyBlock} aria-label={t("content.copy")}>
-              <Icon name={done ? "check" : "copy"} />
-              {t("content.copy")}
+            <button className={`cb-b ${done ? "done" : ""}`} onClick={copyBlock} aria-label={t("content.copy")}>
+              <Icon name={done ? "check" : "copy"} className={done ? "tick-in ok-ic" : ""} />
+              {t(done ? "content.copied" : "content.copy")}
             </button>
           </span>
         )}

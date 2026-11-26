@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
 import type { Persona } from "@aide/proto/identity";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -14,7 +14,7 @@ import { botLook, botMood, botSeed, botSessions, personaLook, reactMs, type BotM
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { ClaudeLogin, claudeLoginWaiting, botDot } from "../Connections";
-import { Face, grantApp, StateText, StatusDot } from "../components";
+import { Face, grantApp, StateText, StatusDot, useLeaving } from "../components";
 import { Icon } from "../icons";
 import { modelOptions } from "../modelOptions";
 import { Picker, type PickerOption } from "../Picker";
@@ -597,6 +597,40 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   // The archived stay apart in their group, folded (工单 #66/#67 rule 6); the count under the card says how many
   // there are of each (#135 P33), so the list need not unfold to match it.
   const toggleList = () => setListOpen((v) => !v);
+  const flyout = useLeaving(listOpen ? true : null);
+  const flyoutRef = useRef<HTMLDivElement>(null);
+  const allBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!listOpen) return;
+    const outside = (e: MouseEvent) => {
+      const el = e.target as Node;
+      if (!flyoutRef.current?.contains(el) && !allBtnRef.current?.contains(el)) setListOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      setListOpen(false);
+      allBtnRef.current?.focus();
+    };
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [listOpen]);
+  const onFlyoutKey = (e: ReactKeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const items = [...(flyoutRef.current?.querySelectorAll<HTMLElement>(".conv-main, .bot-work, .conv-group:not(.static)") ?? [])];
+    if (items.length === 0) return;
+    e.preventDefault();
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === "ArrowDown" ? (i + 1) % items.length : i <= 0 ? items.length - 1 : i - 1;
+    items[next]?.focus();
+  };
+  const recentOthers = current ? convs.open.filter((s) => s.sessionId !== current.sessionId).slice(0, 3) : convs.open.slice(0, 3);
+  const shownCount = (current ? 1 : 0) + recentOthers.length;
+  const excerpt = current?.progress?.lastMessageExcerpt?.trim() ?? "";
   return (
     <main className="bot-main">
       {/* 对话条（DESIGN-107 §0.5c #4A / #135 P03/P04/P33）：前缀与当前会话真实状态一致，计数与列表口径对齐 */}
@@ -611,6 +645,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
           <span className="conv-head-k">{t(convs.open.length ? "conv.nextIsNew" : "conv.firstIsNew")}</span>
         )}
         <button
+          ref={allBtnRef}
           className={`btn sm conv-all-btn ${listOpen ? "primary" : ""}`}
           aria-expanded={listOpen}
           aria-haspopup="dialog"
@@ -623,8 +658,8 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
           {t("conv.new")}
         </button>
       </div>
-      {listOpen && (
-        <div className="conv-flyout" role="dialog" aria-label={t("bots.allConvs")}>
+      {flyout.shown && (
+        <div ref={flyoutRef} className={`conv-flyout ${flyout.leaving ? "leaving" : ""}`} inert={flyout.leaving} role="dialog" aria-label={t("bots.allConvs")} onKeyDown={onFlyoutKey}>
           <div className="conv-flyout-h">
             <span>{totalConvs > 0 ? t("bots.allConvsCount", { count: totalConvs }) : t("bots.allConvs")}</span>
             <button className="tb" aria-label={t("bots.closeList")} onClick={() => setListOpen(false)}>
@@ -650,7 +685,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
       <div className="bot-stream" role="list" aria-label={t("conv.list")}>
         {current ? (
           <>
-            <div className="conv-current-card conv-row cur" role="listitem" aria-current="true">
+            <div className="conv-current-card" role="listitem" aria-current="true">
               <div className="conv-current-top">
                 <StatusDot s={current} />
                 <b>{displayTitle(current)}</b>
@@ -662,6 +697,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
                 {current.projectId && <span>· {current.projectId}</span>}
                 {stuck && stuck !== "archived" && <em className="conv-stuck">· {t("conv.readOnly")}</em>}
               </div>
+              {excerpt && <p className="conv-current-excerpt">{excerpt}</p>}
               <div className="conv-current-acts">
                 <button className="btn sm primary" onClick={() => st.select(current.sessionId)}>
                   <Icon name="expand" className="sm" />
@@ -675,10 +711,24 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
                 )}
               </div>
             </div>
+            {recentOthers.length > 0 && (
+              <div className="conv-recent">
+                <div className="conv-recent-h">{t("conv.recentSwitch")}</div>
+                {recentOthers.map((s) => row(s))}
+              </div>
+            )}
             {totalConvs > 1 && countDetail && (
-              <div className="conv-count-hint">{t("conv.countHint", { total: totalConvs, detail: countDetail })}</div>
+              <div className="conv-count-hint">{t("conv.countHint", { shown: shownCount, total: totalConvs, detail: countDetail })}</div>
             )}
           </>
+        ) : recentOthers.length > 0 ? (
+          <div className="conv-recent">
+            <div className="conv-recent-h">{t("conv.recentSwitch")}</div>
+            {recentOthers.map((s) => row(s))}
+            {totalConvs > 1 && countDetail && (
+              <div className="conv-count-hint">{t("conv.countHint", { shown: shownCount, total: totalConvs, detail: countDetail })}</div>
+            )}
+          </div>
         ) : (
           <div className="bot-empty">{t("bots.noWork", { name: b.name })}</div>
         )}

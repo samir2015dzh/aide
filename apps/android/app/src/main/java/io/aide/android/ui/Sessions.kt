@@ -22,6 +22,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Card
 import androidx.compose.foundation.layout.Row
@@ -50,10 +52,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.aide.android.api.Answer
+import io.aide.android.api.Question
+import io.aide.android.api.QuestionItem
 import io.aide.android.api.Session
 import io.aide.android.api.SessionStatus
 import io.aide.android.model.AppModel
@@ -108,16 +114,33 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
             if (shown) ActivityIndicator(Modifier.align(Alignment.TopCenter).graphicsLayer { translationY = pull.distanceFraction.coerceAtMost(1f) * 56.dp.toPx() - 8.dp.toPx(); alpha = if (refreshing) 1f else pull.distanceFraction.coerceAtMost(1f) }, size = 24.dp)
         }) {
         CompositionLocalProvider(LocalScrolling provides list.isScrollInProgress) {
+        val needsStart = 1
+        val unseenStart = needsStart + (if (b.needsYou.isEmpty()) 0 else 1 + b.needsYou.size)
+        val inProgStart = unseenStart + (if (b.unseen.isEmpty()) 0 else 1 + b.unseen.size)
+        val quick: (Session, QuestionItem, String) -> Unit = { s, item, label ->
+            scope.launch { model.answer(s, listOf(Answer(item.id, listOf(label), "")), decline = false) }
+        }
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
             item(key = "overview") { Column {
                 SectionHeader(t("Overview", "概览"))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile(t("Need you", "等你处理"), "${b.needsYou.size}", Modifier.weight(1f), tone = if (b.needsYou.isEmpty()) Tone.Quiet else Tone.Warn)
-                    StatTile(t("At work", "进行中"), "${b.inProgress.size}", Modifier.weight(1f), tone = if (b.inProgress.isEmpty()) Tone.Quiet else Tone.Live)
-                    StatTile(t("New results", "新结果"), "${b.unseen.size}", Modifier.weight(1f))
+                    StatTile(
+                        t("Need you", "等你处理"), "${b.needsYou.size}", Modifier.weight(1f),
+                        tone = if (b.needsYou.isEmpty()) Tone.Quiet else Tone.Warn,
+                        onClick = if (b.needsYou.isNotEmpty()) ({ scope.launch { list.animateScrollToItem(needsStart) } }) else null,
+                    )
+                    StatTile(
+                        t("At work", "进行中"), "${b.inProgress.size}", Modifier.weight(1f),
+                        tone = if (b.inProgress.isEmpty()) Tone.Quiet else Tone.Live,
+                        onClick = if (b.inProgress.isNotEmpty()) ({ scope.launch { list.animateScrollToItem(inProgStart) } }) else null,
+                    )
+                    StatTile(
+                        t("New results", "新结果"), "${b.unseen.size}", Modifier.weight(1f),
+                        onClick = if (b.unseen.isNotEmpty()) ({ scope.launch { list.animateScrollToItem(unseenStart) } }) else null,
+                    )
                 }
             } }
-            section(t("Needs You", "需要你处理"), b.needsYou, world, open, Tone.Warn, model::archiveFromList)
+            section(t("Needs You", "需要你处理"), b.needsYou, world, open, Tone.Warn, model::archiveFromList, quick)
             section(t("New Results", "有新结果未看"), b.unseen, world, open, Tone.Live, model::archiveFromList)
             section(t("In Progress", "进行中"), b.inProgress, world, open, Tone.Live, model::archiveFromList)
             section(t("Recent", "最近"), b.recent, world, open, Tone.Quiet, model::archiveFromList)
@@ -137,12 +160,16 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
     }
 }
 
-/** The sessions waiting for you: open one to answer it there. */
+/** The sessions waiting for you: open one to answer it there, or tap an inline choice when a single tap suffices. */
 @Composable
 fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
     val world by model.world.collectAsState()
     val sessions = world.buckets.needsYou
     val list = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val quick: (Session, QuestionItem, String) -> Unit = { s, item, label ->
+        scope.launch { model.answer(s, listOf(Answer(item.id, listOf(label), "")), decline = false) }
+    }
     Column(Modifier.fillMaxSize()) {
         PageTitle(t("Needs you", "需要你"), if (sessions.isEmpty()) null else t("${sessions.size} waiting for an answer", "${sessions.size} 个在等你回答"), collapsed = list.collapsed())
         SyncLine(model)
@@ -151,29 +178,45 @@ fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
             if (sessions.isEmpty()) {
                 item { Text(t("Nothing waits for you.", "没有等你处理的事。"), Modifier.padding(top = 16.dp, start = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                section(t("Tasks waiting for you", "等你处理的任务"), sessions, world, open, Tone.Warn, model::archiveFromList)
+                section(t("Tasks waiting for you", "等你处理的任务"), sessions, world, open, Tone.Warn, model::archiveFromList, quick)
             }
         }
         }
     }
 }
 
+/** Single non-secret choice with up to 3 compact options that can be answered in one tap on the list card. */
+private fun quickChoiceItem(q: Question): QuestionItem? {
+    val items = if (q.items.size == 1) q.items else q.items.filter { !it.optional }
+    val item = items.singleOrNull() ?: return null
+    return item.takeIf { !it.multiSelect && !it.secret && it.options.size in 1..3 && it.options.all { o -> o.label.length <= 18 } }
+}
+
 /** A group of sessions: a heading with its count, then its rows as one card (each row a list item of its own). */
-private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String, sessions: List<Session>, world: World, open: (String) -> Unit, tone: Tone, archive: ((Session) -> Unit)? = null) {
+private fun androidx.compose.foundation.lazy.LazyListScope.section(
+    title: String,
+    sessions: List<Session>,
+    world: World,
+    open: (String) -> Unit,
+    tone: Tone,
+    archive: ((Session) -> Unit)? = null,
+    quickAnswer: ((Session, QuestionItem, String) -> Unit)? = null,
+) {
     if (sessions.isEmpty()) return
     item(key = "h-$title", contentType = "heading") { SectionHeader(title, count = sessions.size, tone = tone) }
     itemsIndexed(sessions, key = { _, s -> s.sessionId }, contentType = { _, _ -> "session" }) { i, s ->
         Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold), fadeOutSpec = tween(Motion.Short)).groupRow(i, sessions.size, inset = 68.dp)) {
-            SessionRow(s, world, archive?.let { a -> { a(s) } }) { open(s.sessionId) }
+            SessionRow(s, world, archive?.let { a -> { a(s) } }, quickAnswer?.let { qa -> { item, label -> qa(s, item, label) } }) { open(s.sessionId) }
         }
     }
 }
 
 @Composable
 /** archive: a long press offers it (工单 #165), when given; one that can't be archived now (a turn running) says so. */
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun SessionRow(s: Session, world: World, archive: (() -> Unit)? = null, onClick: () -> Unit) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+fun SessionRow(s: Session, world: World, archive: (() -> Unit)? = null, quickAnswer: ((QuestionItem, String) -> Unit)? = null, onClick: () -> Unit) {
     val waits = needsYou(s)
+    val quick = if (quickAnswer != null && s.status == SessionStatus.WAITING_INPUT) s.progress?.pendingQuestion?.let(::quickChoiceItem) else null
     var menu by remember { mutableStateOf(false) }
     val press = if (archive == null) Modifier.rowPress(onClick)
     else Modifier.combinedClickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), onLongClickLabel = t("Archive", "归档"), onLongClick = { menu = true }, onClick = onClick)
@@ -202,6 +245,22 @@ fun SessionRow(s: Session, world: World, archive: (() -> Unit)? = null, onClick:
                     if (manyMachines(world.machines.size)) {
                         HSpace(8)
                         Text(world.machineName(s.machineId), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                if (quick != null && quickAnswer != null) {
+                    val prompt = quick.text.ifEmpty { quick.header }
+                    if (prompt.isNotEmpty()) {
+                        Text(prompt, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        quick.options.forEach { o ->
+                            Box(
+                                Modifier.clip(RoundedCornerShape(Radius.Md)).background(aide.card).border(1.dp, aide.controlBorder, RoundedCornerShape(Radius.Md))
+                                    .pressable { quickAnswer(quick, o.label) }.padding(horizontal = 11.dp, vertical = 5.dp),
+                            ) {
+                                Text(o.label, style = IosType.Footnote, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                            }
+                        }
                     }
                 }
             }

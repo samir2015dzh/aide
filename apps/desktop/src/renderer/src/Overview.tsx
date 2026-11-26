@@ -35,7 +35,9 @@ export function Overview() {
           <section aria-label={t("map.title")}>
             <LinkMap pick={pick} onPick={setPick} now={now} usage={usage} />
           </section>
-          <Working pick={pick} onClear={() => setPick("")} />
+          <div id="ov-working">
+            <Working pick={pick} onClear={() => setPick("")} />
+          </div>
           <RecentlyFinished />
           <Usage now={now} res={usage} />
         </div>
@@ -79,7 +81,7 @@ function RecentlyFinished() {
   const team = useTeam();
   if (team.finished.length === 0) return null;
   return (
-    <section aria-label={t("team.recentlyFinished")}>
+    <section id="ov-finished" aria-label={t("team.recentlyFinished")}>
       <div className="sec-h">{t("team.recentlyFinished")}</div>
       <div className="card wk-list">
         {team.finished.slice(0, 3).map((s) => <FinishedRow key={s.sessionId} s={s} />)}

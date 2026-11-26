@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cardRoom, conversationMin, layoutOf, sidebarWidth, type Peek } from "./layout.ts";
+import { cardRoom, conversationMin, layoutOf, listWidth, sidebarWidth, type Peek } from "./layout.ts";
 
-const at = (width: number, peek: Peek = null, sidebar = true, inspector = true) => layoutOf({ width, peek, sidebar, inspector });
+const at = (width: number, peek: Peek = null, sidebar = true, inspector = true, listed = false) =>
+  layoutOf({ width, peek, sidebar, inspector, listed });
 const both = sidebarWidth + conversationMin + cardRoom; // 1102
 const sidebarOnly = sidebarWidth + conversationMin; // 832
 
@@ -37,4 +38,12 @@ test("layoutOf: what gave way, asked for, shows over the conversation", () => {
 test("layoutOf: a peek of what fits beside the conversation changes nothing", () => {
   assert.deepEqual(at(1240, "sidebar", false), { sidebar: "hidden", card: "docked" });
   assert.deepEqual(at(1240, "card", true, false), { sidebar: "docked", card: "hidden" });
+});
+
+test("layoutOf: when TaskColumn is open (listed), standard laptop widths yield the right card so Chat keeps its reading room", () => {
+  assert.deepEqual(at(1280, null, true, true, true), { sidebar: "docked", card: "hidden" });
+  assert.deepEqual(at(1360, null, true, true, true), { sidebar: "docked", card: "hidden" });
+  assert.deepEqual(at(1280, "card", true, true, true), { sidebar: "docked", card: "over" });
+  assert.deepEqual(at(both + listWidth, null, true, true, true), { sidebar: "docked", card: "docked" });
+  assert.deepEqual(at(1440, null, true, true, true), { sidebar: "docked", card: "docked" });
 });

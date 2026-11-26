@@ -219,11 +219,8 @@ private fun MarkdownCodeBlock(language: String, code: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                text = if (copied) t("Copied", "已复制") else t("Copy", "复制"),
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
-                color = if (copied) aide.greenText else aide.blue,
-                modifier = Modifier
+            Row(
+                Modifier
                     .clip(RoundedCornerShape(Radius.Sm))
                     .clickable {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -231,7 +228,16 @@ private fun MarkdownCodeBlock(language: String, code: String) {
                         copied = true
                     }
                     .padding(horizontal = 8.dp, vertical = 3.dp),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (copied) Icon(CheckMark, null, Modifier.size(13.dp), tint = aide.greenText)
+                Text(
+                    text = if (copied) t("Copied", "已复制") else t("Copy", "复制"),
+                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                    color = if (copied) aide.greenText else aide.blue,
+                )
+            }
         }
         Hairline()
         Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 10.dp)) {

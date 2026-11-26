@@ -14,28 +14,36 @@ export function Tiles({ now }: { now: Date }) {
   const { waits } = overviewMarks(st, now);
   const online = st.machines.filter((m) => m.online).length;
   const offline = st.machines.length - online;
+  const goSection = (id: string, fallback?: () => void) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+      return;
+    }
+    fallback?.();
+  };
   return (
     <div className="ov-tiles" role="group" aria-label={t("tiles.label")}>
-      <div className={`ov-tile need ${waits > 0 ? "on" : ""}`}>
+      <button type="button" className={`ov-tile need ${waits > 0 ? "on" : ""}`} onClick={() => goSection("ov-attention", () => goSection("ov-working"))}>
         <b>{waits}</b>
         <span>{t("tiles.needYou")}</span>
-      </div>
-      <div className="ov-tile done">
+      </button>
+      <button type="button" className="ov-tile done" onClick={() => goSection("ov-finished", () => st.set({ selection: { kind: "tasks" } }))}>
         <b>{team.finished.length}</b>
         <span>{t("tiles.done")}</span>
-      </div>
-      <div className="ov-tile run">
+      </button>
+      <button type="button" className="ov-tile run" onClick={() => goSection("ov-working", () => st.set({ selection: { kind: "tasks" } }))}>
         <b>{team.running.length}</b>
         <span>{t("tiles.running")}</span>
-      </div>
-      <div className="ov-tile mach">
+      </button>
+      <button type="button" className="ov-tile mach" onClick={() => window.aide?.openSettings("machines")}>
         <b>
           {online}
           <small>/{st.machines.length}</small>
         </b>
         {/* One number and one label, as the three beside it (工单 #140 P19): the offline ones said in the label. */}
         <span>{offline > 0 ? t("tiles.machinesOffline", { count: offline }) : t("tiles.machines")}</span>
-      </div>
+      </button>
     </div>
   );
 }

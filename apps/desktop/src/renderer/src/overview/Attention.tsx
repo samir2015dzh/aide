@@ -1,15 +1,26 @@
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Client } from "@aide/proto/local";
-import { dateOf, displayTitle, failureLine, pendingQuestion } from "@aide/core";
+import { FailureKind } from "@aide/proto/session";
+import { dateOf, displayTitle, failureLine, isArchivable, pendingQuestion } from "@aide/core";
 import { i18n } from "../../../shared/i18n";
+import { local } from "../api";
 import { opensActivityMonitor, problemBody, problemsOf, problemTitle, severe } from "../health";
 import { Icon } from "../icons";
-import { senderLine } from "../Sidebar";
+import { archive, senderLine } from "../Sidebar";
 import { useStore, type Store } from "../store";
 import { QuickAnswer, useTeam } from "../team";
 
 const day = 86_400_000;
+
+const retryableKinds = new Set([
+  FailureKind.RATE_LIMIT,
+  FailureKind.PROVIDER_ERROR,
+  FailureKind.NETWORK,
+  FailureKind.AGENT_CRASHED,
+  FailureKind.STALLED,
+  FailureKind.TIMEOUT,
+]);
 
 /** Grants that run out within a week. */
 export function expiringClients(st: Store, now: Date): Client[] {
@@ -36,7 +47,7 @@ export function Attention({ now }: { now: Date }) {
   const count = sick.length + team.waiting.length + team.failed.length + expiring.length;
   if (count === 0) return null;
   return (
-    <section aria-label={t("attention.title")}>
+    <section id="ov-attention" aria-label={t("attention.title")}>
       <div className="sec-h">{t("attention.title")}<span className="n">{count}</span></div>
       <div className="card attn" role="list">
         {sick.map(({ m, p }) => (
@@ -58,11 +69,33 @@ export function Attention({ now }: { now: Date }) {
             </Row>
           );
         })}
-        {team.failed.map((s) => (
-          <Row key={s.sessionId} icon="alert" tint="r" title={displayTitle(s)} detail={`${senderLine(st, s)} · ${failureLine(s) || i18n.t("common:team.lastTurnFailed")}`}>
-            <button className="btn" onClick={() => st.select(s.sessionId)}>{t("attention.open")}</button>
-          </Row>
-        ))}
+        {team.failed.map((s) => {
+          const canRetry = s.createdBy === "owner" && (!s.progress?.lastFailure || retryableKinds.has(s.progress.lastFailure.kind));
+          return (
+            <Row key={s.sessionId} icon="alert" tint="r" title={displayTitle(s)} detail={`${senderLine(st, s)} · ${failureLine(s) || i18n.t("common:team.lastTurnFailed")}`}>
+              {canRetry && (
+                <button
+                  className="btn"
+                  onClick={() =>
+                    void st.run(
+                      () => local.sendMessage({ sessionId: s.sessionId, text: t("attention.retryPrompt"), attachments: [] }),
+                      t("attention.retried", { title: displayTitle(s) }),
+                    )
+                  }
+                >
+                  <Icon name="retry" className="sm" />
+                  {t("attention.retry")}
+                </button>
+              )}
+              {isArchivable(s) && (
+                <button className="btn" onClick={() => archive(st, s)}>
+                  {t("attention.archive")}
+                </button>
+              )}
+              <button className="btn" onClick={() => st.select(s.sessionId)}>{t("attention.open")}</button>
+            </Row>
+          );
+        })}
         {expiring.map((c) => {
           const days = Math.max(0, Math.ceil(((dateOf(c.expiresAt)?.getTime() ?? 0) - now.getTime()) / day));
           return (

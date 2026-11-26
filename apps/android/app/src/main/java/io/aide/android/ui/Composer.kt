@@ -17,10 +17,15 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +63,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
@@ -262,8 +270,29 @@ fun Composer(
                 }
             }
         }
+        val fieldInteraction = remember { MutableInteractionSource() }
+        val focused by fieldInteraction.collectIsFocusedAsState()
+        val boxShape = RoundedCornerShape(Radius.Lg)
+        val accentLineColor by animateColorAsState(
+            targetValue = when {
+                !enabled -> Color.Transparent
+                focused -> aide.accent
+                else -> aide.controlAccentLine
+            },
+            animationSpec = tween(Motion.Short, easing = Motion.EaseOut),
+            label = "composerAccent",
+        )
+        val accentLineWidth by animateDpAsState(if (focused && enabled) 2.dp else 1.dp, tween(Motion.Short, easing = Motion.EaseOut), label = "composerLineW")
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(aide.card).border(1.dp, aide.separator, RoundedCornerShape(20.dp)).padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp),
+            Modifier.fillMaxWidth().clip(boxShape).background(aide.card)
+                .border(1.dp, if (focused && enabled) aide.accent else aide.controlBorder, boxShape)
+                .drawBehind {
+                    if (enabled && accentLineColor != Color.Transparent) {
+                        val h = accentLineWidth.toPx()
+                        drawRect(accentLineColor, topLeft = Offset(0f, size.height - h), size = Size(size.width, h))
+                    }
+                }
+                .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             mentions?.let {
@@ -274,10 +303,11 @@ fun Composer(
                     files.forEach { d -> FileChip(d) { attach.remove(d) } }
                 }
             }
-            Box(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp)) {
                 if (value.isEmpty()) Text(if (commands.isNotEmpty()) t("Type / for commands", "输入 / 以使用命令") else placeholder, style = MaterialTheme.typography.bodyLarge, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 BasicTextField(
                     value, { onChange(it); hint = "" }, Modifier.fillMaxWidth().heightIn(max = 140.dp).semantics { contentDescription = placeholder }, enabled = enabled,
+                    interactionSource = fieldInteraction,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary), maxLines = 6,
                 )

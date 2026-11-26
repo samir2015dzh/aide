@@ -14,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,11 +30,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +70,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +79,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -175,12 +181,12 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                 Column {
                     when {
                         q != null -> QuestionPanel(model, s, q)
-                        isLive(s) -> Column(Modifier.background(aide.bar)) {
-                            Hairline()
-                            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        isLive(s) -> Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp).aideCard(RoundedCornerShape(Radius.Lg))) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                                 StatusDot(s)
                                 HSpace(8)
-                                Text(statusLine(s, world), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(statusLine(s, world), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                HSpace(8)
                                 TintedButton(onClick = { scope.launch { model.interrupt(s) } }, destructive = true) { Text(t("Interrupt", "中断")) }
                             }
                         }
@@ -203,6 +209,12 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
     ) { pad ->
         if (s != null && switching) SwitchSheet(model, s, open) { switching = false }
         if (s != null && settings) SettingsSheet(model, s) { settings = false }
+        val away by remember(list, items.size) {
+            derivedStateOf {
+                val last = list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                items.size > 4 && last in 0 until (items.size - 3)
+            }
+        }
         Box(Modifier.fillMaxSize().padding(pad)) {
             val outboxAll by model.outbox.collectAsState()
             val memoryOnly by model.outboxMemoryOnly.collectAsState()
@@ -243,6 +255,39 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                         }
                         item { Box(Modifier.heightIn(min = 8.dp)) }
                     }
+                }
+            }
+            val liveStreaming = s != null && isLive(s)
+            AnimatedVisibility(
+                away,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
+                enter = fadeIn(tween(Motion.Short)),
+                exit = fadeOut(tween(Motion.Short)),
+            ) {
+                Row(
+                    Modifier
+                        .shadow(8.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.16f), spotColor = Color.Black.copy(alpha = 0.16f))
+                        .clip(CircleShape)
+                        .background(aide.menu)
+                        .border(1.dp, aide.cardEdge, CircleShape)
+                        .pressable { scope.launch { if (items.isNotEmpty()) list.animateScrollToItem(items.size - 1) } }
+                        .padding(horizontal = 13.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (liveStreaming) Box(Modifier.size(7.dp).background(aide.accent, CircleShape))
+                    Text(
+                        if (liveStreaming) t("Streaming · Latest", "正在输出 · 回到底部") else t("Jump to latest", "回到底部"),
+                        style = IosType.Caption,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (liveStreaming) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        null,
+                        Modifier.size(16.dp),
+                        tint = if (liveStreaming) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -295,8 +340,12 @@ private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit,
         // Its model, to pick; the rest it runs with, told.
         chips = {
             if (a != null && a.models.isNotEmpty()) {
-                ModelChip(s.agent, a, chosen, ranHere = true) { chosen = it }
-                Text(s.effort, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ModelChip(s.agent, a, chosen, ranHere = true) { chosen = it }
+                    if (s.effort.isNotEmpty()) {
+                        Text(s.effort, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             } else Text(sessionParams(s), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         },
     )
@@ -620,10 +669,16 @@ private fun ToolsView(item: Item.Tools) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp).rotate(turn), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(6.dp))
-                Text(
-                    if (item.calls.size == 1) listOf(first.name, first.line).filter { it.isNotEmpty() }.joinToString(" · ") else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+                if (item.calls.size == 1 && first.line.isNotEmpty()) {
+                    Text(first.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(" · ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(first.line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                } else {
+                    Text(
+                        if (item.calls.size == 1) first.name else t("${item.calls.size} tool calls", "${item.calls.size} 次工具调用") + " · ${item.calls.last().name}",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             AnimatedVisibility(
                 open,
@@ -633,7 +688,13 @@ private fun ToolsView(item: Item.Tools) {
                 Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     item.calls.forEach { c ->
                         Hairline()
-                        Text(listOf(c.name, c.line).filter { it.isNotEmpty() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(c.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            if (c.line.isNotEmpty()) {
+                                Text(" · ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(c.line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
                         // The raw arguments, under the line, when the line is not all they say (#37), in the same block as the result.
                         if (c.summary.isNotBlank() && c.summary != c.line) {
                             Surface(color = aide.fill2, shape = RoundedCornerShape(Radius.Sm)) {

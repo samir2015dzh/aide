@@ -25,7 +25,11 @@
     "expires_other": "Access for “{{label}}” expires in {{count}} days",
     "expiresDetail": "After that it can’t use your machines, and its running tasks will be interrupted",
     "renew": "Renew…",
-    "open": "Open"
+    "open": "Open",
+    "retry": "Retry",
+    "retryPrompt": "Continue",
+    "retried": "Resumed “{{title}}”",
+    "archive": "Archive"
   },
   "map": {
     "title": "Connections",

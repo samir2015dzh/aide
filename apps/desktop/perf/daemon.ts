@@ -84,7 +84,11 @@ export async function startDaemon(socket: string): Promise<Daemon> {
       async *watch(_req, ctx) {
         const ch = channel<WatchResponse>(ctx.signal);
         screens.add(ch.push);
-        ctx.signal.addEventListener("abort", () => screens.delete(ch.push));
+        const beat = setInterval(() => ch.push(create(WatchResponseSchema, {})), 15_000);
+        ctx.signal.addEventListener("abort", () => {
+          screens.delete(ch.push);
+          clearInterval(beat);
+        });
         const first = page(50);
         yield create(WatchResponseSchema, {
           reset: true, status: w.status, machines: w.machines, clients: w.clients, projects: w.projects, devices: w.devices, sessions: first.sessions, next: first.next,

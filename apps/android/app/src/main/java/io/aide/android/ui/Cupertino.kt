@@ -492,36 +492,42 @@ private fun BlurBehind() {
 fun IosAlert(onDismissRequest: () -> Unit, title: String, actions: List<AlertAction>, message: String? = null, content: (@Composable ColumnScope.() -> Unit)? = null) {
     Dialog(onDismissRequest, DialogProperties(usePlatformDefaultWidth = false)) {
         BlurBehind()
+        val shown = remember { MutableTransitionState(false).apply { targetState = true } }
         val k = aide.elevated(isSystemInDarkTheme())
         val shape = RoundedCornerShape(Radius.Xl)
         CompositionLocalProvider(LocalAideTokens provides k) {
-            Column(Modifier.widthIn(min = 296.dp, max = 340.dp).clip(shape).background(k.menu).border(1.dp, k.cardEdge, shape).padding(20.dp)) {
-                Column(
-                    Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()).padding(bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(title, style = IosType.Title3)
-                    message?.let { Text(it, style = IosType.Subheadline, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    content?.let { c ->
-                        Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CompositionLocalProvider(LocalTextStyle provides IosType.Subheadline) { c() }
+            AnimatedVisibility(
+                shown,
+                enter = scaleIn(tween(Motion.Medium, easing = Motion.EaseOut), initialScale = 0.96f) + fadeIn(tween(Motion.Short)),
+            ) {
+                Column(Modifier.widthIn(min = 296.dp, max = 340.dp).clip(shape).background(k.menu).border(1.dp, k.cardEdge, shape).padding(20.dp)) {
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()).padding(bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(title, style = IosType.Title3)
+                        message?.let { Text(it, style = IosType.Subheadline, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        content?.let { c ->
+                            Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                CompositionLocalProvider(LocalTextStyle provides IosType.Subheadline) { c() }
+                            }
                         }
                     }
-                }
-                @Composable fun Btn(a: AlertAction, m: Modifier) {
-                    when (a.role) {
-                        AlertRole.Preferred -> FilledButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
-                        AlertRole.Destructive -> FilledButton(a.onClick, m, enabled = a.enabled, destructive = true) { Text(a.text) }
-                        AlertRole.Cancel, AlertRole.Default -> TintedButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
+                    @Composable fun Btn(a: AlertAction, m: Modifier) {
+                        when (a.role) {
+                            AlertRole.Preferred -> FilledButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
+                            AlertRole.Destructive -> FilledButton(a.onClick, m, enabled = a.enabled, destructive = true) { Text(a.text) }
+                            AlertRole.Cancel, AlertRole.Default -> TintedButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
+                        }
                     }
-                }
-                if (actions.size == 2) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Btn(actions[0], Modifier.weight(1f))
-                        Btn(actions[1], Modifier.weight(1f))
+                    if (actions.size == 2) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Btn(actions[0], Modifier.weight(1f))
+                            Btn(actions[1], Modifier.weight(1f))
+                        }
+                    } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        actions.forEach { a -> Btn(a, Modifier.fillMaxWidth()) }
                     }
-                } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    actions.forEach { a -> Btn(a, Modifier.fillMaxWidth()) }
                 }
             }
         }
