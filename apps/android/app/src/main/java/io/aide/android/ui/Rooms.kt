@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.CreateRoomMember
@@ -59,7 +64,12 @@ import io.aide.android.api.RoomMessage
 import io.aide.android.api.RoomPatch
 import io.aide.android.model.AppModel
 import io.aide.android.model.Bot
+import io.aide.android.model.DELIVERY_FAILED
+import io.aide.android.model.DELIVERY_REFUSED
+import io.aide.android.model.reachedNobody
+import io.aide.android.model.resendable
 import io.aide.android.model.roster
+import io.aide.android.model.timeLines
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.delay
@@ -204,7 +214,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                             r.members.forEach { m ->
                                 val b = bots.firstOrNull { it.key == m.botKey }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (b != null) BotFace(b, 22, toneDotColor(botTone(b))) else Box(Modifier.size(22.dp).clip(CircleShape).background(aide.inset))
+                                    if (b != null) BotFace(b, 22, dot = true) else Box(Modifier.size(22.dp).clip(CircleShape).background(aide.inset))
                                     HSpace(5)
                                     Text(m.name, style = MaterialTheme.typography.bodySmall)
                                     if (b != null) { HSpace(4); Text(b.state.word, style = MaterialTheme.typography.labelSmall, color = aide.faint) }
@@ -233,13 +243,20 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                 if (msgs.isEmpty()) item(key = "none") {
                     Text(when {
                         r.shadow -> t("No agent messages recorded yet.", "暂时还没有记录到 agent 之间的消息。")
-                        mode == LIGHT -> t("Light chat: quick back-and-forth without heavy task context.", "轻聊模式：快速交流，不拖带长上下文。")
+                        mode == LIGHT -> t("Light chat: the bots you name answer; name none and every member answers briefly.", "轻聊：@ 谁谁回；没 @ 时每个成员都简短回一句。")
                         table -> t("Say something: the ones you name (else the first member) act, and the bots hand on.", "说点什么：被 @ 的（没 @ 时第一个成员）先动，bot 之间会接力。")
                         else -> t("Say something: the bots you name act.", "说点什么：@ 谁，谁就会动。")
                     }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
                 val byId = msgs.associateBy { it.messageId }
-                msgs.forEach { m -> item(key = "m-${m.messageId}", contentType = "chat") { RoomMessageView(model, r, m, byId[m.inReplyTo], ::nameOf, openSession) } }
+                // A time line before the first message and after a pause (工单 #132 P28), as the session page's.
+                val lines = timeLines(msgs, Instant.now())
+                // One of the owner's that reached nobody, sent again as it was: its text and whom it named (工单 #139 P02).
+                val resend: (RoomMessage) -> Unit = { m -> scope.launch { model.postRoomMessage(r, m.text, UUID.randomUUID().toString(), m.mentions, lightChat = mode == LIGHT)?.let { again -> msgs = msgs.filter { it.messageId != again.messageId } + again }; read() } }
+                msgs.forEach { m ->
+                    lines[m.messageId]?.let { line -> item(key = "tl-${m.messageId}", contentType = "time-line") { TimeLineRow(line) } }
+                    item(key = "m-${m.messageId}", contentType = "chat") { RoomMessageView(model, r, m, byId[m.inReplyTo], ::nameOf, openSession, resend) }
+                }
                 if (waiting > 0) item(key = "waiting") {
                     Text(t("$waiting replies are on their way: they come in as soon as the machine keeping the room is back", "还有 $waiting 条回复在路上：负责房间的机器一上线就进房间"), style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
                 }
@@ -259,7 +276,7 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
 }
 
 @Composable
-private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo: RoomMessage?, nameOf: (String) -> String, openSession: (String) -> Unit) {
+private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo: RoomMessage?, nameOf: (String) -> String, openSession: (String) -> Unit, resend: (RoomMessage) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     if (m.system) {
@@ -279,60 +296,59 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo:
         }
         return
     }
-    val mine = m.from == "owner"
+    val mine = !r.shadow && m.from == "owner"
     val member = r.members.firstOrNull { it.botKey == m.from }
-    val bubbleShape = RoundedCornerShape(
-        topStart = Radius.Bubble, topEnd = Radius.Bubble,
-        bottomStart = if (mine) Radius.Bubble else Radius.BubbleTail,
-        bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
-    )
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    val now = Instant.now()
+    val whenText = m.at.takeIf { it.isNotEmpty() }?.let { io.aide.android.model.agoText(io.aide.android.model.instant(it), now) }
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (!mine) {
             val head = buildString {
                 append(m.fromName)
                 if (r.shadow && m.toName.isNotEmpty()) append(" → ${m.toName}")
-                if (r.shadow && m.at.isNotEmpty()) append(" · ${io.aide.android.model.agoText(io.aide.android.model.instant(m.at), Instant.now())}")
+                if (whenText != null) append(" · $whenText")
                 if (m.lightChat) append(t(" · Light", " · 轻聊"))
                 if (m.late) append(t(" · came after stop", " · 停止后到达"))
             }
             Text(head, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (mine && (m.mentions.isNotEmpty() || m.lightChat)) {
+        if (mine) {
             val meta = listOfNotNull(
                 if (m.lightChat) t("Light chat", "轻聊") else null,
                 m.mentions.takeIf { it.isNotEmpty() }?.joinToString(" ") { "@" + nameOf(it) },
+                whenText,
             ).joinToString(" · ")
-            Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-            .background(if (mine) aide.bubble else aide.card, bubbleShape)
-            .then(if (mine) Modifier else Modifier.border(1.dp, aide.cardEdge, bubbleShape))
-            .padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (m.subject.isNotEmpty()) {
-                    Text(m.subject, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = if (mine) aide.onBubble else MaterialTheme.colorScheme.onSurface)
-                }
-                if (m.inReplyTo.isNotEmpty()) {
-                    val snippet = repliedTo?.let { "${it.fromName}: ${it.text.replace('\n', ' ').take(48)}" } ?: m.inReplyTo.take(12)
-                    Text(
-                        t("Reply to $snippet", "回复 $snippet"),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (mine) aide.onBubble.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (mine) {
-                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = aide.onBubble)
-                } else {
+        if (mine) {
+            OwnBubble(m.text, reachedNobody(m, r.shadow))
+        } else if (r.shadow) {
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(aide.card, RoundedCornerShape(Radius.Lg))
+                    .border(1.dp, aide.cardEdge, RoundedCornerShape(Radius.Lg))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (m.subject.isNotEmpty()) {
+                        Text(m.subject, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    if (m.inReplyTo.isNotEmpty()) {
+                        val snippet = repliedTo?.let { "${it.fromName}: ${it.text.replace('\n', ' ').take(48)}" } ?: m.inReplyTo.take(12)
+                        Text(
+                            t("Reply to $snippet", "回复 $snippet"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     MarkdownText(m.text, color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
                 }
             }
+        } else {
+            MarkdownText(m.text, Modifier.fillMaxWidth().padding(vertical = 2.dp), color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
         }
-        if (mine) m.deliveries.forEach { d ->
-            val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)
-            Text(words, style = MaterialTheme.typography.labelSmall, color = if (bad) Warning else aide.faint)
-        }
+        if (mine) OwnDeliveries(m, r.shadow, { nameOf(it) }) { resend(m) }
         if (!mine && !r.shadow && m.deliveries.isNotEmpty()) Text(t("handed on to ${m.deliveries.joinToString(", ") { nameOf(it.botKey) }}", "转交给 ${m.deliveries.joinToString("、") { nameOf(it.botKey) }}"), style = MaterialTheme.typography.labelSmall, color = aide.faint)
         if (!mine && !r.shadow && member?.sessionId?.isNotEmpty() == true) PlainButton(onClick = { openSession(member.sessionId) }) { Text(t("Open its session", "打开它的会话")) }
         if (!r.shadow) m.asks.forEach { k ->
@@ -343,6 +359,57 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo:
                 }) { Text(t("Hand on to ${nameOf(k)}", "转给 ${nameOf(k)}")) }
             }
         }
+    }
+}
+
+/** A time line in a timeline (the desktop's TimeLine): centred, quiet, "今天 18:22". */
+@Composable
+internal fun TimeLineRow(text: String) {
+    Text(
+        text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp),
+    )
+}
+
+/**
+ * The owner's message in a timeline: its bubble, or, when it reached nobody (every delivery failed or refused), the
+ * failed one — the desktop's `.chat-msg.mine.failed`: a red-tinted bubble with a red edge, never the ordinary blue.
+ */
+@Composable
+internal fun OwnBubble(text: String, failed: Boolean) {
+    val shape = RoundedCornerShape(topStart = Radius.Bubble, topEnd = Radius.Bubble, bottomStart = Radius.Bubble, bottomEnd = Radius.BubbleTail)
+    Box(
+        Modifier.fillMaxWidth(0.82f).wrapContentWidth(Alignment.End)
+            .then(if (failed) Modifier.background(aide.redSubtle, shape).border(1.dp, aide.red, shape) else Modifier.background(aide.bubble, shape))
+            .semantics { if (failed) stateDescription = t("Not delivered", "没发出去") }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = if (failed) MaterialTheme.colorScheme.onSurface else aide.onBubble)
+    }
+}
+
+/**
+ * What became of the owner's message for each it was for (the desktop's DeliveryLine): a failed or refused one with its
+ * mark, in red when the message reached nobody; and, when one failed, sending it again from here (工单 #139 P02).
+ */
+@Composable
+internal fun OwnDeliveries(m: RoomMessage, shadow: Boolean, nameOf: (String) -> String, resend: () -> Unit) {
+    val failed = reachedNobody(m, shadow)
+    m.deliveries.forEach { d ->
+        val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)
+        val color = if (!bad) aide.faint else if (failed) aide.redText else Warning
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (d.state == DELIVERY_FAILED || d.state == DELIVERY_REFUSED) {
+                Icon(Icons.Filled.Warning, null, Modifier.size(12.dp), tint = color)
+                HSpace(4)
+            }
+            Text(words, style = MaterialTheme.typography.labelSmall, color = color)
+        }
+    }
+    if (resendable(m, shadow)) PlainButton(onClick = resend, contentPadding = PaddingValues(start = 10.dp, top = 6.dp, bottom = 6.dp)) {
+        Icon(Icons.Filled.Refresh, null, Modifier.size(14.dp))
+        HSpace(4)
+        Text(t("Send again", "重发"))
     }
 }
 
@@ -499,7 +566,7 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically) {
                             RoundCheck(on)
                             HSpace(10)
-                            BotFace(b, 28, toneColor(botTone(b)))
+                            BotFace(b, 28, dot = true)
                             HSpace(10)
                             Text(b.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                             Text(b.state.word, style = MaterialTheme.typography.labelSmall, color = aide.faint)

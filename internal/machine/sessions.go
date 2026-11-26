@@ -107,6 +107,9 @@ type Sessions struct {
 	log       *slog.Logger
 	machineID string
 	dataDir   string
+	// sending: the client_message_ids being delivered now (holdSend).
+	sendMu  sync.Mutex
+	sending map[string]chan struct{}
 	// archives: what the agents' own apps said of archiving at the last look (archivesync.go).
 	archives archiveSync
 	provider func(name string) provider.Provider // built in or custom; nil: none by that name
@@ -508,6 +511,11 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 		projectMode = proj.DSHPreset
 	}
 	set.Model, set.Effort, set.Mode = cmp.Or(req.Model, set.Model), cmp.Or(req.Effort, set.Effort), cmp.Or(req.Mode, projectMode, set.Mode)
+	if req.Agent == "antigravity" {
+		// Aide's gate is its only enforcement: no mode is the default it
+		// advertises (workspace-write), recorded as the session's mode.
+		set.Mode = cmp.Or(set.Mode, info.Own.Mode)
+	}
 	if err := checkSettings(req.Agent, info, req.Model, req.Effort, cmp.Or(set.Model, info.Own.Model)); err != nil {
 		return nil, err
 	}
@@ -715,9 +723,18 @@ func (s *Sessions) Send(ctx context.Context, p *Principal, id, text string, atts
 	return s.SendWithID(ctx, p, id, text, atts, "", 0)
 }
 
+// maxClientMessageID bounds SendMessageRequest.client_message_id (a UUID
+// is 36 characters).
+const maxClientMessageID = 128
+
 // SendWithID delivers a message to a session, deduplicating weak-network
-// resends that carry the same non-empty clientMsgID (工单 #115).
+// resends that carry the same non-empty clientMsgID (工单 #115): a resend
+// of one already taken saves nothing and starts nothing, and one that
+// comes while the first is still being delivered waits for its outcome.
 func (s *Sessions) SendWithID(ctx context.Context, p *Principal, id, text string, atts []*sessionv1.Attachment, clientMsgID string, clientSeq uint64) (*sessionv1.Session, error) {
+	if len(clientMsgID) > maxClientMessageID {
+		return nil, cerr(connect.CodeInvalidArgument, "client_message_id is %d bytes; at most %d", len(clientMsgID), maxClientMessageID)
+	}
 	l, _, err := s.find(p, id, true)
 	if err != nil {
 		return nil, err
@@ -735,12 +752,13 @@ func (s *Sessions) SendWithID(ctx context.Context, p *Principal, id, text string
 	if err != nil {
 		return nil, err
 	}
-	m, err := newMessage(s.attachmentsDir(id), expanded, atts)
-	if err != nil {
-		return nil, fmt.Errorf("saving attachments: %w", err)
-	}
-	m.by, m.byName = p.ID(), p.Name()
 	if clientMsgID != "" {
+		release, err := s.holdSend(ctx, p.ID()+"\x00"+id+"\x00"+clientMsgID)
+		if err != nil {
+			return nil, err
+		}
+		defer release()
+		// Before any file is saved: a resend leaves nothing behind.
 		dup, err := s.st.ReserveSentMessage(p.ID(), id, clientMsgID, clientSeq)
 		if err != nil {
 			return nil, err
@@ -751,9 +769,27 @@ func (s *Sessions) SendWithID(ctx context.Context, p *Principal, id, text string
 			return s.toProto(l.row), nil
 		}
 	}
-	if _, err := s.take(ctx, l, m); err != nil {
+	m, err := newMessage(s.attachmentsDir(id), expanded, atts)
+	if err != nil {
 		if clientMsgID != "" {
 			s.st.ForgetSentMessage(p.ID(), id, clientMsgID)
+		}
+		return nil, fmt.Errorf("saving attachments: %w", err)
+	}
+	m.by, m.byName = p.ID(), p.Name()
+	if clientMsgID != "" {
+		m.clientIDs = []string{clientMsgID}
+	}
+	delivered, err := s.take(ctx, l, m)
+	if err != nil {
+		// Not taken: nothing of it stays, and a resend may try again. Taken
+		// but its turn failed to start: the session recorded it, so a
+		// resend is the same message and is not taken twice.
+		if delivered == "" {
+			m.dropFiles()
+			if clientMsgID != "" {
+				s.st.ForgetSentMessage(p.ID(), id, clientMsgID)
+			}
 		}
 		return nil, err
 	}
@@ -761,6 +797,38 @@ func (s *Sessions) SendWithID(ctx context.Context, p *Principal, id, text string
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return s.toProto(l.row), nil
+}
+
+// holdSend lets one send of a client_message_id (key) be delivered at a
+// time: another with the same key waits until the first is done, and
+// then finds it taken or, if it failed, tries itself. The caller calls
+// the returned release when done. Waiting is cut short by ctx with a
+// retryable error.
+func (s *Sessions) holdSend(ctx context.Context, key string) (func(), error) {
+	for {
+		s.sendMu.Lock()
+		if s.sending == nil {
+			s.sending = map[string]chan struct{}{}
+		}
+		busy, ok := s.sending[key]
+		if !ok {
+			done := make(chan struct{})
+			s.sending[key] = done
+			s.sendMu.Unlock()
+			return func() {
+				s.sendMu.Lock()
+				delete(s.sending, key)
+				s.sendMu.Unlock()
+				close(done)
+			}, nil
+		}
+		s.sendMu.Unlock()
+		select {
+		case <-busy:
+		case <-ctx.Done():
+			return nil, reason.New(connect.CodeUnavailable, "send_in_progress", "the same message is still being delivered; try again")
+		}
+	}
 }
 
 // take delivers a message by the session's state: a new turn when idle,
@@ -789,7 +857,7 @@ func (s *Sessions) take(ctx context.Context, l *live, m message) (string, error)
 		switch l.row.Status {
 		case sessionv1.SessionStatus_SESSION_STATUS_WAITING_INPUT: // the answer to the agent's question
 			l.mu.Unlock()
-			if s.answerWithText(l, m.by, m.answerText()) {
+			if s.answerWithText(l, m.by, m.answerText(), m.clientIDs) {
 				return "answer", nil
 			}
 			continue // answered meanwhile
@@ -928,13 +996,14 @@ func (s *Sessions) startAsked(l *live) {
 
 // askedJSON is a message waiting for its turn, as the store keeps it.
 type askedJSON struct {
-	Text   string   `json:"text"`
-	Files  [][]byte `json:"files,omitempty"` // AttachmentInfo
-	By     string   `json:"by"`
-	ByName string   `json:"by_name,omitempty"`
-	Conv   string   `json:"conv,omitempty"`
-	Quiet  bool     `json:"quiet,omitempty"`
-	Answer string   `json:"answer,omitempty"`
+	Text      string   `json:"text"`
+	Files     [][]byte `json:"files,omitempty"` // AttachmentInfo
+	By        string   `json:"by"`
+	ByName    string   `json:"by_name,omitempty"`
+	Conv      string   `json:"conv,omitempty"`
+	Quiet     bool     `json:"quiet,omitempty"`
+	Answer    string   `json:"answer,omitempty"`
+	ClientIDs []string `json:"client_ids,omitempty"`
 }
 
 func askedKey(id string) string { return "asked/" + id }
@@ -944,7 +1013,7 @@ func askedKey(id string) string { return "asked/" + id }
 func (s *Sessions) saveAsked(l *live) {
 	out := []askedJSON{}
 	for _, m := range l.asked {
-		a := askedJSON{Text: m.text, By: m.by, ByName: m.byName, Conv: m.conv, Quiet: m.quiet, Answer: m.answer}
+		a := askedJSON{Text: m.text, By: m.by, ByName: m.byName, Conv: m.conv, Quiet: m.quiet, Answer: m.answer, ClientIDs: m.clientIDs}
 		for _, f := range m.files {
 			b, _ := proto.Marshal(f)
 			a.Files = append(a.Files, b)
@@ -967,7 +1036,7 @@ func (s *Sessions) loadAsked(id string) []message {
 	json.Unmarshal(b, &in)
 	var out []message
 	for _, a := range in {
-		m := message{text: a.Text, by: a.By, byName: a.ByName, conv: a.Conv, quiet: a.Quiet, answer: a.Answer}
+		m := message{text: a.Text, by: a.By, byName: a.ByName, conv: a.Conv, quiet: a.Quiet, answer: a.Answer, clientIDs: a.ClientIDs}
 		for _, f := range a.Files {
 			info := &sessionv1.AttachmentInfo{}
 			if proto.Unmarshal(f, info) == nil {

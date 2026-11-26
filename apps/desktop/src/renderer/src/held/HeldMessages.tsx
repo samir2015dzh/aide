@@ -64,12 +64,8 @@ export function HeldMessages() {
   const reason = (r: string) =>
     r === "new_agent" ? t("held.reason_new_agent") : r === "long_chain" ? t("held.reason_long_chain") : r === "boundary" ? t("held.reason_boundary") : r;
   return (
-    <>
-      <div className="ctool drag">
-        <div className="ctitle" />
-      </div>
-      <div className="dsh">
-        <section className="dsh-view held" aria-label={t("held.title")}>
+    <div className="dsh">
+      <section className="dsh-view held" aria-label={t("held.title")}>
           <h1>{t("held.title")}</h1>
           <p className="dsh-note">{t("held.note")}</p>
           {error && <p className="dsh-note warn">{error}</p>}
@@ -110,6 +106,5 @@ export function HeldMessages() {
           </ul>
         </section>
       </div>
-    </>
   );
 }

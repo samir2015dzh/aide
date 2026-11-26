@@ -49,7 +49,7 @@ export function linkShown(v: StateView): boolean {
   return v.link !== SessionLink.LIVE && v.link !== SessionLink.UNSPECIFIED;
 }
 
-/** The session's state as a small dot: orange waits on you, red failed, green runs. */
+/** The session's state as a small dot: orange waits on you, red failed, blue runs, green completed, hollow archived, grey unknown. */
 export function StatusDot({ s }: { s: Session }) {
   const { t } = useTranslation("common");
   const c =
@@ -57,6 +57,7 @@ export function StatusDot({ s }: { s: Session }) {
     : isFailed(s) ? "c"
     : s.status === SessionStatus.RUNNING ? "r"
     : isActive(s) ? "p"
+    : s.status === SessionStatus.IDLE ? "d"
     : s.status === SessionStatus.ARCHIVED ? "a"
     : "i";
   return <span className={`sdot ${c}`} role="img" aria-label={isFailed(s) && s.status !== SessionStatus.CRASHED ? t("status.failed") : statusTitle(s.status)} />;

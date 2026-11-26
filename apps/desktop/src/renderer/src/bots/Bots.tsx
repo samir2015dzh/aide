@@ -7,12 +7,13 @@ import type { Machine } from "@aide/proto/local";
 import { RoomDeliveryState, RoomMode, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
-  allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stuckWhy, updatedDate, whileReconnecting, withContext,
-  type Bot, type ConvParams, type Roster, stateDetail } from "@aide/core";
+  allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, isActive, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stateDetail, stuckWhy, updatedDate, whileReconnecting, withContext,
+  type Bot, type ConvParams, type Roster,
+} from "@aide/core";
 import { botLook, botMood, botSeed, botSessions, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
-import { ClaudeLogin, claudeLoginWaiting, connDot } from "../Connections";
+import { ClaudeLogin, claudeLoginWaiting, botDot } from "../Connections";
 import { Face, grantApp, StateText, StatusDot } from "../components";
 import { Icon } from "../icons";
 import { modelOptions } from "../modelOptions";
@@ -111,7 +112,7 @@ export function BotFace({ b, size = 28, dot = false, still = false, edit = false
   const face = (
     <span className="bav" style={{ width: size, height: size }} aria-hidden="true">
       <Face seed={botSeed(b)} look={botLook(b)} mood={mood} size={size} app={size >= 34 ? b.agent || (b.client && grantApp(b.client)) : undefined} still={still} follow={edit} />
-      {dot && <i className={`dotc ${connDot(b.state.state)}`} />}
+      {dot && <i className={`dotc ${botDot(b)}`} />}
     </span>
   );
   if (!edit) return face;
@@ -154,11 +155,12 @@ export function PersonaFace({ b, p, size }: { b: Bot; p: Persona; size: number }
   );
 }
 
-/** Its state as a dot and a word, the same words as everywhere (工单 #56). */
+/** Its state as a dot and a word, the same words as everywhere (工单 #56 / #135 P25). */
 export function BotPill({ b }: { b: Bot }) {
+  const d = botDot(b);
   return (
-    <span className="bot-pill" data-state={b.state.state} data-usable={b.state.usable} title={b.state.line}>
-      <i className={`dotc ${connDot(b.state.state)}`} />
+    <span className="bot-pill" data-state={b.state.state} data-usable={b.state.usable} data-dot={d} title={b.state.line}>
+      <i className={`dotc ${d}`} />
       {b.state.word}
     </span>
   );
@@ -267,7 +269,7 @@ export function SidebarRoster() {
             <span className="bot-t">
               <span className="bot-l1">
                 <b>{short ? b.shortName : b.name}</b>
-                <span className="bot-word" data-usable={b.state.usable}>{b.state.word}</span>
+                <span className="bot-word" data-usable={b.state.usable} data-dot={botDot(b)}>{b.state.word}</span>
               </span>
               {(b.doing || stateDetail(b.state)) && <span className="bot-l2">{b.doing || stateDetail(b.state)}</span>}
             </span>
@@ -583,13 +585,24 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
       </div>
     );
   };
+  const curArchived = current?.status === SessionStatus.ARCHIVED;
+  const curLive = !!current && (isActive(current) || current.status === SessionStatus.WAITING_INPUT);
+  const curPrefixKey = curArchived ? "conv.archivedIs" : curLive ? "conv.currentIs" : "conv.selectedIs";
+  const countDetail = [
+    convs.open.length > 0 ? t("conv.partOpen", { count: convs.open.length }) : "",
+    convs.archived.length > 0 ? t("conv.partArchived", { count: convs.archived.length }) : "",
+    convs.others.length > 0 ? t("conv.partOthers", { count: convs.others.length }) : "",
+  ].filter(Boolean).join(" · ");
+  // The archived stay apart in their group, folded (工单 #66/#67 rule 6); the count under the card says how many
+  // there are of each (#135 P33), so the list need not unfold to match it.
+  const toggleList = () => setListOpen((v) => !v);
   return (
     <main className="bot-main">
-      {/* 对话条（DESIGN-107 §0.5c #4A / §4）：当前对话 + 「全部对话」浮层入口 + 「开启新对话」 */}
+      {/* 对话条（DESIGN-107 §0.5c #4A / #135 P03/P04/P33）：前缀与当前会话真实状态一致，计数与列表口径对齐 */}
       <div className="conv-head" role="status">
         {current ? (
           <>
-            <span className="conv-head-k">{t("conv.currentIs")}</span>
+            <span className="conv-head-k">{t(curPrefixKey)}</span>
             <button className="link conv-head-t" onClick={() => st.select(current.sessionId)}>{displayTitle(current)}</button>
             <span className="muted">{t("conv.startedAt", { when: listTime(new Date(Number(current.createdAt?.seconds ?? 0n) * 1000), now) })}</span>
           </>
@@ -600,7 +613,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
           className={`btn sm conv-all-btn ${listOpen ? "primary" : ""}`}
           aria-expanded={listOpen}
           aria-haspopup="dialog"
-          onClick={() => setListOpen((v) => !v)}
+          onClick={toggleList}
         >
           {totalConvs > 0 ? t("bots.allConvsCount", { count: totalConvs }) : t("bots.allConvs")}
         </button>
@@ -635,31 +648,36 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
       )}
       <div className="bot-stream" role="list" aria-label={t("conv.list")}>
         {current ? (
-          <div className="conv-current-card conv-row cur" role="listitem" aria-current="true">
-            <div className="conv-current-top">
-              <StatusDot s={current} />
-              <b>{displayTitle(current)}</b>
-              <span className="conv-badge">{t("conv.current")}</span>
-            </div>
-            <div className="conv-current-meta">
-              <span><StateText s={current} /></span>
-              <span>· {listTime(updatedDate(current), now)}</span>
-              {current.projectId && <span>· {current.projectId}</span>}
-              {stuck && stuck !== "archived" && <em className="conv-stuck">· {t("conv.readOnly")}</em>}
-            </div>
-            <div className="conv-current-acts">
-              <button className="btn sm primary" onClick={() => st.select(current.sessionId)}>
-                <Icon name="expand" className="sm" />
-                {t("conv.open")}
-              </button>
-              {/* Unarchiving is where the owner meets it, under the composer (工单 #137 P13): not here too. */}
-              {current.status !== SessionStatus.ARCHIVED && (
-                <button className="btn sm" onClick={() => void archive(current, true)}>
-                  {t("conv.archive")}
+          <>
+            <div className="conv-current-card conv-row cur" role="listitem" aria-current="true">
+              <div className="conv-current-top">
+                <StatusDot s={current} />
+                <b>{displayTitle(current)}</b>
+                {!curArchived && <span className="conv-badge">{t("conv.current")}</span>}
+              </div>
+              <div className="conv-current-meta">
+                <span><StateText s={current} /></span>
+                <span>· {listTime(updatedDate(current), now)}</span>
+                {current.projectId && <span>· {current.projectId}</span>}
+                {stuck && stuck !== "archived" && <em className="conv-stuck">· {t("conv.readOnly")}</em>}
+              </div>
+              <div className="conv-current-acts">
+                <button className="btn sm primary" onClick={() => st.select(current.sessionId)}>
+                  <Icon name="expand" className="sm" />
+                  {t("conv.open")}
                 </button>
-              )}
+                {/* Unarchiving is where the owner meets it, under the composer (工单 #137 P13): not here too. */}
+                {!curArchived && (
+                  <button className="btn sm" onClick={() => void archive(current, true)}>
+                    {t("conv.archive")}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+            {totalConvs > 1 && countDetail && (
+              <div className="conv-count-hint">{t("conv.countHint", { total: totalConvs, detail: countDetail })}</div>
+            )}
+          </>
         ) : (
           <div className="bot-empty">{t("bots.noWork", { name: b.name })}</div>
         )}
@@ -790,9 +808,14 @@ function DirectChat({ b }: { b: Bot }) {
     }
   };
   const toggleMode = (nextLight: boolean) => {
+    const was = light;
     setLight(nextLight);
     if (room) {
-      local.updateRoom({ machineId: room.hostMachineId, room: { roomId: room.roomId, mode: nextLight ? RoomMode.LIGHT : RoomMode.MANUAL } }).then(setRoom, () => {});
+      // Not switched: why is said by the composer, and the mode shown goes back (审计 I).
+      local.updateRoom({ machineId: room.hostMachineId, room: { roomId: room.roomId, mode: nextLight ? RoomMode.LIGHT : RoomMode.MANUAL } }).then(setRoom, (e) => {
+        setLight(was);
+        setState({ kind: "error", text: errorText(e) });
+      });
     }
   };
   const send = async () => {
@@ -835,6 +858,7 @@ function DirectChat({ b }: { b: Bot }) {
                 setRoom(picked);
                 setFresh(picked);
                 setLight(picked.mode === RoomMode.LIGHT);
+                setState({ kind: "idle" });
               }
             }}
             options={directRooms.map((r) => ({ value: r.roomId, label: r.name }))}

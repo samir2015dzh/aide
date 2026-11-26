@@ -448,7 +448,8 @@ data class QueryWorkResponse(val sessions: List<SessionCount> = emptyList(), val
     val sha256: String = "",
     val image: Boolean = false,
 )
-@Serializable data class UserMessage(val text: String = "", val attachments: List<AttachmentInfo> = emptyList(), val from: String = "", val fromName: String = "")
+/** clientMessageIds: the sends it records (SendMessageRequest.clientMessageId), for the outbox (工单 #115). */
+@Serializable data class UserMessage(val text: String = "", val attachments: List<AttachmentInfo> = emptyList(), val from: String = "", val fromName: String = "", val clientMessageIds: List<String> = emptyList())
 @Serializable data class AgentMessage(val text: String = "")
 @Serializable data class AgentDraft(val text: String = "", val whole: Boolean = false)
 /** title: the line it shows by when summary is its raw arguments (a session read from DSH's or Claude Desktop's records). */
@@ -457,7 +458,7 @@ data class QueryWorkResponse(val sessions: List<SessionCount> = emptyList(), val
 @Serializable data class TurnCompleted(val result: String = "", val isError: Boolean = false, val commit: String = "", val failure: Failure? = null)
 @Serializable data class ErrorEvent(val message: String = "", val failure: Failure? = null)
 @Serializable data class QuestionAsked(val question: Question? = null)
-@Serializable data class QuestionResolved(val questionId: String = "", val resolution: String = "", val by: String = "", val answers: List<Answer> = emptyList())
+@Serializable data class QuestionResolved(val questionId: String = "", val resolution: String = "", val by: String = "", val answers: List<Answer> = emptyList(), val clientMessageIds: List<String> = emptyList())
 @Serializable data class MessageReceived(val messageId: String = "", val from: String = "", val fromName: String = "", val text: String = "")
 @Serializable data class RolledBack(val turn: Int = 0, val lastTurn: Int = 0, val by: String = "")
 @Serializable data class MessageSent(val messageId: String = "", val to: String = "", val toName: String = "", val text: String = "")

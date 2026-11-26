@@ -1,9 +1,10 @@
 /* A session's machine, where its title is, and its group in a list (MachineTag.tsx): only while there are several. */
 .mtag{display:inline-flex;align-items:center;flex:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;color:var(--l1);background:var(--fill2);vertical-align:middle}
 .mtag.here{color:var(--accent);background:var(--fill)}
-/* A session page's bar: its title line (the name alone), then its machine right after it, the rest of the bar's width theirs. */
+/* A session page's bar: agent logo, title, agent/project meta and machine tag, with action buttons flush right. */
 .ctitle-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
 .ctitle-wrap>.ctitle{flex:0 1 auto}
+.ctool-meta{font-size:12px;color:var(--l2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
 /* Where a message or a take-over goes, above the way to write it. */
 .mto{margin:0 0 6px;font-size:12px;color:var(--l2)}
 /* A list's group of one machine's sessions. */

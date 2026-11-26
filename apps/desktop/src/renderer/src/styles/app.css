@@ -85,10 +85,11 @@ html.vibrant .grp-h{position:static;background:transparent}
 html[data-platform=win]{--caption:calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 138px)))}
 .tl-room{width:68px;flex:none}
 html[data-platform=win] .tl-room{display:none}
-html[data-platform=win] .ctool{padding-right:calc(var(--caption) + 8px)}
 input,textarea,.sel-text{user-select:text;-webkit-user-select:text}
-/* Fluent 键盘焦点环：2px 间隔 + 2px 主蓝环，跟随圆角 */
-:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+/* Fluent 键盘焦点环：2px 间隔 + 2px 主蓝环，跟随圆角（#109 / 审计 K）。
+   用 outline 而不是 box-shadow：按钮、分段控件等组件自己的 box-shadow（.btn、.btn.primary、.seg button.on …）
+   层叠在后、优先级更高，会把 box-shadow 焦点环整个盖掉；outline 与它们互不影响，组件的阴影也照常保留。 */
+:focus-visible{outline:2px solid var(--focus-stroke);outline-offset:2px}
 @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @keyframes page-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes pill-in{from{opacity:0;transform:scaleY(.35)}to{opacity:1;transform:scaleY(1)}}
@@ -149,7 +150,10 @@ button{font:inherit;color:inherit}
 .kbd{font-size:11.5px;color:var(--l2);letter-spacing:.04em}
 .dotc{width:8px;height:8px;border-radius:50%;background:var(--color-presence-off);flex:none;display:inline-block}
 .dotc.on{background:var(--green-fill)}
+.dotc.ready{background:var(--color-fluent-blue)}
 .dotc.warn{background:var(--orange)}
+.dotc.bad{background:var(--red)}
+.dotc.checking{background:transparent;box-shadow:inset 0 0 0 1.5px var(--color-fluent-blue)}
 .mono{font-family:var(--mono)}
 :where(code,pre,kbd,.mono,.cblock,.tool .cmd,.tool .out){font-variation-settings:normal;font-weight:400}
 :where(input,textarea,select){font-family:var(--font);font-variation-settings:inherit}
@@ -165,7 +169,7 @@ button{font:inherit;color:inherit}
 .chip .ic{width:13px;height:13px;color:var(--l2)}
 /* status glyphs */
 .sdot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block;position:relative}
-.sdot.w{background:var(--orange)}.sdot.c{background:var(--red)}.sdot.r{background:var(--color-fluent-blue)}
+.sdot.w{background:var(--orange)}.sdot.c{background:var(--red)}.sdot.r{background:var(--color-fluent-blue)}.sdot.d{background:var(--green-fill)}
 .sdot.r::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--color-fluent-blue);animation:ping 2s cubic-bezier(0,0,.2,1) infinite}
 @keyframes ping{0%{transform:scale(1);opacity:.45}75%,100%{transform:scale(2.3);opacity:0}}
 .sdot.p{box-shadow:inset 0 0 0 1.5px var(--color-presence-off)}
@@ -313,7 +317,7 @@ html[data-platform=win] .win-titlebar{padding-right:calc(var(--caption) + 8px)}
 html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{color:var(--l2)}
 .cscroll{flex:1;overflow-y:auto;min-height:0}
 /* overview */
-.ov{padding:0 40px var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);max-width:980px;margin:0 auto}
+.ov{padding:24px 40px var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4);max-width:980px;margin:0 auto}
 .ov-h{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:36px;margin-bottom:calc(var(--sp-2) - var(--sp-4))}
 .ov-t{display:flex;align-items:baseline;gap:var(--sp-2);min-width:0}
 .ov-h h1{margin:0;font-size:var(--fs-large-title);font-weight:600;letter-spacing:-.01em}
@@ -463,10 +467,6 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .md li.task-list-item input{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0 7px 0 0;vertical-align:-3px;border-radius:var(--radius-small);background:var(--surface-input);box-shadow:inset 0 0 0 1px var(--color-border-strong)}
 .md li.task-list-item input:checked{background:var(--color-fluent-blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E") center/10px no-repeat;box-shadow:none}
 .md hr{border:0;border-top:1px solid var(--sep);margin:16px 0}
-.md-table{overflow-x:auto}
-.md table{border-collapse:collapse;font-size:13.5px;line-height:1.55}
-.md :is(th,td){padding:8px 14px;border-bottom:1px solid var(--sep);text-align:left;vertical-align:top}
-.md th{font-weight:700}
 .md li::marker{color:var(--l2)}
 .md blockquote{border-left:3px solid var(--color-fluent-blue);padding:6px 14px;background:var(--surface-hover);border-radius:0 var(--radius-control) var(--radius-control) 0;color:var(--l2)}
 .md code{font-family:var(--mono);font-size:0.88em;background:var(--surface-code-inline);border:1px solid var(--sep);padding:1px 5px;border-radius:5px;color:var(--l1)}
@@ -767,3 +767,8 @@ html.own-scrollbars{scrollbar-color:var(--scrollbar-thumb) transparent}
 :where(summary:not(.dsh-msg.tool summary))::-webkit-details-marker{display:none}
 :where(summary:not(.dsh-msg.tool summary))::before{content:"";display:inline-block;width:5px;height:5px;margin:0 8px 2px 1px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform var(--duration-normal) var(--ease-fluent);opacity:.7}
 :where(details[open]>summary:not(.dsh-msg.tool summary))::before{transform:rotate(45deg)}
+/* 高对比度（Windows 对比度主题）：box-shadow 被强制去掉，自带 box-shadow 焦点样式的控件改用系统高亮色 outline 兜底 */
+@media (forced-colors:active){
+  :focus-visible{outline:2px solid Highlight;outline-offset:2px}
+  .field:focus,.srename:focus,.picker:focus-visible,.acct-menu .mi:focus-visible,.vmenu .mi:focus-visible,.composer-box:focus-within,.dsh-box:focus-within{outline:2px solid Highlight;outline-offset:1px}
+}

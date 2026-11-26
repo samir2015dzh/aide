@@ -71,3 +71,23 @@ html[data-platform=win] .set-top{padding-right:calc(var(--caption) + 8px)}
 .settings .frow.about-said{min-height:38px;font-size:12px;color:var(--l2)}
 .settings .frow.about-said[data-state=current]{color:var(--green)}
 .settings .frow.about-said[data-state=error]{color:var(--red-t)}
+
+/* OpsLog 摘要层与展开详情（#138 P14/P15） */
+.settings .frow.ops-row{flex-direction:column;align-items:stretch;gap:8px;padding-top:11px;padding-bottom:11px}
+.ops-head{display:flex;align-items:flex-start;gap:12px;width:100%}
+.ops-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;line-height:1.4}
+.ops-summary{font-weight:600;color:var(--l1)}
+.ops-preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;font-size:12.5px;color:var(--l1)}
+.ops-preview-sub{margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--l2)}
+.ops-reason{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ops-outcome{display:inline-flex;align-items:center;font-size:11.5px;font-weight:500;padding:1px 7px;border-radius:var(--radius-pill);white-space:nowrap;flex:none}
+.ops-outcome.ok{color:var(--green);background:var(--green-bg,rgba(16,124,16,.1))}
+.ops-outcome.warn{color:var(--orange-t);background:var(--orange-bg)}
+.ops-outcome.bad{color:var(--red-t);background:var(--red-bg)}
+.ops-toggle{flex:none;border:0;background:none;padding:3px 8px;margin-top:-2px;border-radius:var(--radius-control);font-size:12px;font-weight:500;color:var(--accent-fg,var(--accent));cursor:pointer;white-space:nowrap}
+.ops-toggle:hover{background:var(--surface-hover)}
+.ops-detail{display:flex;flex-direction:column;gap:8px;padding-top:4px;border-top:1px solid var(--sep)}
+.ops-script{margin:0;padding:10px 12px;border-radius:var(--radius-control);background:var(--surface-subtle,var(--fill2));border:1px solid var(--sep);font-family:var(--font-mono);font-size:11.5px;line-height:1.5;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;color:var(--l1)}
+.ops-detail-foot{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.ops-detail-meta{flex:1;min-width:0;word-break:break-all}
+.settings .frow.ops-link-row{padding-top:10px;padding-bottom:10px}

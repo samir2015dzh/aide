@@ -63,7 +63,11 @@
       "failed": "Failed to send",
       "retry": "Retry",
       "cancel": "Cancel",
-      "attachments": "{{count}} attachment(s)"
+      "attachments": "{{count}} attachment(s)",
+      "cancelMaybeSent": "Stop resending (may have arrived)",
+      "memoryOnly": "Files kept in memory only: lost if the app closes before it goes",
+      "attachmentsLost": "The files were too large to keep and were lost when the app restarted: cancel and attach them again",
+      "notKept": "The queue can't be saved on this device ({{error}}): messages not sent before the app closes are lost"
     }
   },
   "control": {

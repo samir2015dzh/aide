@@ -185,7 +185,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                         }
                     }
                     // A session the owner started takes the owner's messages, here, as on the desktop.
-                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s, open)
+                    if (q == null && s.createdBy == "owner" && s.status != io.aide.android.api.SessionStatus.ARCHIVED) SessionComposer(model, s, open, lastSeq = { feed.lastSeq })
                 }
             }
         },
@@ -194,6 +194,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
         if (s != null && settings) SettingsSheet(model, s) { settings = false }
         Box(Modifier.fillMaxSize().padding(pad)) {
             val outboxAll by model.outbox.collectAsState()
+            val memoryOnly by model.outboxMemoryOnly.collectAsState()
             val sid = s?.sessionId.orEmpty()
             val queued = remember(outboxAll, sid) { if (sid.isEmpty()) emptyList() else OutboxCodec.forSession(outboxAll, sid) }
             if (loading && items.isEmpty() && queued.isEmpty()) {
@@ -220,6 +221,8 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
                     items(queued, key = { "outbox:${it.id}" }) { msg ->
                         OutboxItemView(
                             msg = msg,
+                            // null: the queue could not be written at all; then none of it outlasts the app.
+                            inMemoryOnly = memoryOnly?.contains(msg.id) ?: true,
                             onRetry = { model.retryOutbox(msg.id) },
                             onCancel = { model.removeOutbox(msg.id) },
                         )
@@ -233,7 +236,7 @@ fun SessionPage(model: AppModel, id: String, back: () -> Unit, open: (String) ->
 
 /** The box under the owner's own session (工单 #91/#92): words and files at once, the macros after /. */
 @Composable
-private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit) {
+private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit, lastSeq: () -> Long = { 0L }) {
     val scope = rememberCoroutineScope()
     var text by rememberSaveable(s.sessionId) { mutableStateOf("") }
     var state by remember(s.sessionId) { mutableStateOf<ComposerState>(ComposerState.Idle) }
@@ -259,7 +262,7 @@ private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit)
                 }, { e -> state = ComposerState.Failed(e.message.orEmpty()) { send() } })
                 return@launch
             }
-            model.enqueueMessage(s.sessionId, text, attach.wire())
+            model.enqueueMessage(s.sessionId, text, attach.wire(), afterSeq = lastSeq())
             text = ""; attach.clear(); state = ComposerState.Idle
         }
     }
@@ -287,7 +290,7 @@ private fun SessionComposer(model: AppModel, s: Session, open: (String) -> Unit)
 
 /** Local outbound queue item rendered inline with truthful delivery state (工单 #115, Fluent #106). */
 @Composable
-private fun OutboxItemView(msg: OutboxMessage, onRetry: () -> Unit, onCancel: () -> Unit) {
+private fun OutboxItemView(msg: OutboxMessage, inMemoryOnly: Boolean, onRetry: () -> Unit, onCancel: () -> Unit) {
     val statusLabel = when (msg.status) {
         OutboxStatus.SENDING -> t("Sending…", "发送中…")
         OutboxStatus.SENT -> t("Delivered", "已送达")
@@ -314,6 +317,19 @@ private fun OutboxItemView(msg: OutboxMessage, onRetry: () -> Unit, onCancel: ()
                         color = if (failed) MaterialTheme.colorScheme.onSurfaceVariant else aide.onBubble,
                     )
                 }
+                if (msg.attachmentsLost) {
+                    Text(
+                        t("The files were too large to keep and were lost when the app restarted: cancel and attach them again", "附件太大没能存下，重启后已丢失：请取消后重新附加"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (failed) aide.redText else aide.onBubble,
+                    )
+                } else if (inMemoryOnly && msg.status != OutboxStatus.SENT) {
+                    Text(
+                        t("Kept in memory only: lost if the app closes before it goes", "只在内存里：关闭应用前没发出就会丢失"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (failed) MaterialTheme.colorScheme.onSurfaceVariant else aide.onBubble,
+                    )
+                }
                 Text(
                     "#${msg.clientSeq} · $statusLabel",
                     style = MaterialTheme.typography.labelSmall,
@@ -328,11 +344,18 @@ private fun OutboxItemView(msg: OutboxMessage, onRetry: () -> Unit, onCancel: ()
                 }
                 if (msg.status == OutboxStatus.FAILED || msg.status == OutboxStatus.PENDING) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                            Text(t("Retry", "重试"), style = MaterialTheme.typography.labelSmall, color = if (failed) MaterialTheme.colorScheme.primary else aide.onBubble)
+                        if (!msg.attachmentsLost) {
+                            TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                                Text(t("Retry", "重试"), style = MaterialTheme.typography.labelSmall, color = if (failed) MaterialTheme.colorScheme.primary else aide.onBubble)
+                            }
                         }
+                        // A send tried before may have reached the machine without its answer coming back: said so.
                         TextButton(onClick = onCancel, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                            Text(t("Cancel", "取消"), style = MaterialTheme.typography.labelSmall, color = if (failed) MaterialTheme.colorScheme.onSurfaceVariant else aide.onBubble)
+                            Text(
+                                if (msg.attempted) t("Stop resending (may have arrived)", "不再重发（可能已送达）") else t("Cancel", "取消"),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (failed) MaterialTheme.colorScheme.onSurfaceVariant else aide.onBubble,
+                            )
                         }
                     }
                 }

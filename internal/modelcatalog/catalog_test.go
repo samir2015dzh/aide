@@ -63,6 +63,7 @@ func TestSyncDualSourceMergeCacheAndFailureFallback(t *testing.T) {
 					"models": {
 						"acme-pro-2": {
 							"id": "acme-pro-2",
+							"canonical_model_id": "acme/acme-pro-2",
 							"tool_call": true,
 							"reasoning": true,
 							"modalities": {"input": ["text", "image"]},

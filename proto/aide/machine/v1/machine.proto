@@ -937,7 +937,7 @@ message TestCustomAgentResponse {
   uint32 millis = 5;
   // The sign-in methods it offers, when a session needs one first.
   repeated string auth_methods = 6;
-  // Negotiated ACP protocol version (v2 preview preferred, v1 fallback).
+  // Negotiated ACP protocol version (Aide speaks version 1 only).
   uint32 protocol_version = 7;
   // Truthful capabilities discovered from initialize.agentCapabilities.
   AgentCapabilities capabilities = 8;

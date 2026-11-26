@@ -29,6 +29,8 @@ data class BotState(
     val why: NotReady? = null,
     /** Its main row offers signing it in from Aide (Claude Code, 工单 #51, #108). */
     val login: Boolean = false,
+    /** Its dot, the same for the same word on every page (工单 #135 P25 / 审计 B): never worked out from the word. */
+    val presence: Presence = Presence.UNKNOWN,
 )
 
 /** A coding agent on a machine as one state (工单 #56); null: the machine reports no such agent (hidden or absent). */
@@ -43,14 +45,15 @@ fun codingBotState(m: Machine, agent: String, now: Instant, c: MachineConnection
 
 private fun codingState(main: ConnRow, reachable: Boolean, paused: Boolean, word: String): BotState {
     // Paused is the owner's own say, known whatever the machine last reported: it comes first.
-    if (paused && main.state != ConnState.MISSING) return BotState(main.state, t("Paused", "已暂停"), t("Paused: no new task starts with it until it resumes", "已暂停：恢复之前不会有新任务交给它"), Usable.NO, NotReady.PAUSED)
+    if (paused && main.state != ConnState.MISSING) return BotState(main.state, t("Paused", "已暂停"), t("Paused: no new task starts with it until it resumes", "已暂停：恢复之前不会有新任务交给它"), Usable.NO, NotReady.PAUSED, presence = Presence.UNKNOWN)
+    val presence = rowPresence(main)
     return when (main.state) {
-        ConnState.OK, ConnState.PARTIAL -> BotState(main.state, word, main.text, Usable.YES)
-        ConnState.CHECKING -> BotState(ConnState.CHECKING, word, main.lacks ?: main.text, Usable.UNVERIFIED, NotReady.CHECKING)
+        ConnState.OK, ConnState.PARTIAL -> BotState(main.state, word, main.text, Usable.YES, presence = presence)
+        ConnState.CHECKING -> BotState(ConnState.CHECKING, word, main.lacks ?: main.text, Usable.UNVERIFIED, NotReady.CHECKING, presence = presence)
         ConnState.UNKNOWN ->
-            if (reachable) BotState(ConnState.UNKNOWN, main.text, main.lacks ?: main.text, Usable.UNVERIFIED, NotReady.UNKNOWN)
-            else BotState(ConnState.UNKNOWN, main.text, main.lacks ?: main.text, Usable.NO, NotReady.OFFLINE)
-        ConnState.MISSING -> BotState(ConnState.MISSING, word, main.lacks ?: main.text, Usable.NO, if (main.text == t("Not signed in", "未登录")) NotReady.SIGNED_OUT else NotReady.MISSING)
+            if (reachable) BotState(ConnState.UNKNOWN, main.text, main.lacks ?: main.text, Usable.UNVERIFIED, NotReady.UNKNOWN, presence = presence)
+            else BotState(ConnState.UNKNOWN, main.text, main.lacks ?: main.text, Usable.NO, NotReady.OFFLINE, presence = presence)
+        ConnState.MISSING -> BotState(ConnState.MISSING, word, main.lacks ?: main.text, Usable.NO, if (main.text == t("Not signed in", "未登录")) NotReady.SIGNED_OUT else NotReady.MISSING, presence = presence)
     }
 }
 
@@ -66,10 +69,10 @@ fun personalBotState(c: Client, now: Instant): BotState {
     if (c.online && c.recent && seen != null) {
         val line = t("Called ${agoText(seen, now)}", "${agoText(seen, now)}调用过")
         val word = if (java.time.Duration.between(seen, now) < JUST_ACTIVE) t("Online", "在线") else t("Recently active", "最近活跃")
-        return BotState(ConnState.OK, word, line, Usable.YES)
+        return BotState(ConnState.OK, word, line, Usable.YES, presence = Presence.ONLINE)
     }
-    if (c.online) return BotState(ConnState.OK, t("Online", "在线"), t("Connected to your account now", "现在连着你的账号"), Usable.YES)
-    return BotState(ConnState.UNKNOWN, t("Not online", "不在线"), seen?.let { t("Last seen ${agoText(it, now)}", "上次见到：${agoText(it, now)}") } ?: t("Not connected yet", "还没连上过"), Usable.UNVERIFIED, NotReady.UNKNOWN)
+    if (c.online) return BotState(ConnState.OK, t("Online", "在线"), t("Connected to your account now", "现在连着你的账号"), Usable.YES, presence = Presence.ONLINE)
+    return BotState(ConnState.UNKNOWN, t("Not online", "不在线"), seen?.let { t("Last seen ${agoText(it, now)}", "上次见到：${agoText(it, now)}") } ?: t("Not connected yet", "还没连上过"), Usable.UNVERIFIED, NotReady.UNKNOWN, presence = Presence.UNKNOWN)
 }
 
 data class Bot(

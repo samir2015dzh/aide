@@ -20,6 +20,7 @@ import (
 	"time"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/acpregistry"
 	"github.com/samir2015dzh/aide/internal/provider"
 )
@@ -58,12 +59,14 @@ func zipFileBytes(t *testing.T, entryName string, payload []byte) ([]byte, strin
 
 // TestGenericACPRegistryAndLocalEndToEnd verifies 工单 #110 end to end:
 //   - No fake ACP entries appear on a machine with no ACP agents installed
-//   - ACP v2 preview negotiation and automatic v1 downgrade
+//   - ACP protocol version 1 negotiated (Aide speaks no other: 审计 F)
 //   - Installing an official ACP Registry agent via SHA-256 verified binary archive
 //   - Registering a local ACP command with explicit argument list (no shell expansion)
 //   - Running real sessions (prompt, tool call, approval, completion) on BOTH sources
 //   - Model lists match what each agent actually reports item for item
-//   - Capabilities are truthfully declared (fork/rollback/steer/login_in_aide/usage)
+//   - Capabilities are truthfully declared (fork/rollback/steer/login_in_aide/usage):
+//     no fork (Aide sends no session/fork, even to an agent that offers it),
+//     rollback (Aide's worktree rollback, a fresh conversation after)
 //   - Removing the registry agent cleans up its isolated install directory
 func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 	bin := buildFakeACPBinary(t)
@@ -79,7 +82,7 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 
 	plat := acpregistry.CurrentPlatform()
 	var srvURL string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/registry.json":
 			_ = json.NewEncoder(w).Encode(acpregistry.Index{
@@ -98,7 +101,6 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 									Cmd:     "./bin/regacp",
 									Args:    []string{"--registry-flag"},
 									Env: map[string]string{
-										"FAKE_ACP_V2":     "1",
 										"FAKE_ACP_CONFIG": "1",
 										"FAKE_ACP_MODELS": "reg-fast,reg-pro",
 									},
@@ -129,8 +131,9 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 	}
 	defer m.Close()
 	m.SetACPRegistry(acpregistry.New(acpregistry.Options{
-		DataDir: dataDir,
-		URL:     srvURL + "/registry.json",
+		DataDir:    dataDir,
+		URL:        srvURL + "/registry.json",
+		HTTPClient: srv.Client(),
 	}))
 
 	// 1. Machine with no ACP agents installed must NOT show fake ACP entries in Status().
@@ -161,13 +164,12 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 		t.Fatalf("unexpected install response: %+v", instResp)
 	}
 
-	// 4. Source B (Local command): register with explicit args and v2-reject -> v1 downgrade + fork/image flags.
+	// 4. Source B (Local command): register with explicit args + fork/image flags.
 	localDef := &machinev1.CustomAgent{
 		Name:    "local-acp",
 		Command: bin,
 		Args:    []string{"--local-arg", "hello world"},
 		Env: []*machinev1.AgentEnv{
-			{Name: "FAKE_ACP_REJECT_V2", Value: "1"},
 			{Name: "FAKE_ACP_CONFIG", Value: "1"},
 			{Name: "FAKE_ACP_FORK", Value: "1"},
 			{Name: "FAKE_ACP_IMAGES", Value: "1"},
@@ -177,17 +179,25 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 	if err := m.SaveCustomAgent(localDef); err != nil {
 		t.Fatalf("SaveCustomAgent(local-acp): %v", err)
 	}
+	// 审计 D: installing under the name of an existing custom agent is
+	// refused, not a silent overwrite of it (and its secrets).
+	if _, err := m.InstallACPRegistryAgent(context.Background(), &machinev1.InstallACPRegistryAgentRequest{RegistryId: "reg-demo-acp", Name: "local-acp"}); err == nil || !strings.Contains(err.Error(), "already used") {
+		t.Fatalf("install over local-acp: %v", err)
+	}
+	// Re-installing the same registry agent under its own name upgrades it.
+	if _, err := m.InstallACPRegistryAgent(context.Background(), &machinev1.InstallACPRegistryAgentRequest{RegistryId: "reg-demo-acp", Name: "reg-demo-acp"}); err != nil {
+		t.Fatalf("upgrade reg-demo-acp: %v", err)
+	}
 
-	// TestCustomAgent handshake validates v2 preview on registry agent and v1 downgrade on local agent,
-	// plus truthful capabilities and real-time model lists.
+	// TestCustomAgent handshake negotiates v1 on both, plus truthful capabilities and real-time model lists.
 	regTest, err := m.TestCustomAgent(context.Background(), instResp.Agent)
 	if err != nil || !regTest.Ok {
 		t.Fatalf("TestCustomAgent(registry): err=%v res=%+v", err, regTest)
 	}
-	if regTest.ProtocolVersion != 2 {
-		t.Fatalf("expected registry agent negotiated protocol v2, got %d", regTest.ProtocolVersion)
+	if regTest.ProtocolVersion != 1 {
+		t.Fatalf("expected registry agent negotiated protocol v1, got %d", regTest.ProtocolVersion)
 	}
-	if regTest.Capabilities.Fork || regTest.Capabilities.Rollback || regTest.Capabilities.Steer || regTest.Capabilities.LoginInAide || regTest.Capabilities.Usage {
+	if regTest.Capabilities.Fork || !regTest.Capabilities.Rollback || regTest.Capabilities.Steer || regTest.Capabilities.LoginInAide || regTest.Capabilities.Usage || regTest.Capabilities.SelectEffort || !regTest.Capabilities.SelectMode { // its session offers a mode, no efforts
 		t.Fatalf("registry agent capabilities not truthful: %+v", regTest.Capabilities)
 	}
 	if got := modelIDs(regTest.Models); !slices.Equal(got, []string{"reg-fast", "reg-pro"}) {
@@ -199,9 +209,9 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 		t.Fatalf("TestCustomAgent(local): err=%v res=%+v", err, localTest)
 	}
 	if localTest.ProtocolVersion != 1 {
-		t.Fatalf("expected local agent v2->v1 downgrade, got %d", localTest.ProtocolVersion)
+		t.Fatalf("expected local agent protocol v1, got %d", localTest.ProtocolVersion)
 	}
-	if !localTest.Capabilities.Fork || !localTest.Capabilities.Images || localTest.Capabilities.Rollback || localTest.Capabilities.Steer {
+	if localTest.Capabilities.Fork || !localTest.Capabilities.Images || !localTest.Capabilities.Rollback || localTest.Capabilities.Steer {
 		t.Fatalf("local agent capabilities not truthful: %+v", localTest.Capabilities)
 	}
 	if got := modelIDs(localTest.Models); !slices.Equal(got, []string{"local-alpha", "local-beta"}) {
@@ -210,11 +220,11 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 
 	// Wait for background recheck so Status() reflects both installed agents and their truthful capabilities.
 	regStatus := waitAgent(t, m, "reg-demo-acp", func(a *machinev1.AgentStatus) bool { return a.Available && !a.Checking })
-	if regStatus.Source != "registry" || regStatus.RegistryId != "reg-demo-acp" || regStatus.ProtocolVersion != 2 || !regStatus.LoginUnconfirmed {
+	if regStatus.Source != "registry" || regStatus.RegistryId != "reg-demo-acp" || regStatus.ProtocolVersion != 1 || !regStatus.LoginUnconfirmed {
 		t.Fatalf("unexpected registry agent status: %+v", regStatus)
 	}
 	localStatus := waitAgent(t, m, "local-acp", func(a *machinev1.AgentStatus) bool { return a.Available && !a.Checking })
-	if localStatus.Source != "local" || localStatus.ProtocolVersion != 1 || !localStatus.Capabilities.Fork || localStatus.Capabilities.Rollback {
+	if localStatus.Source != "local" || localStatus.ProtocolVersion != 1 || localStatus.Capabilities.Fork || !localStatus.Capabilities.Rollback {
 		t.Fatalf("unexpected local agent status: %+v", localStatus)
 	}
 
@@ -285,11 +295,11 @@ func TestGenericACPRegistryAndLocalEndToEnd(t *testing.T) {
 		if err := sess.Steer(ctx, provider.Input{Text: "nudge"}); err == nil {
 			t.Fatalf("%s expected Steer to return unsupported error", agentName)
 		}
-		// Ensure ACP provider refuses conversation rollback cleanly (#113 / #110).
+		// An ACP agent rolls back as any other: worktree reset, fresh conversation (审计 F).
 		if rc, ok := p.(interface{ CanRollbackConversation() (bool, string) }); !ok {
 			t.Fatalf("%s must implement CanRollbackConversation", agentName)
-		} else if can, reason := rc.CanRollbackConversation(); can || !strings.Contains(reason, "ACP") {
-			t.Fatalf("%s ACP provider must refuse conversation rollback, got can=%v reason=%q", agentName, can, reason)
+		} else if can, reason := rc.CanRollbackConversation(); !can {
+			t.Fatalf("%s ACP provider must allow worktree rollback, got can=%v reason=%q", agentName, can, reason)
 		}
 	}
 
@@ -317,4 +327,33 @@ func modelIDs(ms []*machinev1.AgentModel) []string {
 		out = append(out, m.Id)
 	}
 	return out
+}
+
+// modesRecorder is an agent that advertises permission modes and a default.
+type modesRecorder struct{ recorder }
+
+func (r *modesRecorder) Discover(ctx context.Context) provider.Info {
+	i := r.recorder.Discover(ctx)
+	i.Name = "antigravity"
+	i.Modes = []provider.Mode{{ID: "read-only"}, {ID: "workspace-write"}, {ID: "danger-full-access"}}
+	i.Own.Mode = "workspace-write"
+	return i
+}
+
+// 审计 C: an Antigravity session started without a mode runs with (and
+// records) the default it advertises, not an empty pass-through mode.
+func TestAntigravityStartWithoutModeTakesAdvertisedDefault(t *testing.T) {
+	r := &modesRecorder{}
+	h := newHarnessWith(t, DefaultLimits(), map[string]provider.Provider{"antigravity": r})
+	s, err := h.s.Start(context.Background(), h.p, &sessionv1.StartSessionRequest{ProjectId: "demo", Agent: "antigravity", Prompt: "say ok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "session idle", func() bool {
+		v, err := h.s.Get(h.p, s.SessionId)
+		return err == nil && v.Status == idle
+	})
+	if got := r.spec(0).Mode; got != "workspace-write" {
+		t.Fatalf("mode passed to the agent: %q", got)
+	}
 }

@@ -205,6 +205,25 @@ persistent `allow_always` permissions. Commands are extracted from Google's
 ACP does not support steering a running turn in this adapter; Aide queues
 the next message until the turn ends.
 
+### Aide's permission presets
+
+On top of the server's own permission mode, Aide applies one of three presets
+to every tool request the agent asks permission for:
+
+- `read-only`: reads and searches only.
+- `workspace-write` (the default, also used when a session names no mode):
+  reads, searches, and edits whose files resolve (symlinks included) inside
+  the session workspace. An edit that names no file is refused, because Aide
+  cannot check where it lands. Shell commands and network access are refused:
+  Aide cannot keep an Antigravity command inside the workspace or offline, so
+  it does not pretend to. Start the session in `danger-full-access` to run
+  tests, builds or other commands.
+- `danger-full-access`: everything the server allows.
+
+A refusal answers the agent's `session/request_permission`. If the agent
+runs a tool without asking first, Aide cannot stop that call: it reports
+the denial as an error event naming what ran, and cancels the turn.
+
 ## Verification and limits
 
 The opt-in tests use real Google requests and consume account quota:

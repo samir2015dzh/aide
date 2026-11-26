@@ -42,12 +42,8 @@ export function TasksPage() {
   const shown = only ? rows.filter((r) => r.dispatcherId === only) : rows;
   const counts = [0, 1, 2, 3].map((k) => shown.filter((r) => r.rank === k).length);
   return (
-    <>
-      <div className="ctool drag">
-        <div className="ctitle" />
-      </div>
-      <div className="dsh">
-        <section className="dsh-view tasks" aria-label={t("tasks.title")}>
+    <div className="dsh">
+      <section className="dsh-view tasks" aria-label={t("tasks.title")}>
           <h1>{t("tasks.title")}</h1>
           <p className="dsh-note">{t("tasks.note")}</p>
           {rows.length > 0 && (
@@ -89,7 +85,6 @@ export function TasksPage() {
           </ul>
         </section>
       </div>
-    </>
   );
 }
 

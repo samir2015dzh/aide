@@ -452,3 +452,42 @@ func TestRoomAcrossMachines(t *testing.T) {
 		t.Fatalf("a stranger's charter: %s", got)
 	}
 }
+
+// TestRoomDirectReplySettlesUnkeyed verifies #135 P02: a direct-room reply without
+// InReplyTo settles the one owner delivery awaiting it as REPLIED and clears
+// Reason (with several waiting: TestRoomDirectUnkeyedReplyWithTwoWaiting).
+func TestRoomDirectReplySettlesUnkeyed(t *testing.T) {
+	h := newHarness(t, Limits{})
+	n := h.n
+	ctx := context.Background()
+	n.mu.Lock()
+	n.grants = append(n.grants, &identityv1.Grant{GrantId: "g_muse", ClientId: "c_muse", ClientLabel: "Muse", MachineIds: []string{"*"}})
+	n.mu.Unlock()
+	n.roomBook().send = func(m *inboxv1.Message) error { return nil }
+	r, err := n.OpenDirectRoom("c_muse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	posted, err := n.PostRoomMessage(ctx, &machinev1.PostRoomMessageRequest{RoomId: r.RoomId, Text: "ping"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(posted.Deliveries) != 1 || posted.Deliveries[0].State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT {
+		t.Fatalf("expected SENT delivery, got %v", posted.Deliveries)
+	}
+	if got := n.takeRoomLetter(&inboxv1.Message{
+		MessageId: newID("msg_"),
+		To:        &inboxv1.Address{Inbox: n.machineID, Session: r.RoomId},
+		Text:      "pong",
+	}, &identity.ContactInfo{Inbox: "c_muse", Name: "Muse"}); got != "handled" {
+		t.Fatalf("takeRoomLetter: %s", got)
+	}
+	msgs := roomMsgs(t, n, r.RoomId)
+	if d := msgs[0].Deliveries[0]; d.State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REPLIED || d.Reason != "" {
+		t.Fatalf("expected REPLIED with empty reason, got state=%v reason=%q", d.State, d.Reason)
+	}
+	// Settled because it alone waited, not because the reply said so: not written down as what it answers (审计 B).
+	if msgs[1].InReplyTo != "" {
+		t.Fatalf("a guessed InReplyTo written down: %q", msgs[1].InReplyTo)
+	}
+}

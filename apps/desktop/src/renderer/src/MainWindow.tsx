@@ -127,9 +127,7 @@ export function MainWindow() {
           }
           className="page-stage"
         >
-          {st.selection.kind === "sessions" ? (
-            <div className="ctool drag"><div className="ctitle" /></div>
-          ) : session ? (
+          {st.selection.kind === "sessions" ? null : session ? (
             <SessionPage s={session} />
           ) : st.selection.kind === "held" ? (
             <HeldMessages />

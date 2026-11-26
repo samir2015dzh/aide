@@ -70,6 +70,17 @@ export async function startDaemon(socket: string): Promise<Daemon> {
       listProjects: () => ({ projects: w.projects, unreachable: [] }),
       listDevices: () => ({ devices: w.devices }),
       listSessions: (req) => page(req.limit, req.before),
+      listHeldMessages: () => ({ messages: [], unreachable: [] }),
+      listExecLog: () => ({ entries: w.execLog, unreachable: [] }),
+      listPersonas: () => ({ personas: [] }),
+      openDirectRoom: (req) => {
+        const hit = w.directRooms.get(req.clientId);
+        return { room: hit?.room };
+      },
+      listRoomMessages: (req) => {
+        const hit = [...w.directRooms.values()].find((x) => x.room.roomId === req.roomId);
+        return { room: hit?.room, messages: hit?.messages ?? [] };
+      },
       async *watch(_req, ctx) {
         const ch = channel<WatchResponse>(ctx.signal);
         screens.add(ch.push);
@@ -117,7 +128,9 @@ export async function startDaemon(socket: string): Promise<Daemon> {
       },
     });
 
-  fs.rmSync(socket, { force: true });
+  // Windows has no Unix sockets for Node: a named pipe of its own instead, which the app takes as given (main/paths.ts).
+  if (process.platform === "win32" && !socket.startsWith("\\\\.\\pipe\\")) socket = `\\\\.\\pipe\\aide-perf-${process.pid}-${Date.now()}`;
+  else fs.rmSync(socket, { force: true });
   const server = http.createServer(connectNodeAdapter({ routes }));
   await new Promise<void>((r) => server.listen(socket, r));
 

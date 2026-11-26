@@ -28,6 +28,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import io.aide.android.R
 import io.aide.android.model.Bot
+import io.aide.android.model.Presence
 import io.aide.android.model.REACT_MS
 import io.aide.android.model.botLook
 import io.aide.android.model.botMood
@@ -103,11 +104,11 @@ fun AgentFace(agent: String, size: Int = 32) = AppFace(agent, size)
 /**
  * A bot's face (工单 #83): its Grok Bot character (GrokMark), in the look the owner gave it (its contact's, else its
  * grant's), else its seed's, moved only by its real state (botMood, the desktop's table); away or unknown it rests,
- * faded. Its app's logo on its corner where there is room; dot, its state's colour on the other. still: it rests
+ * faded. Its app's logo on its corner where there is room; presence, its state's dot on the other (工单 #135 P25). still: it rests
  * (where many show at once). poke: a count, each new one spins and bounces it.
  */
 @Composable
-fun BotAvatar(b: Bot, size: Int, dot: Color? = null, still: Boolean = false, poke: Int = 0) {
+fun BotAvatar(b: Bot, size: Int, presence: Presence? = null, still: Boolean = false, poke: Int = 0) {
     // A moment of done or failed is read again once it is over.
     var tick by remember { mutableIntStateOf(0) }
     val mood = botMood(b, LocalSessions.current, Instant.now()).also { tick }
@@ -124,9 +125,9 @@ fun BotAvatar(b: Bot, size: Int, dot: Color? = null, still: Boolean = false, pok
             val s = (size * 0.3).toInt()
             Box(Modifier.align(Alignment.BottomStart).offset(x = (-2).dp, y = 2.dp).background(Color.White, CircleShape).padding(2.dp)) { AppFace(app, s) }
         }
-        if (dot != null) {
+        if (presence != null) {
             val d = (size / 4).coerceIn(9, 13)
-            Box(Modifier.align(Alignment.BottomEnd).offset(x = 1.dp, y = 1.dp).size(d.dp).background(aide.card, CircleShape).padding(2.dp).background(dot, CircleShape))
+            Box(Modifier.align(Alignment.BottomEnd).offset(x = 1.dp, y = 1.dp).size(d.dp).cornerDot(presence))
         }
     }
 }

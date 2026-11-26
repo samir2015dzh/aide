@@ -142,12 +142,13 @@ func TestShadowConversationReadOnlyAndRetention124(t *testing.T) {
 	museInfo := &identity.ContactInfo{Inbox: "c_muse", Name: "Muse"}
 	hermesInfo := &identity.ContactInfo{Inbox: "c_hermes", Name: "Hermes"}
 
-	// Expired (>90d), retained (25d), and today's exchange (request + reply).
+	// A copy that says it is 95 days old (older than the post office keeps any: put at the oldest an honest one can be,
+	// not dropped at once), retained (25d), and today's exchange (request + reply).
 	msgs := []struct {
 		m    *inboxv1.Message
 		info *identity.ContactInfo
 	}{
-		{&inboxv1.Message{MessageId: "msg_01old95d000000000000000000", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: "c_hermes"}, SentAt: timestamppb.New(now.Add(-95 * 24 * time.Hour)), Subject: "expired", Text: "too old"}, museInfo},
+		{&inboxv1.Message{MessageId: "msg_01old95d000000000000000000", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: "c_hermes"}, SentAt: timestamppb.New(now.Add(-95 * 24 * time.Hour)), Subject: "back-dated", Text: "says it is old"}, museInfo},
 		{&inboxv1.Message{MessageId: "msg_01old25d000000000000000000", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: "c_hermes"}, SentAt: timestamppb.New(now.Add(-25 * 24 * time.Hour)), Subject: "within-30d", Text: "kept past 30d window"}, museInfo},
 		{&inboxv1.Message{MessageId: "msg_01req000000000000000000000", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: "c_hermes"}, SentAt: timestamppb.New(now.Add(-2 * time.Minute)), Subject: "两件套同步", Text: "请把信箱盯守也配上"}, museInfo},
 		{&inboxv1.Message{MessageId: "msg_01rep000000000000000000000", From: &inboxv1.Address{Inbox: "c_hermes"}, To: &inboxv1.Address{Inbox: "c_muse"}, SentAt: timestamppb.New(now.Add(-1 * time.Minute)), InReplyTo: "msg_01req000000000000000000000", Subject: "Re: 两件套同步", Text: "收到，已配好定时巡检"}, hermesInfo},
@@ -176,13 +177,32 @@ func TestShadowConversationReadOnlyAndRetention124(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Messages) != 3 {
-		t.Fatalf("expected 3 retained messages (25d + req + reply; 95d pruned), got %d: %+v", len(res.Messages), res.Messages)
+	if len(res.Messages) != 4 {
+		t.Fatalf("expected 4 messages (back-dated one kept + 25d + req + reply), got %d: %+v", len(res.Messages), res.Messages)
 	}
-	if res.Messages[0].Subject != "within-30d" ||
-		res.Messages[1].FromName != "Muse" || res.Messages[1].ToName != "Hermes" || res.Messages[1].Subject != "两件套同步" ||
-		res.Messages[2].FromName != "Hermes" || res.Messages[2].ToName != "Muse" || res.Messages[2].InReplyTo != "msg_01req000000000000000000000" {
+	if res.Messages[0].Subject != "back-dated" || res.Messages[0].At.AsTime().Before(now.Add(-shadowMaxAge-time.Minute)) ||
+		res.Messages[1].Subject != "within-30d" || !res.Messages[1].At.AsTime().Equal(msgs[1].m.SentAt.AsTime()) ||
+		res.Messages[2].FromName != "Muse" || res.Messages[2].ToName != "Hermes" || res.Messages[2].Subject != "两件套同步" ||
+		res.Messages[3].FromName != "Hermes" || res.Messages[3].ToName != "Muse" || res.Messages[3].InReplyTo != "msg_01req000000000000000000000" {
 		t.Fatalf("unexpected shadow timeline: %+v", res.Messages)
+	}
+	// Retention: what was recorded more than 90 days ago goes when the next copy comes.
+	b := n.roomBook()
+	b.mu.Lock()
+	st := b.rooms[shadow.RoomId]
+	st.msgs = append([]*machinev1.RoomMessage{{MessageId: "msg_01expired0000000000000000", RoomId: shadow.RoomId, From: "c:c_muse", Text: "recorded long ago", At: timestamppb.New(now.Add(-95 * 24 * time.Hour))}}, st.msgs...)
+	b.mu.Unlock()
+	// A forward-dated copy is put at now, not after everything to come.
+	future := &inboxv1.Message{MessageId: "msg_01future00000000000000000", From: &inboxv1.Address{Inbox: "c_hermes"}, To: &inboxv1.Address{Inbox: "c_muse"}, SentAt: timestamppb.New(now.Add(48 * time.Hour)), Text: "from the future"}
+	if got := n.takeShadowLetter(future, hermesInfo); got != "handled" {
+		t.Fatalf("takeShadowLetter future: %q", got)
+	}
+	res, _ = n.ListRoomMessages(&machinev1.ListRoomMessagesRequest{RoomId: shadow.RoomId})
+	if len(res.Messages) != 5 || res.Messages[0].MessageId == "msg_01expired0000000000000000" {
+		t.Fatalf("expected the 95-day-old record pruned and 5 left, got %+v", res.Messages)
+	}
+	if last := res.Messages[4]; last.MessageId != future.MessageId || last.At.AsTime().After(time.Now()) {
+		t.Fatalf("forward-dated copy not put at now: %+v", last)
 	}
 
 	// Strict read-only: PostRoomMessage, UpdateRoom, StopRoom must all fail.

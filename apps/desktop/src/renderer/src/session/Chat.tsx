@@ -69,10 +69,10 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
   const outbox = useSessionOutbox(s.sessionId);
   const machineConnected = Boolean(st.machines.find((m) => m.machineId === s.machineId)?.online);
   useEffect(() => {
-    desktopOutbox.reconcile(s.sessionId, events);
+    desktopOutbox().reconcile(s.sessionId, events);
   }, [s.sessionId, events]);
   useEffect(() => {
-    if (machineConnected) void desktopOutbox.flushSession(s.sessionId);
+    if (machineConnected) void desktopOutbox().flushSession(s.sessionId);
   }, [s.sessionId, machineConnected]);
   // Nothing of a conversation that has events yet: they are still on their way, or can't come.
   const unread = items.length === 0 && draft === "" && outbox.length === 0 && (s.progress?.lastEventSeq ?? 0n) > 0n;
@@ -908,7 +908,7 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
           st.select(to.sessionId);
         }
       } else {
-        desktopOutbox.enqueue(s.sessionId, text, attachments);
+        desktopOutbox().enqueue(s.sessionId, text, attachments, s.progress?.lastEventSeq);
       }
       setText("");
       attach.clear();
@@ -1005,8 +1005,12 @@ export function turnStart(s: Session, events: SessionEvent[]): Date {
 /** Local outbound queue items shown inline with truthful delivery state (工单 #115). */
 function OutboxRows({ items }: { items: OutboxMessage[] }) {
   const { t } = useTranslation("session");
+  const q = desktopOutbox();
   return (
     <div className="outbox-list" data-testid="outbox-list" aria-live="polite">
+      {q.persistError !== "" && items.some((x) => x.status !== "sent") && (
+        <div className="outbox-meta" role="alert">{t("chat.outbox.notKept", { error: q.persistError })}</div>
+      )}
       {items.map((item) => {
         const statusLabel =
           item.status === "sending"
@@ -1018,6 +1022,7 @@ function OutboxRows({ items }: { items: OutboxMessage[] }) {
                 : item.error
                   ? t("chat.outbox.waitingReconnect")
                   : t("chat.outbox.pending");
+        const unsent = item.status === "failed" || item.status === "pending";
         return (
           <div
             key={item.id}
@@ -1030,16 +1035,26 @@ function OutboxRows({ items }: { items: OutboxMessage[] }) {
               {item.attachments.length > 0 && (
                 <div className="outbox-meta">{t("chat.outbox.attachments", { count: item.attachments.length })}</div>
               )}
+              {item.attachmentsLost ? (
+                <div className="outbox-meta" role="alert">{t("chat.outbox.attachmentsLost")}</div>
+              ) : (
+                item.status !== "sent" && item.attachments.length > 0 && q.persistError === "" && q.keeping(item.id) === "memory" && (
+                  <div className="outbox-meta">{t("chat.outbox.memoryOnly")}</div>
+                )
+              )}
               <div className="outbox-meta" style={{ fontSize: "12px", opacity: 0.85, marginTop: "4px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                 <span>#{item.clientSeq} · {statusLabel}</span>
                 {/* The transport's own error is the log's (工单 #139): the state above says what it means. */}
-                {(item.status === "failed" || item.status === "pending") && (
+                {unsent && (
                   <>
-                    <button type="button" className="link" onClick={() => desktopOutbox.retry(item.id)}>
-                      {t("chat.outbox.retry")}
-                    </button>
-                    <button type="button" className="link" onClick={() => desktopOutbox.remove(item.id)}>
-                      {t("chat.outbox.cancel")}
+                    {!item.attachmentsLost && (
+                      <button type="button" className="link" onClick={() => q.retry(item.id)}>
+                        {t("chat.outbox.retry")}
+                      </button>
+                    )}
+                    {/* A send tried before may have reached the machine without its answer coming back: said so. */}
+                    <button type="button" className="link" onClick={() => q.remove(item.id)}>
+                      {item.attempted ? t("chat.outbox.cancelMaybeSent") : t("chat.outbox.cancel")}
                     </button>
                   </>
                 )}

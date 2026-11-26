@@ -7,6 +7,7 @@ import { Upgrade } from "./firstrun/SignIn";
 import { MainWindow } from "./MainWindow";
 import { SettingsWindow } from "./Settings";
 import { AideProvider, useStore } from "./store";
+import { guardLocalConversations } from "./session/outbox";
 import { TrayPanel } from "./TrayPanel";
 
 export function App() {
@@ -27,6 +28,8 @@ function Root() {
   const member = st.status?.initialized === true || st.status?.machineOnly === true;
   const upgrading = st.upgrading && st.status?.machineOnly === true;
   const ready = member && !st.status?.removed && !firstRun && !upgrading;
+  // What this device keeps of conversations is the signed-in account's (工单 #115).
+  useEffect(() => guardLocalConversations(st.status), [st.status]);
   // The window takes its size once aided answers, and keeps it if it stops answering later.
   useEffect(() => {
     if (st.status) window.aide?.setWindowMode(ready ? "main" : "onboarding");

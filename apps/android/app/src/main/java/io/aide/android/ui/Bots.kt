@@ -14,12 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -86,16 +84,13 @@ import kotlinx.coroutines.launch
 // A row is its face with its state on the corner, its one name, its state as a pill, one line of what it does lately.
 // No machine card or count is here: a machine shows only through its bots' states; the devices tab has the machines.
 
-/** A bot's face, the same on every screen (工单 #62): BotAvatar with its state's colour on the corner. */
+/** A bot's face, the same on every screen (工单 #62): BotAvatar with its state's dot on the corner (dot: shown). */
 @Composable
-fun BotFace(b: Bot, size: Int, dot: Color? = null) = BotAvatar(b, size, dot)
+fun BotFace(b: Bot, size: Int, dot: Boolean = false) = BotAvatar(b, size, if (dot) b.state.presence else null)
 
-/** Its state as a pill, the same words as everywhere (工单 #56). */
-fun botTone(b: Bot): Tone = when (b.state.usable) {
-    Usable.YES -> Tone.Good
-    Usable.UNVERIFIED -> if (b.state.why == io.aide.android.model.NotReady.CHECKING) Tone.Live else Tone.Quiet
-    Usable.NO -> if (b.state.why == io.aide.android.model.NotReady.OFFLINE) Tone.Quiet else Tone.Warn
-}
+/** Its state as a pill, the same words as everywhere (工单 #56), its dot its presence's (工单 #135 P25): one colour per meaning. */
+@Composable
+fun BotPill(b: Bot) = StatusPill(b.state.word, b.state.presence)
 
 @Composable
 fun BotsTab(model: AppModel, openRoom: (io.aide.android.api.Room) -> Unit = {}, newRoom: () -> Unit = {}, open: (String) -> Unit) {
@@ -150,13 +145,13 @@ private fun LazyListScope.botGroup(id: String, title: String, bots: List<Bot>, o
 fun BotRow(b: Bot, short: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val press = if (onLongClick == null) Modifier.rowPress(onClick) else Modifier.combinedClickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), onLongClickLabel = t("Delete from the roster", "从名册删除"), onLongClick = onLongClick, onClick = onClick)
     Row(Modifier.fillMaxWidth().then(press).padding(start = 16.dp, end = 12.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-        BotAvatar(b, 40, toneDotColor(botTone(b)))
+        BotAvatar(b, 40, b.state.presence)
         HSpace(12)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (short) b.shortName else b.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 HSpace(8)
-                StatusPill(b.state.word, botTone(b))
+                BotPill(b)
             }
             Text(b.doing.ifEmpty { b.state.line }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -266,13 +261,13 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         // A tap on its face changes its look (工单 #83): its contact, or a new one with its name and face.
                         val face = if (b.coding && m != null) Modifier.semantics { contentDescription = t("Change its avatar", "换头像") }.pressable { edit(b.personas.firstOrNull() ?: newPersona(b, m)) } else Modifier
-                        Box(face) { BotAvatar(b, 56, toneColor(botTone(b))) }
+                        Box(face) { BotAvatar(b, 56, b.state.presence) }
                         HSpace(14)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(b.name, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                                 HSpace(8)
-                                StatusPill(b.state.word, botTone(b))
+                                BotPill(b)
                             }
                             Text(b.state.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                             // Claude Code's command line not signed in, or unconfirmed: signed in from here (工单 #51, #108).
@@ -341,7 +336,14 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
             // Rule 3: which conversation the next message goes on in.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (cur != null) t("Talking in", "正在聊") else if (convs.open.isEmpty()) t("Write the first message to start", "写第一条，就开始和它的对话") else t("The next message starts a new conversation", "下一条会开新对话"),
+                    val curLabel = when {
+                        cur == null && convs.open.isEmpty() -> t("Write the first message to start", "写第一条，就开始和它的对话")
+                        cur == null -> t("The next message starts a new conversation", "下一条会开新对话")
+                        cur.status == SessionStatus.ARCHIVED -> t("Archived", "已归档对话")
+                        cur.status == SessionStatus.RUNNING || cur.status == SessionStatus.QUEUED || cur.status == SessionStatus.PREPARING || cur.status == SessionStatus.WAITING_INPUT -> t("Talking in", "正在聊")
+                        else -> t("Recent", "最近对话")
+                    }
+                    Text(curLabel,
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (cur != null) Text("${displayTitle(cur)} · ${t("started", "开始于")} ${agoText(instant(cur.createdAt), now)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.dimPress { openSession(cur.sessionId) })
                 }
@@ -372,6 +374,10 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
             if (convs.others.isNotEmpty()) {
                 SectionHeader(t("Handed to it by other agents", "别的 agent 派给它的"), count = convs.others.size)
                 Column { convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
+            }
+            // The count and the list say the same (工单 #135 P33): how many are shown of all, and of which kinds.
+            io.aide.android.model.convCountHint(convs, rows.size + convs.others.size)?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
             }
         }
     }
@@ -611,11 +617,18 @@ private fun LazyListScope.chatItems(model: AppModel, chat: DirectChat, b: Bot, d
                 chat.lightChat,
                 Modifier.fillMaxWidth(),
             ) { light ->
+                val was = chat.lightChat
                 chat.lightChat = light
                 val r = chat.room
                 if (r != null) {
                     scope.launch {
-                        model.updateRoom(r.hostMachineId, io.aide.android.api.RoomPatch(r.roomId, mode = if (light) LIGHT else MANUAL))?.let { chat.room = it }
+                        // Not switched (its error is reported): the mode shown goes back to what the room has.
+                        val updated = model.updateRoom(r.hostMachineId, io.aide.android.api.RoomPatch(r.roomId, mode = if (light) LIGHT else MANUAL))
+                        if (updated != null) {
+                            chat.room = updated
+                        } else {
+                            chat.lightChat = was
+                        }
                     }
                 }
             }
@@ -629,27 +642,51 @@ private fun LazyListScope.chatItems(model: AppModel, chat: DirectChat, b: Bot, d
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
         )
     }
+    // A time line before the first message and after a pause (工单 #132 P28): the room's, the session page's.
+    val lines = io.aide.android.model.timeLines(chat.messages, Instant.now())
     chat.messages.forEach { m ->
+        lines[m.messageId]?.let { line -> item(key = "tl-${m.messageId}", contentType = "time-line") { TimeLineRow(line) } }
         item(key = "m-${m.messageId}", contentType = "chat") {
             val mine = m.from == "owner"
-            val bubbleShape = RoundedCornerShape(
-                topStart = Radius.Bubble, topEnd = Radius.Bubble,
-                bottomStart = if (mine) Radius.Bubble else Radius.BubbleTail,
-                bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
-            )
-            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                if (!mine) Text(m.fromName + if (m.lightChat) t(" · Light", " · 轻聊") else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (mine && m.lightChat) Text(t("Light chat", "轻聊"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-                    .background(if (mine) aide.bubble else aide.card, bubbleShape).padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = if (mine) aide.onBubble else MaterialTheme.colorScheme.onSurface)
+            val now = Instant.now()
+            val whenText = m.at.takeIf { it.isNotEmpty() }?.let { agoText(instant(it), now) }
+            val scope = rememberCoroutineScope()
+            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val meta = if (mine) {
+                    listOfNotNull(
+                        if (m.lightChat) t("Light chat", "轻聊") else null,
+                        whenText,
+                    ).joinToString(" · ")
+                } else {
+                    listOfNotNull(
+                        m.fromName.ifEmpty { b.name },
+                        if (m.lightChat) t("Light", "轻聊") else null,
+                        whenText,
+                    ).joinToString(" · ")
                 }
-                if (mine) m.deliveries.forEach { d ->
-                    val (words, bad) = deliveryWords(d.state, b.name, d.reason, d.reminded)
-                    Text(words, style = MaterialTheme.typography.labelSmall, color = if (bad) Warning else aide.faint)
+                if (meta.isNotEmpty()) {
+                    Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (mine) {
+                    OwnBubble(m.text, io.aide.android.model.reachedNobody(m))
+                } else {
+                    MarkdownText(m.text, Modifier.fillMaxWidth().padding(vertical = 2.dp))
+                }
+                // A message that reached nobody, sent again as it was (工单 #139 P02): a new message, the failed one kept as it went.
+                if (mine) OwnDeliveries(m, false, { b.name }) { scope.launch { resendChat(model, chat, m) } }
             }
         }
+    }
+}
+
+/** Sends the owner's message again to a personal agent as it was; why it can't is said by the composer (重发 again retries). */
+private suspend fun resendChat(model: AppModel, chat: DirectChat, m: io.aide.android.api.RoomMessage) {
+    val r = chat.room ?: return
+    if (chat.state is ComposerState.Sending) return
+    chat.state = ComposerState.Sending
+    model.postRoomMessageOr(r, m.text, UUID.randomUUID().toString(), failed = { why -> chat.state = ComposerState.Failed(why) }, lightChat = m.lightChat)?.let { again ->
+        chat.messages = chat.messages.filter { it.messageId != again.messageId } + again
+        chat.state = ComposerState.Idle
     }
 }
 

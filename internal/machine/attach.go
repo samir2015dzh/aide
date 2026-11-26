@@ -49,6 +49,9 @@ type message struct {
 	// fyi: for information only (inbox Message.fyi): it starts no turn.
 	fyi    bool
 	events []*sessionv1.SessionEvent
+	// clientIDs: the SendMessageRequest.client_message_id of each send in
+	// it, echoed on what the session records of it (工单 #115).
+	clientIDs []string
 }
 
 func (m message) input() provider.Input {
@@ -68,7 +71,8 @@ func (m message) join(o message) message {
 		return o
 	}
 	j := message{text: m.text + "\n\n" + o.text, files: append(append([]*sessionv1.AttachmentInfo{}, m.files...), o.files...), by: m.by, conv: m.conv, byName: m.byName,
-		quiet: m.quiet && o.quiet, answer: m.answerText() + "\n\n" + o.answerText()}
+		quiet: m.quiet && o.quiet, answer: m.answerText() + "\n\n" + o.answerText(),
+		clientIDs: append(append([]string(nil), m.clientIDs...), o.clientIDs...)}
 	if m.quiet != o.quiet || m.events != nil || o.events != nil {
 		j.events = append(m.userEvents(), o.userEvents()...)
 	}
@@ -90,7 +94,7 @@ func (m message) userEvents() []*sessionv1.SessionEvent {
 	if m.quiet {
 		return nil
 	}
-	return []*sessionv1.SessionEvent{{Kind: &sessionv1.SessionEvent_UserMessage{UserMessage: &sessionv1.UserMessage{Text: m.text, Attachments: m.files, From: m.by, FromName: m.byName}}}}
+	return []*sessionv1.SessionEvent{{Kind: &sessionv1.SessionEvent_UserMessage{UserMessage: &sessionv1.UserMessage{Text: m.text, Attachments: m.files, From: m.by, FromName: m.byName, ClientMessageIds: m.clientIDs}}}}
 }
 
 // checkAttachments validates a message's files before anything is saved.
@@ -112,9 +116,9 @@ func checkAttachments(text string, atts []*sessionv1.Attachment) error {
 }
 
 // newMessage saves a message's files in a new directory under dir and
-// lists them after the text.
-func newMessage(dir, text string, atts []*sessionv1.Attachment) (message, error) {
-	m := message{text: text}
+// lists them after the text. On an error nothing of it stays.
+func newMessage(dir, text string, atts []*sessionv1.Attachment) (m message, err error) {
+	m = message{text: text}
 	if len(atts) == 0 {
 		return m, nil
 	}
@@ -122,6 +126,11 @@ func newMessage(dir, text string, atts []*sessionv1.Attachment) (message, error)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return m, err
 	}
+	defer func() {
+		if err != nil {
+			os.RemoveAll(dir)
+		}
+	}()
 	var b strings.Builder
 	b.WriteString("[Aide] Attached files, saved on this machine outside the worktree:\n")
 	used := map[string]bool{}
@@ -149,6 +158,14 @@ func newMessage(dir, text string, atts []*sessionv1.Attachment) (message, error)
 		m.text = text + "\n\n" + strings.TrimSpace(b.String())
 	}
 	return m, nil
+}
+
+// dropFiles removes the files newMessage saved for m, for a message that
+// was not taken.
+func (m message) dropFiles() {
+	if len(m.files) > 0 {
+		os.RemoveAll(filepath.Dir(m.files[0].Path))
+	}
 }
 
 // fileName keeps the base name, without control characters.

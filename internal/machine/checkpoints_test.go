@@ -13,6 +13,7 @@ import (
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/provider/acp"
+	"os/exec"
 )
 
 type noRollbackProvider struct {
@@ -161,15 +162,9 @@ func TestCheckpointsGitMultiTurnAndRollback(t *testing.T) {
 }
 
 // TestCheckpointsRefusedWhenProviderCannotRollback verifies that when a provider
-// does not support conversation rollback (such as ACP providers), Aide refuses
-// rollback with a clear explanation and leaves workspace files untouched.
+// does not support conversation rollback, Aide refuses rollback with a clear
+// explanation and leaves workspace files untouched.
 func TestCheckpointsRefusedWhenProviderCannotRollback(t *testing.T) {
-	// First assert real ACP provider reports unsupported conversation rollback.
-	acpProv := &acp.Provider{Agent: acp.Agent{Name: "antigravity"}}
-	if ok, msg := acpProv.CanRollbackConversation(); ok || !strings.Contains(msg, "conversation rollback") {
-		t.Fatalf("acp.Provider.CanRollbackConversation() = (%v, %q), want false with explanation", ok, msg)
-	}
-
 	h := newHarness(t, DefaultLimits())
 	ctx := context.Background()
 	baseProv := h.s.provider
@@ -304,4 +299,117 @@ func TestCheckpointsRetentionAndManualClear(t *testing.T) {
 		t.Fatalf("expected 0 checkpoints after clear all, got %d", len(after.Checkpoints))
 	}
 	var _ *sessionv1.CheckpointPolicy = after.Policy
+}
+
+// 审计 F: an ACP agent's worktree session rolls back as Claude's and Codex's
+// do (worktree reset, the next turn a fresh conversation told what was
+// discarded); only an in-place session refuses, and says so first.
+func TestCheckpointsACPWorktreeRollback(t *testing.T) {
+	// The shared build outside t.TempDir(): Windows will not remove the binary of an agent process still running.
+	bin := fakeACP(t)
+	t.Setenv("FAKE_ACP_STATE", t.TempDir())
+	prov := &acp.Provider{Agent: acp.Agent{Name: "gem", Command: "fakeacp", Args: []string{"acp"}}, Binary: bin}
+	h := newHarnessWith(t, DefaultLimits(), map[string]provider.Provider{"gem": prov})
+	ctx := context.Background()
+	start := func(project, prompt string) string {
+		t.Helper()
+		s, err := h.s.Start(ctx, h.p, &sessionv1.StartSessionRequest{ProjectId: project, Agent: "gem", Prompt: prompt})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Its agent process stopped before the directories it runs in are removed (registered after them, so run
+		// first): Windows removes neither a running program's file nor a directory a process works in.
+		t.Cleanup(func() { _, _ = h.s.Archive(context.Background(), h.p, s.SessionId) })
+		return s.SessionId
+	}
+	id := start("demo", "write a.txt one\nsay 1")
+	h.wait(id, idle)
+	h.send(id, "write b.txt two\nsay 2")
+	h.wait(id, idle)
+	list, err := h.s.ListCheckpoints(ctx, h.p, id)
+	if err != nil || !list.Enabled || !list.CanRollback || list.RollbackRefusedReason != "" || len(list.Checkpoints) != 2 {
+		t.Fatalf("ACP worktree checkpoints: %+v %v", list, err)
+	}
+	sess, err := h.rollback(id, 1)
+	if err != nil {
+		t.Fatalf("ACP worktree rollback refused: %v", err)
+	}
+	if sess.Progress.TurnCount != 1 || sess.ProviderSessionRef != "" {
+		t.Fatalf("after the rollback: %v", sess)
+	}
+	if _, err := os.Stat(filepath.Join(h.s.ws.Path(id), "b.txt")); !os.IsNotExist(err) {
+		t.Fatal("b.txt should be gone after rollback to turn 1")
+	}
+	// The next turn is a fresh agent conversation (fakeacp counts its turns).
+	h.send(id, "history")
+	h.wait(id, idle)
+	if r := h.lastTurn(id).GetResult(); r != "history: 1 turns" {
+		t.Fatalf("the turn after the rollback: %q", r)
+	}
+
+	// In place: the in-place reason, not the agent's, explains the refusal.
+	gitInPlace := t.TempDir()
+	initTestGitDir(t, gitInPlace)
+	h.inPlaceProject("live", gitInPlace)
+	h.s.provider = func(name string) provider.Provider {
+		return &noRollbackProvider{Provider: prov, reason: "agent reason"}
+	}
+	id2 := start("live", "say hi")
+	h.wait(id2, idle)
+	list2, err := h.s.ListCheckpoints(ctx, h.p, id2)
+	if err != nil || list2.CanRollback || !strings.Contains(list2.RollbackRefusedReason, "in-place") {
+		t.Fatalf("in-place refusal reason: %+v %v", list2, err)
+	}
+}
+
+// 审计 F: a checkpoint's age is when it was written, not its commit's date.
+// Turns that change nothing reuse the base commit; a base committed 30 days
+// ago must not get the fresh checkpoints pruned at once.
+func TestCheckpointsAgeIsWriteTime(t *testing.T) {
+	h := newHarness(t, DefaultLimits())
+	ctx := context.Background()
+	repo := harnessRepoPath(t, h)
+	old := time.Now().Add(-30 * 24 * time.Hour).UTC().Format(time.RFC3339)
+	cmd := exec.Command("git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-m", "old")
+	cmd.Dir = repo
+	cmd.Env = append(os.Environ(), "GIT_COMMITTER_DATE="+old, "GIT_AUTHOR_DATE="+old)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("old commit: %v %s", err, out)
+	}
+	id := h.start("say one")
+	h.wait(id, idle)
+	h.send(id, "say two")
+	h.wait(id, idle)
+	list, err := h.s.ListCheckpoints(ctx, h.p, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Checkpoints) != 2 {
+		t.Fatalf("checkpoints: %d, want 2 (pruned by the commit's date?): %+v", len(list.Checkpoints), list.Checkpoints)
+	}
+	for _, cp := range list.Checkpoints {
+		if cp.CreatedAt == nil || time.Since(cp.CreatedAt.AsTime()) > time.Hour {
+			t.Fatalf("checkpoint %d created at %v, want now", cp.Turn, cp.CreatedAt)
+		}
+	}
+	// Written 15 days ago, it is pruned for its age.
+	c, _ := h.s.st.TurnCommit(id, 1)
+	if err := h.s.ws.writeCheckpointAt(ctx, repo, id, 1, c, time.Now().Add(-15*24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if removed, err := h.s.ws.PruneCheckpoints(ctx, repo, id, defaultCheckpointRetention(), time.Now()); err != nil || removed != 1 {
+		t.Fatalf("prune: removed %d, %v", removed, err)
+	}
+	// A ref written before checkpoints were tagged (straight to a commit)
+	// has no known age: it is kept, not pruned for its commit's date.
+	if _, err := git(ctx, repo, "update-ref", checkpointRefName(id, 7), c); err != nil {
+		t.Fatal(err)
+	}
+	cps, err := h.s.ws.ListCheckpoints(ctx, repo, id)
+	if err != nil || len(cps) != 2 || cps[1].Turn != 7 || cps[1].Commit != strings.TrimSpace(c) || !cps[1].CreatedAt.IsZero() {
+		t.Fatalf("legacy ref: %+v %v", cps, err)
+	}
+	if removed, err := h.s.ws.PruneCheckpoints(ctx, repo, id, defaultCheckpointRetention(), time.Now()); err != nil || removed != 0 {
+		t.Fatalf("legacy prune: removed %d, %v", removed, err)
+	}
 }

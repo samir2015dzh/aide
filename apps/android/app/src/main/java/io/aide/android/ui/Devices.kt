@@ -72,7 +72,7 @@ fun DevicesTab(model: AppModel, openSession: (String) -> Unit) {
                                         BotAvatar(b, 28, still = true)
                                         HSpace(10)
                                         Text(b.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                        StatusPill(b.state.word, botTone(b))
+                                        BotPill(b)
                                     }
                                     machineAgents(m, now).firstOrNull { it.agent == b.agent }?.let { AgentWorkbench(model, m, it, openSession) }
                                 }

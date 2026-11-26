@@ -42,6 +42,43 @@ export function aidedGone(detail: string | undefined): boolean {
 }
 
 /**
+ * How close the main process's and a window's records of one break or recovery are: each watches on its own, and a
+ * hung watch is noticed on a 5 s watchdog tick (keepWatching), so the two can be that far apart, plus a little.
+ */
+export const linkPairWindow = 7_000;
+
+/**
+ * Merges the two records of one link break or recovery, the main process's (`from: "app"`) and a window's
+ * (`from: "window"`), made within windowMs of each other (#138 P15). Only records from different sources are merged:
+ * one source saying the same thing again is a link that broke again (a crash loop, #128), each kept. The window is
+ * measured from the pair's first record, never from the one kept, so it never stretches from record to record.
+ * The record kept is the more specific (what failed, then hung over a bare lost, how long it was down, the app's), with
+ * how long it was down carried over from the other when only that one says. Accepts entries in any order and keeps
+ * the input order of the records kept (审计 B).
+ */
+export function dedupeLinkEntries(entries: readonly LinkEntry[], windowMs = linkPairWindow): LinkEntry[] {
+  type Pair = { first: LinkEntry; froms: Set<LinkEntry["from"]>; kept: LinkEntry };
+  const pairs: Pair[] = [];
+  const score = (e: LinkEntry) => (e.detail ? 4 : 0) + (e.why === "hung" ? 2 : 0) + (e.downFor ? 1 : 0) + (e.from === "app" ? 0.5 : 0);
+  for (const e of entries) {
+    let best: Pair | undefined;
+    for (const p of pairs) {
+      if (p.first.link !== e.link || p.first.kind !== e.kind || p.froms.has(e.from)) continue;
+      const d = Math.abs(p.first.at - e.at);
+      if (d <= windowMs && (!best || d < Math.abs(best.first.at - e.at))) best = p;
+    }
+    if (!best) {
+      pairs.push({ first: e, froms: new Set([e.from]), kept: e });
+      continue;
+    }
+    best.froms.add(e.from);
+    const [keep, other] = score(e) > score(best.kept) ? [e, best.kept] : [best.kept, e];
+    best.kept = keep.downFor === undefined && other.downFor !== undefined ? { ...keep, downFor: other.downFor } : keep;
+  }
+  return pairs.map((p) => p.kept);
+}
+
+/**
  * Keeps a watch up until signal aborts: open() each time, every message to message(); down() once when it fails, ends
  * or hangs, up() with the first message after; watched again retry ms after it went down.
  */
