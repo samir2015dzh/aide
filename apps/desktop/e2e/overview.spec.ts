@@ -33,7 +33,8 @@ test("map height waits for the first resize delivery after navigation", async ()
       resolve();
     })));
     await expect.poll(() => stage.evaluate((el) => el.style.transform)).not.toBe("scale(1)");
-    expect(await measurement).toBe((await map.boundingBox())!.height);
+    // The same height, but for what a DPI-scaled layout rounds differently (工单 #169: 230.40625 against 230.4062195 on Windows).
+    expect(await measurement).toBeCloseTo((await map.boundingBox())!.height, 2);
   } finally {
     await app.close();
   }
