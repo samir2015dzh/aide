@@ -1590,6 +1590,55 @@ func (s *Sessions) Rename(ctx context.Context, p *Principal, id, title string) (
 	return s.toProto(row), nil
 }
 
+// SetMode changes a session's mode while it lives (工单 #167): one running
+// takes it now (provider.ModeSetter: where Aide's own gate enforces it, its
+// next tool call is decided by it; a call already decided is not), one not
+// running starts with it. An agent whose mode is set as its process starts
+// (DSH's presets) refuses it. The owner may change it, or the client that
+// started the session; it is audited, from what to what.
+func (s *Sessions) SetMode(ctx context.Context, p *Principal, id, mode string) (*sessionv1.Session, error) {
+	l, r, err := s.find(p, id, p.Kind != PrincipalOwner)
+	if err != nil {
+		return nil, err
+	}
+	if l == nil {
+		return nil, cerr(connect.CodeFailedPrecondition, "session %s is archived (read-only); unarchive it first", id)
+	}
+	if mode == "" {
+		return nil, cerr(connect.CodeInvalidArgument, "name the mode to change to")
+	}
+	if fp, ok := s.provider(r.Agent).(provider.FixedModes); ok && fp.ModesFixed() {
+		return nil, reason.New(connect.CodeFailedPrecondition, "mode_fixed", fmt.Sprintf("%s chooses a session's mode as its session starts, and keeps it: start a new session in the mode you want", r.Agent))
+	}
+	if err := checkMode(r.Agent, s.info(r.Agent), mode); err != nil {
+		return nil, err
+	}
+	l.mu.Lock()
+	ps, from := l.sess, l.row.Mode
+	l.mu.Unlock()
+	if ps != nil {
+		m, ok := ps.(provider.ModeSetter)
+		if !ok {
+			return nil, reason.New(connect.CodeFailedPrecondition, "mode_fixed", fmt.Sprintf("%s can't change its mode while it runs", r.Agent))
+		}
+		if err := m.SetMode(ctx, mode); err != nil {
+			if errors.Is(err, provider.ErrModeFixed) {
+				return nil, reason.New(connect.CodeFailedPrecondition, "mode_fixed", err.Error())
+			}
+			return nil, cerr(connect.CodeFailedPrecondition, "%s did not take mode %q: %v", r.Agent, mode, err)
+		}
+	}
+	l.mu.Lock()
+	l.row.Mode = mode
+	row := snapshotRow(l.row)
+	l.mu.Unlock()
+	if err := s.w.sync(writeOp{row: row}); err != nil {
+		return nil, err
+	}
+	s.audit.Log(AuditRecord{Kind: "session.mode", Subject: p.ID(), Session: id, Decision: "allow", Detail: fmt.Sprintf("from=%s to=%s live=%v", cmp.Or(from, "default"), mode, ps != nil)})
+	return s.toProto(row), nil
+}
+
 // MarkSeen records what the owner has seen of a session (Session.seen):
 // its finished turns once a device opened it, and its pending question
 // once a desktop told of it, and whether the owner was there meanwhile.
@@ -2958,7 +3007,7 @@ func (s *Sessions) toProto(r *sessionRow) *sessionv1.Session {
 		ProviderSessionRef: r.ProviderRef, CreatedAt: timestamppb.New(r.CreatedAt), UpdatedAt: timestamppb.New(r.UpdatedAt),
 		Error: r.Error, Branch: r.Branch, Workspace: r.Workspace, Result: r.Result, Title: r.Title, CreatedAs: r.Conversation,
 		Model: cmp.Or(r.AgentModel, r.Model), Effort: cmp.Or(r.Effort, r.AgentEffort), Repo: r.Repo, RepoBranch: r.RepoBranch,
-		Seen: proto.Clone(cmpOrEmpty(r.Seen)).(*sessionv1.SessionSeen), WorkspaceKept: s.workspaceKept(r)}
+		Seen: proto.Clone(cmpOrEmpty(r.Seen)).(*sessionv1.SessionSeen), WorkspaceKept: s.workspaceKept(r), Mode: r.Mode}
 }
 
 // workspaceKept: an archived session whose worktree is still on disk, as

@@ -49,6 +49,8 @@ import io.aide.android.api.AttachmentInfo
 import io.aide.android.model.AttachKind
 import io.aide.android.model.PendingFile
 import io.aide.android.model.replyPictures
+import io.aide.android.model.DSH_AGENT
+import io.aide.android.model.modeLabel
 import io.aide.android.model.attachKind
 import io.aide.android.model.kindWord
 import io.aide.android.model.sizeText
@@ -421,13 +423,59 @@ private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
                 t("Project", "项目") to (world.projects.firstOrNull { it.machineId == s.machineId && it.projectId == s.projectId }?.title() ?: s.projectId),
                 t("Model", "模型") to sessionParams(s),
             ),
-            Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 32.dp),
+            Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp),
         ) { (k, v) ->
             Row(Modifier.padding(horizontal = 16.dp, vertical = 11.dp)) {
                 Text(k, Modifier.widthIn(min = 72.dp), style = MaterialTheme.typography.bodyLarge)
                 Text(v, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
+        ModeRow(model, s, world.machines.firstOrNull { it.machineId == s.machineId }?.status?.agents?.firstOrNull { it.name == s.agent }?.modes.orEmpty())
+    }
+}
+
+/**
+ * Its mode, changed while it runs (工单 #167): Antigravity's from its next
+ * tool call, another ACP agent's as it takes it. DSH chooses its preset when
+ * its session starts, so it is shown and said to be fixed.
+ */
+@Composable
+private fun ModeRow(model: AppModel, s: Session, modes: List<io.aide.android.api.AgentMode>) {
+    if (modes.isEmpty() && s.mode.isEmpty()) {
+        Spacer(Modifier.heightIn(min = 32.dp))
+        return
+    }
+    val scope = rememberCoroutineScope()
+    var open by remember { mutableStateOf(false) }
+    val fixed = s.agent == DSH_AGENT
+    val archived = s.status == io.aide.android.api.SessionStatus.ARCHIVED
+    val can = !fixed && !archived && modes.isNotEmpty()
+    fun name(id: String) = if (id.isEmpty()) t("Default", "默认") else modeLabel(s.agent, modes.firstOrNull { it.id == id } ?: io.aide.android.api.AgentMode(id))
+    Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 32.dp)) {
+        Column(Modifier.fillMaxWidth().aideCard().then(if (can) Modifier.rowPress { open = true } else Modifier).padding(horizontal = 16.dp, vertical = 11.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(t("Mode", "权限档"), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(name(s.mode), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (can) {
+                    HSpace(4)
+                    Chevron()
+                }
+            }
+            Text(
+                when {
+                    fixed -> t("DSH chooses it when its session starts and can't change it while it runs: start a new session for another.", "DSH 在开会话时选定权限档，之后不能改：要换档请开新会话")
+                    archived -> t("Archived: unarchive it to change its mode.", "已归档：取消归档后才能改")
+                    else -> t("A change applies from its next tool call; what it was already allowed stays done.", "改后从下一次工具调用起生效；已经放行的不追溯")
+                },
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IosMenu(open, { open = false }, modes.map { m ->
+            MenuEntry(modeLabel(s.agent, m), checked = m.id == s.mode) {
+                open = false
+                if (m.id != s.mode) scope.launch { model.say(model.setMode(s, m.id) ?: t("Mode is now ${modeLabel(s.agent, m)}", "权限档已改为 ${modeLabel(s.agent, m)}")) }
+            }
+        })
     }
 }
 

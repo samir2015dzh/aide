@@ -208,6 +208,9 @@ const (
 	// LocalServiceReadAttachmentProcedure is the fully-qualified name of the LocalService's
 	// ReadAttachment RPC.
 	LocalServiceReadAttachmentProcedure = "/aide.local.v1.LocalService/ReadAttachment"
+	// LocalServiceSetSessionModeProcedure is the fully-qualified name of the LocalService's
+	// SetSessionMode RPC.
+	LocalServiceSetSessionModeProcedure = "/aide.local.v1.LocalService/SetSessionMode"
 	// LocalServiceStartSessionProcedure is the fully-qualified name of the LocalService's StartSession
 	// RPC.
 	LocalServiceStartSessionProcedure = "/aide.local.v1.LocalService/StartSession"
@@ -495,6 +498,8 @@ type LocalServiceClient interface {
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v12.ToolOutputChunk], error)
 	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
 	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
+	// A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #167).
+	SetSessionMode(context.Context, *v12.SetSessionModeRequest) (*v1.SessionResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -983,6 +988,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("ReadAttachment")),
 			connect.WithClientOptions(opts...),
 		),
+		setSessionMode: connect.NewClient[v12.SetSessionModeRequest, v1.SessionResponse](
+			httpClient,
+			baseURL+LocalServiceSetSessionModeProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SetSessionMode")),
+			connect.WithClientOptions(opts...),
+		),
 		startSession: connect.NewClient[v1.StartSessionRequest, v1.SessionResponse](
 			httpClient,
 			baseURL+LocalServiceStartSessionProcedure,
@@ -1327,6 +1338,7 @@ type localServiceClient struct {
 	listSessionEvents              *connect.Client[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse]
 	readToolOutput                 *connect.Client[v1.ReadToolOutputRequest, v12.ToolOutputChunk]
 	readAttachment                 *connect.Client[v12.ReadAttachmentRequest, v12.ReadAttachmentResponse]
+	setSessionMode                 *connect.Client[v12.SetSessionModeRequest, v1.SessionResponse]
 	startSession                   *connect.Client[v1.StartSessionRequest, v1.SessionResponse]
 	sendMessage                    *connect.Client[v1.SendMessageRequest, v1.SessionResponse]
 	interruptSession               *connect.Client[v1.InterruptSessionRequest, v1.SessionResponse]
@@ -1926,6 +1938,15 @@ func (c *localServiceClient) ReadAttachment(ctx context.Context, req *v12.ReadAt
 	return nil, err
 }
 
+// SetSessionMode calls aide.local.v1.LocalService.SetSessionMode.
+func (c *localServiceClient) SetSessionMode(ctx context.Context, req *v12.SetSessionModeRequest) (*v1.SessionResponse, error) {
+	response, err := c.setSessionMode.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // StartSession calls aide.local.v1.LocalService.StartSession.
 func (c *localServiceClient) StartSession(ctx context.Context, req *v1.StartSessionRequest) (*v1.SessionResponse, error) {
 	response, err := c.startSession.CallUnary(ctx, connect.NewRequest(req))
@@ -2494,6 +2515,8 @@ type LocalServiceHandler interface {
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v12.ToolOutputChunk]) error
 	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
 	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
+	// A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #167).
+	SetSessionMode(context.Context, *v12.SetSessionModeRequest) (*v1.SessionResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -2978,6 +3001,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("ReadAttachment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceSetSessionModeHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceSetSessionModeProcedure,
+		svc.SetSessionMode,
+		connect.WithSchema(localServiceMethods.ByName("SetSessionMode")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceStartSessionHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceStartSessionProcedure,
 		svc.StartSession,
@@ -3382,6 +3411,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceReadToolOutputHandler.ServeHTTP(w, r)
 		case LocalServiceReadAttachmentProcedure:
 			localServiceReadAttachmentHandler.ServeHTTP(w, r)
+		case LocalServiceSetSessionModeProcedure:
+			localServiceSetSessionModeHandler.ServeHTTP(w, r)
 		case LocalServiceStartSessionProcedure:
 			localServiceStartSessionHandler.ServeHTTP(w, r)
 		case LocalServiceSendMessageProcedure:
@@ -3733,6 +3764,10 @@ func (UnimplementedLocalServiceHandler) ReadToolOutput(context.Context, *v1.Read
 
 func (UnimplementedLocalServiceHandler) ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadAttachment is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SetSessionMode(context.Context, *v12.SetSessionModeRequest) (*v1.SessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.SetSessionMode is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) StartSession(context.Context, *v1.StartSessionRequest) (*v1.SessionResponse, error) {

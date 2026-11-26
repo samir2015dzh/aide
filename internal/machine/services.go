@@ -57,6 +57,10 @@ func (s *sessionService) ReadToolOutput(ctx context.Context, req *sessionv1.Read
 	return s.n.sessions.ReadToolOutput(principalFrom(ctx), req, stream.Send)
 }
 
+func (s *sessionService) SetSessionMode(ctx context.Context, req *sessionv1.SetSessionModeRequest) (*sessionv1.Session, error) {
+	return s.n.sessions.SetMode(ctx, principalFrom(ctx), req.SessionId, req.Mode)
+}
+
 func (s *sessionService) ReadAttachment(ctx context.Context, req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
 	return s.n.sessions.ReadAttachment(principalFrom(ctx), req)
 }

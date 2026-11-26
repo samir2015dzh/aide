@@ -205,6 +205,11 @@ func (l *Local) ReadToolOutput(req *sessionv1.ReadToolOutputRequest, send func(*
 	return l.n.sessions.ReadToolOutput(l.p, req, send)
 }
 
+// SetSessionMode changes a session's mode as the owner (工单 #167).
+func (l *Local) SetSessionMode(ctx context.Context, id, mode string) (*sessionv1.Session, error) {
+	return l.n.sessions.SetMode(ctx, l.p, id, mode)
+}
+
 func (l *Local) ReadAttachment(req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
 	return l.n.sessions.ReadAttachment(l.p, req)
 }

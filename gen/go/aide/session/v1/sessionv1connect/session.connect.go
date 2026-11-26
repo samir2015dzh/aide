@@ -101,6 +101,9 @@ const (
 	// SessionServiceReadAttachmentProcedure is the fully-qualified name of the SessionService's
 	// ReadAttachment RPC.
 	SessionServiceReadAttachmentProcedure = "/aide.session.v1.SessionService/ReadAttachment"
+	// SessionServiceSetSessionModeProcedure is the fully-qualified name of the SessionService's
+	// SetSessionMode RPC.
+	SessionServiceSetSessionModeProcedure = "/aide.session.v1.SessionService/SetSessionMode"
 )
 
 // SessionServiceClient is a client for the aide.session.v1.SessionService service.
@@ -192,6 +195,14 @@ type SessionServiceClient interface {
 	// and only a picture (PNG, JPEG, GIF or WebP by its content, at most
 	// 10 MiB) that a reply in this session showed.
 	ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error)
+	// SetSessionMode changes a session's mode (an ACP agent's permission or
+	// approval preset, AgentStatus.modes) while it lives (工单 #167). One
+	// running takes it now: where Aide's own gate enforces it (Antigravity),
+	// its next tool call is decided by it; another agent's is set over ACP.
+	// A call already decided is not. One not running starts with it. An
+	// agent whose mode is set as its process starts (DeepSeek Harness's
+	// presets) refuses it (reason mode_fixed).
+	SetSessionMode(context.Context, *v1.SetSessionModeRequest) (*v1.Session, error)
 }
 
 // NewSessionServiceClient constructs a client for the aide.session.v1.SessionService service. By
@@ -343,6 +354,12 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("ReadAttachment")),
 			connect.WithClientOptions(opts...),
 		),
+		setSessionMode: connect.NewClient[v1.SetSessionModeRequest, v1.Session](
+			httpClient,
+			baseURL+SessionServiceSetSessionModeProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("SetSessionMode")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -371,6 +388,7 @@ type sessionServiceClient struct {
 	markSessionSeen    *connect.Client[v1.MarkSessionSeenRequest, v1.Session]
 	getSessionInsights *connect.Client[v1.GetSessionInsightsRequest, v1.SessionInsights]
 	readAttachment     *connect.Client[v1.ReadAttachmentRequest, v1.ReadAttachmentResponse]
+	setSessionMode     *connect.Client[v1.SetSessionModeRequest, v1.Session]
 }
 
 // StartSession calls aide.session.v1.SessionService.StartSession.
@@ -568,6 +586,15 @@ func (c *sessionServiceClient) ReadAttachment(ctx context.Context, req *v1.ReadA
 	return nil, err
 }
 
+// SetSessionMode calls aide.session.v1.SessionService.SetSessionMode.
+func (c *sessionServiceClient) SetSessionMode(ctx context.Context, req *v1.SetSessionModeRequest) (*v1.Session, error) {
+	response, err := c.setSessionMode.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // SessionServiceHandler is an implementation of the aide.session.v1.SessionService service.
 type SessionServiceHandler interface {
 	StartSession(context.Context, *v1.StartSessionRequest) (*v1.StartSessionResponse, error)
@@ -657,6 +684,14 @@ type SessionServiceHandler interface {
 	// and only a picture (PNG, JPEG, GIF or WebP by its content, at most
 	// 10 MiB) that a reply in this session showed.
 	ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error)
+	// SetSessionMode changes a session's mode (an ACP agent's permission or
+	// approval preset, AgentStatus.modes) while it lives (工单 #167). One
+	// running takes it now: where Aide's own gate enforces it (Antigravity),
+	// its next tool call is decided by it; another agent's is set over ACP.
+	// A call already decided is not. One not running starts with it. An
+	// agent whose mode is set as its process starts (DeepSeek Harness's
+	// presets) refuses it (reason mode_fixed).
+	SetSessionMode(context.Context, *v1.SetSessionModeRequest) (*v1.Session, error)
 }
 
 // NewSessionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -804,6 +839,12 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("ReadAttachment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceSetSessionModeHandler := connect.NewUnaryHandlerSimple(
+		SessionServiceSetSessionModeProcedure,
+		svc.SetSessionMode,
+		connect.WithSchema(sessionServiceMethods.ByName("SetSessionMode")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.session.v1.SessionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SessionServiceStartSessionProcedure:
@@ -852,6 +893,8 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServiceGetSessionInsightsHandler.ServeHTTP(w, r)
 		case SessionServiceReadAttachmentProcedure:
 			sessionServiceReadAttachmentHandler.ServeHTTP(w, r)
+		case SessionServiceSetSessionModeProcedure:
+			sessionServiceSetSessionModeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -951,4 +994,8 @@ func (UnimplementedSessionServiceHandler) GetSessionInsights(context.Context, *v
 
 func (UnimplementedSessionServiceHandler) ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.ReadAttachment is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) SetSessionMode(context.Context, *v1.SetSessionModeRequest) (*v1.Session, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.SetSessionMode is not implemented"))
 }

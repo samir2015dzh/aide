@@ -128,7 +128,13 @@
     "context": "Context",
     "model": "Model <b>{{model}}</b>",
     "effort": "Reasoning effort <b>{{effort}}</b>",
-    "sameAs": "Same as {{agent}}"
+    "sameAs": "Same as {{agent}}",
+    "mode": "Permissions <b>{{mode}}</b>",
+    "modeDefault": "the agent's default",
+    "modeMenu": "Permissions",
+    "modeHint": "Change it while the session runs: its next tool call is decided by the new one",
+    "modeFixed": "DSH chooses a session's permission preset as it starts and keeps it: start a new session in another",
+    "modeChanged": "Permissions now {{mode}}: its next tool call is decided by it"
   },
   "insights": {
     "title": "Session Insights",
