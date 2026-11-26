@@ -123,7 +123,7 @@
     "done": "Done",
     "running": "Running",
     "machines": "Machines online",
-    "offline_one": "{{count}} offline",
-    "offline_other": "{{count}} offline"
+    "machinesOffline_one": "Machines online · {{count}} offline",
+    "machinesOffline_other": "Machines online · {{count}} offline"
   }
 }

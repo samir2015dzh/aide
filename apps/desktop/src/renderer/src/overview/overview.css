@@ -195,5 +195,6 @@
 .u-scale{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--l3);margin-left:auto}
 .u-scale div{width:11px;height:11px;border-radius:3px}
 .u-empty{font-size:12px;color:var(--l2)}
+.u-source{margin:var(--sp-1) 0 0;font-size:11px;color:var(--l3,var(--l2))}
 .u-tip{position:absolute;pointer-events:none;background:var(--l1);color:var(--win);border-radius:8px;padding:6px 9px;font-size:11.5px;line-height:1.4;white-space:nowrap;transform:translate(-50%,calc(-100% - 10px));z-index:5}
 .u-tip b{font-weight:600}

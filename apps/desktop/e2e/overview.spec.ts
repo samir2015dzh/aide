@@ -106,7 +106,7 @@ test("a node clicked on the link map narrows 正在干活, names the condition a
   const tokens = (await today.textContent())!.match(/(\d+) tokens/)![1];
   await expect(page.getByRole("region", { name: "用量" }).locator(".u-kpi").first()).toContainText(tokens);
   const bot = map.getByRole("button", { name: "bot", exact: true });
-  await expect(bot).toContainText("个人 agent"); // its grant is not about to expire
+  await expect(bot).toContainText("个人 Agent"); // its grant is not about to expire
   // Hovering a grant shows where it may work: here, every machine and project.
   await bot.hover();
   await expect(map.locator(".lm-edge.scope")).toHaveCount(2); // hub → this Mac, this Mac → demo

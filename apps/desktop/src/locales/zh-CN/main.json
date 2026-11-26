@@ -17,7 +17,7 @@
     "file": {
       "title": "文件",
       "newSession": "新建任务…",
-      "newGrant": "连接 agent…",
+      "newGrant": "连接 Agent…",
       "addMachine": "添加机器…",
       "addProject": "添加项目…",
       "close": "关闭窗口"

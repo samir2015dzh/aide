@@ -12,7 +12,7 @@ test("the roster is the first thing in the sidebar, and a bot opens its own page
   const roster = page.getByRole("region", { name: "Bot" });
   await expect(roster).toBeVisible({ timeout: 30_000 });
   // Personal agents on the account (the world's grant "bot"); coding agents in a group per machine, headed by its name (工单 #75).
-  const personal = roster.getByRole("group", { name: "个人 agent" });
+  const personal = roster.getByRole("group", { name: "个人 Agent" });
   await expect(personal.getByRole("button", { name: /bot/ })).toBeVisible();
   const coding = roster.getByRole("group", { name: "owner-mac" });
   const claude = coding.getByRole("button", { name: /^Claude Code/ });
@@ -27,9 +27,10 @@ test("the roster is the first thing in the sidebar, and a bot opens its own page
   // Its conversations in the middle, with the box to write to it.
   await expect(bot.getByRole("list", { name: "对话" })).toBeVisible();
   await expect(bot.getByRole("textbox", { name: "给 Claude Code 发消息" })).toBeVisible();
-  // Beside: its task board; its settings — its projects and how it runs, pausing it — a page of their own behind the
-  // button in its head (工单 #97); no device page link (工单 #63).
-  await expect(bot.getByRole("complementary", { name: "任务看板" })).toBeVisible();
+  // Beside: its task board when it has tasks — none here, so no column of nothing (工单 #140 P26); its settings — its
+  // projects and how it runs, pausing it — a page of their own behind the button in its head (工单 #97); no device page
+  // link (工单 #63).
+  await expect(bot.getByRole("complementary", { name: "任务看板" })).toHaveCount(0);
   await snap(page, "batchg-bot-page");
   await bot.getByRole("button", { name: "设置", exact: true }).click();
   const settings = page.getByRole("region", { name: /^Claude Code.* 的设置$/ });

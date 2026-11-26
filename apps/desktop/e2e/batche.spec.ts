@@ -44,7 +44,7 @@ test("an agent's kind: told from its name, set by the owner, shown so on the map
   const { app, page } = await launch();
   const map = page.getByRole("region", { name: "链路" });
   const bot = map.getByRole("button", { name: "bot", exact: true });
-  await expect(bot).toContainText("个人 agent");
+  await expect(bot).toContainText("个人 Agent");
   const settings = await openSettings(app, page, "grants");
   await settings.getByRole("list", { name: "授权" }).getByRole("button", { name: /bot/ }).click();
   // The app's own picker (工单 #68), not a browser <select>.
@@ -57,6 +57,6 @@ test("an agent's kind: told from its name, set by the owner, shown so on the map
   await expect(bot).toHaveCount(0, { timeout: 30_000 });
   await expect(map.locator(".lm-home")).toHaveCount(1);
   await pick(kind, /^自动判断/);
-  await expect(bot).toContainText("个人 agent", { timeout: 30_000 });
+  await expect(bot).toContainText("个人 Agent", { timeout: 30_000 });
   await app.close();
 });

@@ -42,7 +42,7 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
   await login.click();
   await expect(login).toHaveAttribute("aria-checked", "true");
   expect((await page.evaluate(() => window.aide?.loginItem()))?.on).toBe(true);
-  const turnDone = general.getByRole("switch", { name: "一轮完成" });
+  const turnDone = general.getByRole("switch", { name: "Agent 回复了" });
   await expect(turnDone).toHaveAttribute("aria-checked", "false");
   await turnDone.click();
   await expect(turnDone).toHaveAttribute("aria-checked", "true");
@@ -62,8 +62,8 @@ test("settings opens on 通用; 授权 lists the grants, one opens its scope, an
 
   // Connecting one is the Connect page's, once (工单 #137 P29): from here a way there, no second button; and every
   // grant named one way.
-  await expect(grants.getByRole("button", { name: "连接 agent…" })).toHaveCount(0);
-  await grants.getByRole("button", { name: "要连接新的 agent，到「连接」页。" }).click();
+  await expect(grants.getByRole("button", { name: "连接 Agent…" })).toHaveCount(0);
+  await grants.getByRole("button", { name: "要连接新的 Agent，到「连接」页。" }).click();
   await expect(settings.getByRole("main", { name: "连接" }).getByRole("tab", { name: "助手" })).toHaveAttribute("aria-selected", "true");
   await nav(settings, "授权").click();
 
@@ -296,7 +296,7 @@ test("settings 机器 opens this Mac: its sharing, its agents each opening a pag
   await expect(mac).toContainText(thisComputer);
   await snap(settings, "settings-machines");
   await mac.click();
-  await expect(panel.getByRole("switch", { name: "安全可信地共享本机 agent" })).toHaveAttribute("aria-checked", "true");
+  await expect(panel.getByRole("switch", { name: "安全可信地共享本机 Agent" })).toHaveAttribute("aria-checked", "true");
   await expect(panel).toContainText(/正在运行 \d+ 个/);
   await expect(panel.locator(".set-acts").getByRole("button", { name: "移除…" })).toHaveCount(0); // not this Mac
 
@@ -336,7 +336,7 @@ test("settings 机器 opens this Mac: its sharing, its agents each opening a pag
   if (id) {
     const st = await api<{ localMachineId: string }>(settings, "GetStatus");
     await api(settings, "AddProject", { machineId: st.localMachineId, projectId: `left-${process.pid}`, path: gitRepo(`left-${process.pid}`), agents: [id] });
-    const left = panel.getByRole("list", { name: "其他项目 · 给没有安装的 agent" }).getByRole("group", { name: `left-${process.pid}` });
+    const left = panel.getByRole("list", { name: "其他项目 · 给没有安装的 Agent" }).getByRole("group", { name: `left-${process.pid}` });
     await expect(left).toContainText(missing!, { timeout: 30_000 });
     await expect(agents.getByRole("group", { name: `left-${process.pid}` })).toHaveCount(0);
     await answerMenu(app, "remove");

@@ -68,6 +68,8 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
+/* 工单 #140 P20: no paragraph ends on a word or two alone ("…也会同 / 步点亮"), anywhere in the app. */
+body{text-wrap-style:pretty}
 body{margin:0;background:var(--surface-page);color:var(--l1);font-family:var(--font);font-size:var(--fs-text);font-weight:var(--font-weight-normal);font-variation-settings:var(--font-axes);font-optical-sizing:auto;font-variant-ligatures:no-contextual;line-height:1.5;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;cursor:default;overflow:hidden}
 #root{height:100%}
 /* Mica 柔和光斑背景（DESIGN-107 §0.3），供亚克力层透出微妙层次 */
@@ -702,6 +704,11 @@ html.blurred .ctitle h2,html.blurred .set-top h1,html.blurred .update-title{colo
 .picker.chip .picker-c{width:14px;height:14px;padding:0;background:none;color:var(--l2);stroke-width:1.5}
 .picker.chip{height:28px;padding:0 8px 0 10px;border-radius:var(--radius-control);background:var(--btn);border:1px solid var(--color-border);box-shadow:none;font-size:12.5px;color:var(--l1)}
 .picker.chip:hover{background:var(--surface-hover)}
+/* What a chip picks, before its value (工单 #140 P11); one Aide cannot choose, a quiet label of the same shape. */
+.picker .picker-k{color:var(--l2);margin-right:4px}
+.picker .picker-k::after{content:" ·"}
+.picker.picker-fixed{display:inline-flex;align-items:center;cursor:default;background:none;border-style:dashed;color:var(--l2)}
+.picker.picker-fixed:hover{background:none}
 .picker-menu{max-height:min(360px,70vh);overflow-y:auto}
 .picker-menu .mi{height:auto;min-height:var(--size-row)}
 .picker-menu .picker-l{display:flex;flex-direction:column;padding:4px 0}

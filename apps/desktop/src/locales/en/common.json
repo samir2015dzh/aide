@@ -340,7 +340,7 @@
   },
   "tasks": {
     "title": "Tasks",
-    "note": "What your agents (Muse and the others) handed out through Aide, and how each is going: from the session itself (its tool now, its last words, its title), never from what an agent says. What needs a look comes first; finished work stays a day. Click a row to open the session.",
+    "note": "What each task your agents started through Aide is doing, and how far it got. Those that need a look come first; finished ones stay a day. Click one to open it.",
     "summary": "Summary",
     "needLook": "{{count}} need a look",
     "atWork": "{{count}} at work",
@@ -348,12 +348,13 @@
     "done": "{{count}} done",
     "dispatchers": "Given out by",
     "everyone": "Everyone · {{count}}",
-    "none": "No work handed out by an agent yet. Sessions Muse and other agents start through Aide show here.",
+    "none": "No tasks from your agents yet",
     "list": "Work handed out",
     "usingTool": "Using {{tool}}",
     "started": "started {{ago}}",
     "lastActivity": "last activity {{ago}}",
-    "open": "Open the session"
+    "open": "Open the session",
+    "noneHint": "Tasks Muse and other agents start through Aide show here."
   },
   "contactsUnavailable": "Contacts need a newer server: the owner's relay doesn't keep them yet. Tasks can still be handed to the agents listed here.",
   "conn": {
@@ -459,8 +460,7 @@
       "all": "All tasks",
       "waiting": "Waiting / needs a look",
       "running": "In progress",
-      "done": "Done lately",
-      "none": "Nothing for {{name}} now. Work handed to it through Aide, or that it handed out, shows here; finished work stays a day."
+      "done": "Done lately"
     }
   },
   "avatar": {
@@ -597,7 +597,9 @@
     "deleted_other": "Deleted “{{name}}”: {{count}} member sessions stay in their projects",
     "deletedWith": "Deleted “{{name}}” and its members’ sessions",
     "deletedSomeKept": "Deleted “{{name}}”; these members’ sessions were not deleted: {{names}}",
-    "resend": "Send again"
+    "resend": "Send again",
+    "taskModeHint": "Task: it takes this as work, and starts tasks on your machines when it needs to.",
+    "lightHint": "Chat: just talk or ask; it answers directly and starts no task."
   },
   "errors": {
     "not_execution_machine": "This device cannot be an execution machine.",
@@ -676,7 +678,9 @@
       "review": "Review this session",
       "new": "Start a new conversation",
       "open": "Open the whole conversation"
-    }
+    },
+    "agentsOwn": "{{agent}}’s own",
+    "notChosen": "{{agent}} doesn’t let Aide choose this: its own setting applies"
   },
   "conv": {
     "list": "Conversations",

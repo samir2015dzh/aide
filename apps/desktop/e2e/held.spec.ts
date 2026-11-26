@@ -17,7 +17,7 @@ test("a held message: listed with why, released to its session", async () => {
   const list = page.getByRole("region", { name: "等你放行的消息" });
   const row = list.getByRole("listitem", { name: "helper" });
   await expect(row).toBeVisible();
-  await expect(row).toContainText("刚接入不久的 agent，先经你确认");
+  await expect(row).toContainText("刚接入不久的 Agent，先经你确认");
   await expect(row).toContainText("say 放行了");
   await snap(page, "held");
   await row.getByRole("button", { name: "放行" }).click();

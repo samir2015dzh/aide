@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { agoText, codingAgentShort, livenessOf, sessionStateOf, stateLine } from "@aide/core";
-import { AgentLogo } from "@aide/ui";
+import { AgentLogo, Mark } from "@aide/ui";
 import { useNow, useStore } from "./store";
 import { dispatchers, taskRows, type TaskRow } from "./tasks";
 import "./dsh/dsh.css";
 import "./tasks.css";
+import "./overview/overview.css";
 
 /**
  * The work handed out, as 任务动态 has it: the one reckoning the page, the sidebar's count and each bot's task board
@@ -73,7 +74,14 @@ export function TasksPage() {
               ))}
             </div>
           )}
-          {rows.length === 0 && <p className="dsh-empty">{t("tasks.none")}</p>}
+          {/* The same empty state as the overview's (工单 #140 P23): the mark at rest, what will show here. */}
+          {rows.length === 0 && (
+            <div className="wrest" role="status">
+              <Mark size={34} className="wrest-mark" />
+              <b>{t("tasks.none")}</b>
+              <p>{t("tasks.noneHint")}</p>
+            </div>
+          )}
           <ul className="held-list" aria-label={t("tasks.list")}>
             {shown.map((r) => (
               <TaskItem key={r.session.sessionId} r={r} now={now} />

@@ -69,7 +69,8 @@ function stateOf(main: ConnRow, reachable: boolean, paused: boolean): BotState {
  * 2.1.3" said it twice): "版本 2.1.3", the rest of a longer line, or "" when the word says it all.
  */
 export function stateDetail(s: Pick<BotState, "word" | "line">): string {
-  if (s.line === s.word) return "";
+  // "现在连着你的账号" is "在线" again, and the same for every personal agent (工单 #140 P24): nothing to add.
+  if (s.line === s.word || s.line === t("roster.onlineLine")) return "";
   if (!s.line.startsWith(`${s.word} · `)) return s.line;
   const rest = s.line.slice(s.word.length + 3);
   return /^v?\d+(\.\d+)+\S*$/.test(rest) ? t("roster.version", { version: rest.replace(/^v/, "") }) : rest;

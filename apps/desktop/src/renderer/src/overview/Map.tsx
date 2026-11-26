@@ -30,6 +30,12 @@ const COL = { g: 24, m: 432, p: 636 };
 const WIDTH = { g: 164, m: 168, p: 168 };
 const HEIGHT = { g: 42, m: 46, p: 42 };
 const HUB = { x: 318, s: 36 };
+/**
+ * The stage's least height: the hub centred at cy = TOP + (H - TOP) / 2 - 19, its icon (HUB.s each way) and its two
+ * lines of label (about 44) under it, 8 to spare: H >= 2 * (HUB.s + 44 + 8 - 19) + TOP, about 151. It was 190, which left
+ * a band of nothing above the legend when the columns are short (工单 #140 P22).
+ */
+const MIN_H = 152;
 // A machine only's map: grants, this Mac (the hub), projects.
 const ONE = { g: { x: 24, w: 196 }, p: { x: 640, w: 150 }, hub: 410 };
 
@@ -110,7 +116,9 @@ function layout(st: Store, live: Session[]) {
   const p = column(projectList, "p", null, "moreProjects");
 
   const rows = Math.max(g.shown.length + g.tail.length, m.shown.length + m.tail.length, p.shown.length + p.tail.length, 1);
-  const H = Math.max(190, rows * GAP + TOP + 44);
+  // No taller than the hub needs when the columns are short (工单 #140 P22: a band of nothing above the legend): the hub's
+  // icon and its two lines of label, centred as below, with the columns' own room otherwise.
+  const H = Math.max(MIN_H, rows * GAP + TOP + 44);
   // The hub with its label (about 127 tall, the icon on top) is what sits in the middle.
   const cy = TOP + (H - TOP) / 2 - 19;
   const y = (i: number, n: number) => cy + (i - (n - 1) / 2) * GAP;

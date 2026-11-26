@@ -205,6 +205,8 @@ export function RoomTimeline({ room, msgs, handOn, resend }: { room: Room; msgs:
         const session = member?.sessionId ? st.sessions.find((s) => s.sessionId === member.sessionId) : undefined;
         const replyTarget = m.inReplyTo ? byId.get(m.inReplyTo) : undefined;
         const atDate = dateOf(m.at);
+        // 轻聊 on both sides of a light exchange — the owner's message and the answer to it — not on some only (工单 #140 P27).
+        const light = m.lightChat || (!!m.inReplyTo && !!byId.get(m.inReplyTo)?.lightChat);
         // One of the owner's that reached nobody it was for: marked as failed, and sent again from here (工单 #139 P02).
         const failed = mine && m.deliveries.length > 0 && m.deliveries.every((d) => d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED);
         const resendable = mine && !!resend && m.deliveries.some((d) => d.state === RoomDeliveryState.FAILED);
@@ -215,11 +217,12 @@ export function RoomTimeline({ room, msgs, handOn, resend }: { room: Room; msgs:
                 {room.shadow && m.toName ? `${m.fromName} → ${m.toName}` : m.fromName}
                 {room.shadow && atDate && <em>· {agoText(atDate, now)}</em>}
                 {m.late && <em>{t("rooms.late")}</em>}
+                {light && <span className="room-ro-tag">{t("rooms.light")}</span>}
               </span>
             )}
-            {mine && (m.mentions.length > 0 || m.lightChat) && (
+            {mine && (m.mentions.length > 0 || light) && (
               <span className="chat-who">
-                {m.lightChat && <span className="room-ro-tag">{t("rooms.light")}</span>}
+                {light && <span className="room-ro-tag">{t("rooms.light")}</span>}
                 {m.mentions.map((k) => "@" + nameOf(k)).join(" ")}
               </span>
             )}

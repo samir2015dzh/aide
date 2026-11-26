@@ -33,8 +33,8 @@ export function Tiles({ now }: { now: Date }) {
           {online}
           <small>/{st.machines.length}</small>
         </b>
-        <span>{t("tiles.machines")}</span>
-        {offline > 0 && <em>{t("tiles.offline", { count: offline })}</em>}
+        {/* One number and one label, as the three beside it (工单 #140 P19): the offline ones said in the label. */}
+        <span>{offline > 0 ? t("tiles.machinesOffline", { count: offline }) : t("tiles.machines")}</span>
       </div>
     </div>
   );

@@ -57,7 +57,7 @@ describe("session notices", () => {
     progressOf(done).turnCount = 1;
     progressOf(done).diffStat = create(DiffStatSchema, { filesChanged: 2, insertions: 5 });
     const d = noticeDiff(new Map([["s", noticeSnapshot(running)]]), [done], grant);
-    expect(d).toEqual([{ kind: "turnDone", sessionId: "s", title: "「s」第 1 轮完成", body: "2 个文件 +5 −0" }]);
+    expect(d).toEqual([{ kind: "turnDone", sessionId: "s", title: "「s」：Agent 回复了", body: "2 个文件 +5 −0" }]);
   });
 
   test("a crash without a failure, and a turn without changes", () => {

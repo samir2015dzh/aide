@@ -101,7 +101,7 @@
     "questionBody": "{{title}}: {{text}}",
     "failedTitle": "“{{title}}” failed: {{failure}}",
     "failedBody": "{{grant}} · {{agent}} · {{project}}. {{advice}}",
-    "turnDoneTitle": "“{{title}}” finished turn {{turn}}",
+    "turnDoneTitle": "“{{title}}”: the agent replied",
     "noChanges": "No files changed",
     "changes_one": "{{count}} file +{{insertions}} −{{deletions}}",
     "changes_other": "{{count}} files +{{insertions}} −{{deletions}}",

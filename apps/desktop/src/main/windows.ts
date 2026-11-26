@@ -158,7 +158,8 @@ export function showSettings(tab?: string) {
     title: i18n.t("main:settingsWindow"),
     // As the main window's frame.
     ...platform.frame("settings"),
-    minimizable: false,
+    // A Mac's settings window has no minimize; a Windows window beside the main one has what it has (工单 #140 P30).
+    minimizable: platform.token === "win",
     fullscreenable: false,
     webPreferences: webPreferences(),
   });

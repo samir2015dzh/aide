@@ -64,7 +64,8 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
         <div>
           <b>{user}</b>
           <span>
-            {t("account.ownServer", { host: host || "—" })}
+            {/* The server's address is where it is used (signing a new device in, below) and under Advanced, not here too (工单 #140 P30). */}
+            {t("account.ownServerShort")}
             {s && !s.relayConnected && <span className="warn"> · {t("account.notConnected")}</span>}
           </span>
         </div>
@@ -84,7 +85,10 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
                   {[platformTitle(d.platform), d.machineId ? t("account.alsoMachine", { status: t(d.machineOnline ? "online" : "offline") }) : ""].filter(Boolean).join(" · ")}
                 </div>
               </div>
-              {!d.thisDevice && (
+              {/* This one signs out with 退出登录 below, once: said here, not a second button (工单 #140 P30). */}
+              {d.thisDevice ? (
+                <span className="fdesc">{t("account.thisDeviceSignOut")}</span>
+              ) : (
                 <button className="btn sm danger" onClick={() => removeDevice(d)}>{t("account.signOutDevice")}</button>
               )}
             </div>
@@ -154,7 +158,7 @@ function MachineAccount() {
         <div>
           <b>{user}</b>
           <span>
-            {t("account.ownServer", { host: host || "—" })}
+            {t("account.ownServerShort")}
             {!s.relayConnected && <span className="warn"> · {t("account.notConnected")}</span>}
           </span>
         </div>

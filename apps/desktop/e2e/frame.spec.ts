@@ -384,7 +384,7 @@ test("a row's ⋯ menu renames in place, archives, and deletes once confirmed, i
   menu = await more("新的名字");
   await menu.getByRole("menuitem", { name: "删除…" }).click();
   const dialog = page.getByRole("dialog", { name: "删除「新的名字」？" });
-  await expect(dialog).toContainText("任务记录、对话和工作区会被永久删除，无法恢复。agent 做的改动仍保留在分支");
+  await expect(dialog).toContainText("任务记录、对话和工作区会被永久删除，无法恢复。Agent 做的改动仍保留在分支");
   await snap(page, "row-delete-confirm");
   await dialog.getByRole("button", { name: "取消" }).click();
   await expect(row("新的名字")).toBeVisible();

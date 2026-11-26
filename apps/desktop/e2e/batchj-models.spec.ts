@@ -23,7 +23,8 @@ test("Claude Code: each model in the list is its specific one, the chosen one ru
   const bot = page.getByRole("region", { name: /^Claude/ });
   const chip = bot.getByRole("button", { name: "模型", exact: true });
   // The default names the model it runs; every entry its specific model, its family at most a part of its name.
-  await expect(chip).toHaveText("默认 · Sonnet 5.5", { timeout: 30_000 });
+  await expect(chip.locator(".picker-v")).toHaveText("默认 · Sonnet 5.5", { timeout: 30_000 });
+  await expect(chip.locator(".picker-k")).toHaveText("模型"); // what it picks, said on it (工单 #140 P11)
   const listed = await modelList(page, chip);
   expect(listed).toEqual(["默认 · Sonnet 5.5 claude-sonnet-5-5", "Sonnet 5.5 claude-sonnet-5-5", "Fable 5.2 claude-fable-5-2", "Opus 5.5 claude-opus-5-5", "Haiku 5.5 claude-haiku-5-5"]);
   for (const family of ["Opus", "Sonnet", "Fable", "Haiku"]) expect(listed).not.toContain(family);
@@ -32,13 +33,13 @@ test("Claude Code: each model in the list is its specific one, the chosen one ru
 
   // A model other than the default: the conversation runs it, and the box and the session read back the one it runs.
   await pick(chip, /^Opus 5\.5/);
-  await expect(chip).toHaveText("Opus 5.5");
+  await expect(chip.locator(".picker-v")).toHaveText("Opus 5.5");
   const box = bot.getByRole("textbox", { name: /^给 Claude/ });
   await box.fill("hello");
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText("已开新对话", { timeout: 30_000 });
   await expect(bot.locator(".conv-head-t")).toBeVisible();
-  await expect(chip).toHaveText("Opus 5.5");
+  await expect(chip.locator(".picker-v")).toHaveText("Opus 5.5");
   await snap(page, "batchj-claude-ran");
   await bot.locator(".conv-head-t").click();
   await expect(page.getByRole("log", { name: "对话" })).toContainText("running on claude-opus-5-5", { timeout: 30_000 });
@@ -69,7 +70,7 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   const bot = page.getByRole("region", { name: /^DSH/ });
   const chip = bot.getByRole("button", { name: "模型", exact: true });
   // Before its first session here: the choice is there, and says when DSH's models show.
-  await expect(chip).toHaveText("默认模型", { timeout: 30_000 });
+  await expect(chip.locator(".picker-v")).toHaveText("默认模型", { timeout: 30_000 });
   expect(await modelList(page, chip)).toEqual(["默认模型", "DSH 只在会话里告诉可用的模型：先用默认模型发出第一条，之后这里列出它在这台机器上的实际模型"]);
   await snap(page, "batchj-dsh-models-before");
   await page.keyboard.press("Escape");
@@ -81,7 +82,7 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   // Now its own, as DSH named them in that session (工单 #98 补充, #117): each model once — the same one by DSH's API and
   // account lines is one entry, named uniformly provider-first ("<provider> · <id>"), both lines said — and the custom
   // provider's (magpie, in a model option of its own) listed too. The conversation runs its default, read back.
-  await expect(chip).toHaveText("DeepSeek · deepseek-v4-flash", { timeout: 30_000 });
+  await expect(chip.locator(".picker-v")).toHaveText("DeepSeek · deepseek-v4-flash", { timeout: 30_000 });
   const listed = await modelList(page, chip);
   expect(listed).toEqual([
     "默认 · DeepSeek · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
@@ -96,7 +97,7 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   await box.fill("config");
   await box.press("Enter");
   await expect(bot.locator(".composer-state")).toContainText("已开新对话：换了模型", { timeout: 30_000 });
-  await expect(chip).toHaveText("magpie · group/deepseek-v4.1");
+  await expect(chip.locator(".picker-v")).toHaveText("magpie · group/deepseek-v4.1");
   await snap(page, "batchj-dsh-ran");
   await bot.locator(".conv-head-t").click();
   const log = page.getByRole("log", { name: "对话" });

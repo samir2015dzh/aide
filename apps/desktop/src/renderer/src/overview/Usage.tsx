@@ -75,7 +75,7 @@ export const Usage = memo(function Usage({ now, res }: { now: Date; res: QueryWo
           {y.delta !== null && <span className="u-delta">{y.delta >= 0 ? "↑" : "↓"} {Math.abs(y.delta)}%<span>{t("usage.last30")}</span></span>}
           <div className="u-kpis">
             <div className="u-kpi"><small>{t("usage.today")}</small><b>{tokensText(y.today)}</b></div>
-            <div className="u-kpi"><small>{t("usage.activeDays")}</small><b>{y.active}</b></div>
+            <div className="u-kpi"><small>{t("usage.activeDays")}</small><b>{t("usage.days", { count: y.active })}</b></div>
             <div className="u-kpi"><small>{t("usage.streak")}</small><b>{t("usage.days", { count: y.streak })}</b></div>
           </div>
         </div>
@@ -112,13 +112,14 @@ export const Usage = memo(function Usage({ now, res }: { now: Date; res: QueryWo
           ) : (
             <span className="u-empty">{res ? t("usage.empty") : ""}</span>
           )}
-          {syncing.length > 0 ? (
-            <span className="u-empty">{t("usage.syncing", { machines: syncing.join(t("listSeparator")) })}</span>
-          ) : (
-            oldest && <span className="u-empty">{t("usage.behind", { machines: behind.map((s) => name(s.machineId)).join(t("listSeparator")), time: new Intl.DateTimeFormat(language(), { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(oldest) })}</span>
-          )}
           <div className="u-scale" aria-hidden="true">{t("usage.less")}{[0, 1, 2, 3, 4].map((l) => <div key={l} className={`l${l}`} />)}{t("usage.more")}</div>
         </div>
+        {/* Where the numbers come from, under the legend in small print, not in its row (工单 #140 P21). */}
+        {syncing.length > 0 ? (
+          <p className="u-source">{t("usage.syncing", { machines: syncing.join(t("listSeparator")) })}</p>
+        ) : (
+          oldest && <p className="u-source">{t("usage.behind", { machines: behind.map((s) => name(s.machineId)).join(t("listSeparator")), time: new Intl.DateTimeFormat(language(), { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(oldest) })}</p>
+        )}
         {tip && (
           <div className="u-tip" style={{ left: tip.x, top: tip.y }}>
             <b>{tip.c.tokens ? `${tokensText(tip.c.tokens)} tokens` : t("usage.noUsage")}</b>

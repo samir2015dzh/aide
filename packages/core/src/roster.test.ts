@@ -190,6 +190,7 @@ describe("stateDetail (工单 #137 P10)", () => {
     expect(stateDetail({ word: "已检测到", line: "已检测到 · v1.4.0" })).toBe("版本 1.4.0");
     expect(stateDetail({ word: "已登录", line: "已登录" })).toBe("");
     expect(stateDetail({ word: "未登录", line: "未登录 · 在 owner-mac 上登录" })).toBe("在 owner-mac 上登录");
-    expect(stateDetail({ word: "在线", line: "现在连着你的账号" })).toBe("现在连着你的账号");
+    expect(stateDetail({ word: "在线", line: "现在连着你的账号" })).toBe(""); // 工单 #140 P24: the same for every one
+    expect(stateDetail({ word: "在线", line: "活跃于 3 分钟前" })).toBe("活跃于 3 分钟前");
   });
 });
