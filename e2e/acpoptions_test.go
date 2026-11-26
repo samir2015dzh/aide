@@ -16,8 +16,11 @@ import (
 // TestACPSessionOptions: DeepSeek Harness (played by a scripted agent that
 // speaks real ACP, offering what DSH's `acp` profile does: models in a
 // provider's group, the reasoning efforts of the model a session runs, and
-// here also modes) tells what it offers only in a session. After its first
-// session on the Mac, an agent sees the choices in `agent list` and names
+// here also modes) tells what it offers only in a session. Its models are
+// known before its first session all the same, from a probe session its
+// check makes (工单 #166); its modes, and the efforts of a model no session
+// has run, after its first session on the Mac. An agent sees the choices in
+// `agent list` and names
 // them in `session start`; the owner sees them in the app and sets the
 // agent's defaults there. The session runs with what was chosen, also once
 // resumed after a restart; nothing chosen, it runs as the agent's own
@@ -72,8 +75,16 @@ func TestACPSessionOptions(t *testing.T) {
 		}
 	}
 
-	// Before any session the agent has said nothing of what it offers.
-	if l := list(); len(l.Agents[0].Models) != 0 || len(l.Agents[0].Modes) != 0 {
+	// Before any session: its models, from the probe its check makes (工单
+	// #166), and the efforts of the default one the probe's session says; no
+	// modes yet. The probe can take a moment after the machine comes up.
+	var before listed
+	eventually(t, 30*time.Second, "deepseek's models before a session", func() bool {
+		before = list()
+		return len(before.Agents[0].Models) > 0
+	})
+	if l := before.Agents[0]; len(l.Models) != 2 || l.Models[0].ID != "magpie/v4-pro" || l.Models[1].ID != "magpie/v4-flash" ||
+		strings.Join(l.Models[0].Efforts, ",") != "low,high" || len(l.Models[1].Efforts) != 0 || l.DefaultModel != "magpie/v4-pro" || len(l.Modes) != 0 {
 		t.Fatalf("before a session: %+v", l)
 	}
 	refused("deepseek on this machine offers no session modes", "--mode", "code")
