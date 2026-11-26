@@ -82,7 +82,13 @@ describe("connections", () => {
     const dsh = agentEntry(c, "deepseek")!;
     expect(dsh.rows.map((r) => r.title)).toEqual(["DSH", "DSH 的 Aide 插件"]);
     expect(dsh.rows[0].note).toBe("模型：DeepSeek V4");
-    expect([dsh.state, dsh.text]).toEqual(["partial", "已检测到 · 1.4.0"]);
+    expect([dsh.state, dsh.text]).toEqual(["partial", "已登录 · 1.4.0"]);
+    // 工单 #135 P17：DSH 登录未确认时不得标成绿点已检测到，须统一报未确认 + partial
+    const dshUnc = agentEntry(
+      machineConnections(machine([{ name: "deepseek", available: true, loggedIn: false, loginUnconfirmed: true, version: "1.4.0", dshBridge: { state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.0" } }]), now),
+      "deepseek",
+    )!;
+    expect([dshUnc.state, dshUnc.text]).toEqual(["partial", "未确认 · 1.4.0"]);
     expect(c.rows.some((r) => r.title.includes("DeepSeek"))).toBe(false);
     expect(agentEntry(c, "codex")!.text).toBe("可以用");
     expect(agentEntry(c, "gemini")).toBeUndefined();
@@ -116,7 +122,7 @@ describe("connections", () => {
     const m = machine([{ name: "gemini", available: true, loggedIn: false, loginUnconfirmed: true, version: "0.9.0" }]);
     const r = machineConnections(m, now).rows[0];
     expect([r.state, r.text, r.fix]).toEqual(["unknown", "未确认", undefined]);
-    expect(r.lacks).toContain("跑通一轮后这里会显示已登录");
+    expect(r.lacks).toContain("通过后会自动更新为已登录");
     expect(codingBotState(m, "gemini", now)!.usable).toBe("unverified");
   });
 

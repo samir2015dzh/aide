@@ -95,6 +95,26 @@ export function ConnRowView({ r, m, recheck, logo = true, bare = false, part = f
 /** The state dot's class for a connection state. */
 export const connDot = (s: ConnState) => dot[s];
 
+/**
+ * A bot's status dot class, 1-to-1 with its real state (#135 P25):
+ * - personal agent online ("在线"/"刚活跃"): green ("on")
+ * - local coding agent signed in / ready ("已登录"/"可以用"): Fluent blue ("ready")
+ * - detected-only / unconfirmed / partial ("已检测到"/"未确认"/插件未装): amber ("warn")
+ * - missing / signed out: red ("bad")
+ * - checking / reconnecting: hollow blue ring ("checking")
+ * - offline / unknown / paused: neutral grey ("")
+ */
+export function botDot(b: { kind: "local" | "personal"; state: { state: ConnState; word: string; why?: string } }): string {
+  if (b.state.why === "paused") return "";
+  if (b.state.state === "checking") return "checking";
+  if (b.state.state === "missing") return "bad";
+  if (b.state.state === "unknown") return "";
+  if (b.state.state === "partial") return "warn";
+  if (b.kind === "personal") return "on";
+  if (b.state.word === "已检测到" || b.state.word === "Detected") return "warn";
+  return "ready";
+}
+
 /** A coding agent connected to Aide from a machine with a grant of its own (DSH on …): it follows the machine. */
 function GrantRow({ g }: { g: Client }) {
   const { t } = useTranslation("common");

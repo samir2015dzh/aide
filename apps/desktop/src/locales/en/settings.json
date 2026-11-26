@@ -92,7 +92,7 @@
     "ownServer": "Your own server · {{host}}",
     "notConnected": "Not connected",
     "connected": "Connected",
-    "alsoMachine": "Also runs tasks · {{status}}",
+    "alsoMachine": "Worker machine · {{status}}",
     "addDevice": "Add Device…",
     "devicesNote": "Every computer and phone that logged in with the account and password is here. Lost one? Sign it out here, or change the password.",
     "advanced": "Advanced",

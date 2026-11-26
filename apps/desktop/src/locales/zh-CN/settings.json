@@ -92,7 +92,7 @@
     "ownServer": "自己的服务器 · {{host}}",
     "notConnected": "未连接",
     "connected": "已连接",
-    "alsoMachine": "也在执行任务 · {{status}}",
+    "alsoMachine": "工作机器 · {{status}}",
     "addDevice": "添加设备…",
     "devicesNote": "用账号和密码登录的每台电脑和手机都在这里。设备丢了，在这里登出它，或者改密码。",
     "advanced": "高级",

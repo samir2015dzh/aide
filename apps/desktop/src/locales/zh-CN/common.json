@@ -660,6 +660,8 @@
   "conv": {
     "list": "对话",
     "currentIs": "正在聊：",
+    "selectedIs": "最近对话：",
+    "archivedIs": "已归档对话：",
     "startedAt": "开始于 {{when}}",
     "nextIsNew": "下一条会开新对话",
     "firstIsNew": "写第一条，就开始和它的对话",
@@ -674,11 +676,15 @@
     "archivedGroup_other": "已归档（{{count}}）",
     "others": "别的 agent 派给它的",
     "readOnly": "只能看、不能续",
-    "archivedNote": "这条对话已归档：发消息会先取消归档，再接着聊。",
+    "archivedNote": "发消息将自动取消归档并继续。",
     "stuckProject": "这条对话的项目已经不在了：只能看、不能续。",
     "stuckAgent": "这台机器上已经没有这个 agent：只能看、不能续。",
     "newWithContext": "带着它的上下文开新对话",
-    "willStartNew": "换了{{what}}：下一条会开新对话"
+    "willStartNew": "换了{{what}}：下一条会开新对话",
+    "countHint": "当前展示 1 条，共 {{total}} 条（{{detail}}）",
+    "partOpen": "{{count}} 条未归档",
+    "partArchived": "{{count}} 条已归档",
+    "partOthers": "{{count}} 条由其它 agent 派发"
   },
   "link": {
     "reconnecting": "与这台电脑上 Aide 后台的连接中断，正在重连…"

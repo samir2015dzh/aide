@@ -341,7 +341,14 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
             // Rule 3: which conversation the next message goes on in.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (cur != null) t("Talking in", "正在聊") else if (convs.open.isEmpty()) t("Write the first message to start", "写第一条，就开始和它的对话") else t("The next message starts a new conversation", "下一条会开新对话"),
+                    val curLabel = when {
+                        cur == null && convs.open.isEmpty() -> t("Write the first message to start", "写第一条，就开始和它的对话")
+                        cur == null -> t("The next message starts a new conversation", "下一条会开新对话")
+                        cur.status == SessionStatus.ARCHIVED -> t("Archived", "已归档对话")
+                        cur.status == SessionStatus.RUNNING || cur.status == SessionStatus.QUEUED || cur.status == SessionStatus.PREPARING || cur.status == SessionStatus.WAITING_INPUT -> t("Talking in", "正在聊")
+                        else -> t("Recent", "最近对话")
+                    }
+                    Text(curLabel,
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (cur != null) Text("${displayTitle(cur)} · ${t("started", "开始于")} ${agoText(instant(cur.createdAt), now)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.dimPress { openSession(cur.sessionId) })
                 }

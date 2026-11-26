@@ -146,7 +146,10 @@ button{font:inherit;color:inherit}
 .kbd{font-size:11.5px;color:var(--l2);letter-spacing:.04em}
 .dotc{width:8px;height:8px;border-radius:50%;background:var(--color-presence-off);flex:none;display:inline-block}
 .dotc.on{background:var(--green-fill)}
+.dotc.ready{background:var(--color-fluent-blue)}
 .dotc.warn{background:var(--orange)}
+.dotc.bad{background:var(--red)}
+.dotc.checking{background:transparent;box-shadow:inset 0 0 0 1.5px var(--color-fluent-blue)}
 .mono{font-family:var(--mono)}
 :where(code,pre,kbd,.mono,.cblock,.tool .cmd,.tool .out){font-variation-settings:normal;font-weight:400}
 :where(input,textarea,select){font-family:var(--font);font-variation-settings:inherit}
@@ -162,7 +165,7 @@ button{font:inherit;color:inherit}
 .chip .ic{width:13px;height:13px;color:var(--l2)}
 /* status glyphs */
 .sdot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block;position:relative}
-.sdot.w{background:var(--orange)}.sdot.c{background:var(--red)}.sdot.r{background:var(--color-fluent-blue)}
+.sdot.w{background:var(--orange)}.sdot.c{background:var(--red)}.sdot.r{background:var(--color-fluent-blue)}.sdot.d{background:var(--green-fill)}
 .sdot.r::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--color-fluent-blue);animation:ping 2s cubic-bezier(0,0,.2,1) infinite}
 @keyframes ping{0%{transform:scale(1);opacity:.45}75%,100%{transform:scale(2.3);opacity:0}}
 .sdot.p{box-shadow:inset 0 0 0 1.5px var(--color-presence-off)}

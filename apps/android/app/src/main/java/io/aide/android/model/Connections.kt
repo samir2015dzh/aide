@@ -192,9 +192,18 @@ private fun dshRows(a: AgentStatus): List<ConnRow> {
         BridgeView.INSTALL_RESTART -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.PARTIAL, t("Installed, waiting for DSH Desktop to restart", "已装好，等 DSH Desktop 重启"), listOfNotNull(t("Takes effect once DSH Desktop restarts (this line turns “Installed” as soon as the plugin answers).", "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。"), b?.install?.reason?.ifEmpty { null }).joinToString(" "), at, installSession = session)
         BridgeView.UNKNOWN -> ConnRow("deepseek-bridge", "deepseek", bridgeTitle, ConnState.UNKNOWN, t("Unknown", "状态未知"), null, at)
     }
+    val dshUnconfirmed = !a.loggedIn && a.loginUnconfirmed
+    val dshText = when {
+        a.loggedIn -> if (a.version.isNotEmpty()) t("Signed in · ${a.version}", "已登录 · ${a.version}") else t("Signed in", "已登录")
+        dshUnconfirmed -> if (a.version.isNotEmpty()) t("Unconfirmed · ${a.version}", "未确认 · ${a.version}") else t("Unconfirmed", "未确认")
+        else -> if (a.version.isNotEmpty()) t("Detected · ${a.version}", "已检测到 · ${a.version}") else t("Detected", "已检测到")
+    }
     val dsh = ConnRow(
-        "deepseek", "deepseek", "DSH", if (bridge.state == ConnState.OK) ConnState.OK else ConnState.PARTIAL,
-        if (a.version.isNotEmpty()) t("Detected · ${a.version}", "已检测到 · ${a.version}") else t("Detected", "已检测到"), null, at,
+        "deepseek", "deepseek", "DSH",
+        if (!dshUnconfirmed && bridge.state == ConnState.OK) ConnState.OK else ConnState.PARTIAL,
+        dshText,
+        if (dshUnconfirmed) t("DSH was detected, but its sign-in state is unconfirmed. Send a task or run a test task to verify automatically.", "DSH 已检测到，但登录状态未确认。可照常派活或发一轮测试任务自动验证。") else null,
+        at,
     )
     return listOf(dsh, bridge)
 }

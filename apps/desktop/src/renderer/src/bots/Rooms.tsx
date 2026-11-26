@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from "
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { agoText, allBots, dateOf, displayTitle, listTime, projectTitle, type Bot } from "@aide/core";
-import { RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
+import { RoomDeliveryState, RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { StateText } from "../components";
@@ -207,13 +207,14 @@ export function RoomTimeline({ room, msgs, handOn }: { room: Room; msgs: RoomMes
           );
         }
         const mine = !room.shadow && m.from === "owner";
+        const failed = mine && m.deliveries.length > 0 && m.deliveries.every((d) => d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED);
         const member = room.members.find((x) => x.botKey === m.from);
         const session = member?.sessionId ? st.sessions.find((s) => s.sessionId === member.sessionId) : undefined;
         const replyTarget = m.inReplyTo ? byId.get(m.inReplyTo) : undefined;
         return (
           <Fragment key={m.messageId}>
             <TimeLine at={atDate} previous={previous} />
-            <div className={`chat-msg ${mine ? "mine" : ""} ${room.shadow ? "shadow" : ""} ${m.late ? "late" : ""}`}>
+            <div className={`chat-msg ${mine ? "mine" : ""} ${failed ? "failed" : ""} ${room.shadow ? "shadow" : ""} ${m.late ? "late" : ""}`}>
               {!mine && (
                 <div className="chat-meta">
                   <span className="chat-who">

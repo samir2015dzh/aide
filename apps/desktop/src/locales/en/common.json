@@ -680,6 +680,8 @@
   "conv": {
     "list": "Conversations",
     "currentIs": "Talking in:",
+    "selectedIs": "Recent:",
+    "archivedIs": "Archived:",
     "startedAt": "started {{when}}",
     "nextIsNew": "The next message starts a new conversation",
     "firstIsNew": "Write the first message to start talking to it",
@@ -695,11 +697,15 @@
     "archivedGroup_other": "Archived ({{count}})",
     "others": "Handed to it by other agents",
     "readOnly": "read only, can’t go on",
-    "archivedNote": "This conversation is archived: sending unarchives it first, then goes on.",
+    "archivedNote": "Sending will unarchive and continue.",
     "stuckProject": "This conversation’s project is gone: it can be read, not continued.",
     "stuckAgent": "This agent is no longer on that machine: it can be read, not continued.",
     "newWithContext": "Start a new one with its context",
-    "willStartNew": "You changed the {{what}}: the next message starts a new conversation"
+    "willStartNew": "You changed the {{what}}: the next message starts a new conversation",
+    "countHint": "Showing 1 of {{total}} ({{detail}})",
+    "partOpen": "{{count}} open",
+    "partArchived": "{{count}} archived",
+    "partOthers": "{{count}} handed over"
   },
   "link": {
     "reconnecting": "The link to Aide on this computer broke: reconnecting…"
