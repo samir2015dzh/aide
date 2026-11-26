@@ -1765,9 +1765,12 @@ type QuestionResolved struct {
 	// Who answered: a client id, or "owner".
 	By string `protobuf:"bytes,3,opt,name=by,proto3" json:"by,omitempty"`
 	// Secret answers read "[secret]".
-	Answers       []*Answer `protobuf:"bytes,4,rep,name=answers,proto3" json:"answers,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Answers []*Answer `protobuf:"bytes,4,rep,name=answers,proto3" json:"answers,omitempty"`
+	// A message sent while the agent waited answered it: that send's
+	// SendMessageRequest.client_message_id, as on UserMessage (工单 #115).
+	ClientMessageIds []string `protobuf:"bytes,5,rep,name=client_message_ids,json=clientMessageIds,proto3" json:"client_message_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *QuestionResolved) Reset() {
@@ -1824,6 +1827,13 @@ func (x *QuestionResolved) GetBy() string {
 func (x *QuestionResolved) GetAnswers() []*Answer {
 	if x != nil {
 		return x.Answers
+	}
+	return nil
+}
+
+func (x *QuestionResolved) GetClientMessageIds() []string {
+	if x != nil {
+		return x.ClientMessageIds
 	}
 	return nil
 }
@@ -3553,10 +3563,15 @@ type UserMessage struct {
 	// their devices) or an agent's client id; from_name is the name to show
 	// ("" for the owner). Empty from: not known (an older session, or a DSH
 	// session's prompt typed in DSH itself), read as the turn's asker.
-	From          string `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
-	FromName      string `protobuf:"bytes,4,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	From     string `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
+	FromName string `protobuf:"bytes,4,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	// The SendMessageRequest.client_message_id of each send it records, so
+	// that the sender's outbox can tell its message arrived (工单 #115): more
+	// than one when sends were joined into one prompt; empty for a send
+	// without one.
+	ClientMessageIds []string `protobuf:"bytes,5,rep,name=client_message_ids,json=clientMessageIds,proto3" json:"client_message_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UserMessage) Reset() {
@@ -3615,6 +3630,13 @@ func (x *UserMessage) GetFromName() string {
 		return x.FromName
 	}
 	return ""
+}
+
+func (x *UserMessage) GetClientMessageIds() []string {
+	if x != nil {
+		return x.ClientMessageIds
+	}
+	return nil
 }
 
 type AgentMessage struct {
@@ -6284,7 +6306,7 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\bselected\x18\x02 \x03(\tR\bselected\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\"F\n" +
 	"\rQuestionAsked\x125\n" +
-	"\bquestion\x18\x01 \x01(\v2\x19.aide.session.v1.QuestionR\bquestion\"\xbb\x01\n" +
+	"\bquestion\x18\x01 \x01(\v2\x19.aide.session.v1.QuestionR\bquestion\"\xe9\x01\n" +
 	"\x10QuestionResolved\x12\x1f\n" +
 	"\vquestion_id\x18\x01 \x01(\tR\n" +
 	"questionId\x12C\n" +
@@ -6292,7 +6314,8 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"resolution\x18\x02 \x01(\x0e2#.aide.session.v1.QuestionResolutionR\n" +
 	"resolution\x12\x0e\n" +
 	"\x02by\x18\x03 \x01(\tR\x02by\x121\n" +
-	"\aanswers\x18\x04 \x03(\v2\x17.aide.session.v1.AnswerR\aanswers\"\x92\x06\n" +
+	"\aanswers\x18\x04 \x03(\v2\x17.aide.session.v1.AnswerR\aanswers\x12,\n" +
+	"\x12client_message_ids\x18\x05 \x03(\tR\x10clientMessageIds\"\x92\x06\n" +
 	"\aSession\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -6442,12 +6465,13 @@ const file_aide_session_v1_session_proto_rawDesc = "" +
 	"\vcoordinator\x18\x0e \x01(\tR\vcoordinator\x12 \n" +
 	"\vprovisioner\x18\x0f \x01(\tR\vprovisioner\x12\x1d\n" +
 	"\n" +
-	"message_id\x18\x10 \x01(\tR\tmessageId\"\x95\x01\n" +
+	"message_id\x18\x10 \x01(\tR\tmessageId\"\xc3\x01\n" +
 	"\vUserMessage\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12A\n" +
 	"\vattachments\x18\x02 \x03(\v2\x1f.aide.session.v1.AttachmentInfoR\vattachments\x12\x12\n" +
 	"\x04from\x18\x03 \x01(\tR\x04from\x12\x1b\n" +
-	"\tfrom_name\x18\x04 \x01(\tR\bfromName\"\"\n" +
+	"\tfrom_name\x18\x04 \x01(\tR\bfromName\x12,\n" +
+	"\x12client_message_ids\x18\x05 \x03(\tR\x10clientMessageIds\"\"\n" +
 	"\fAgentMessage\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\"6\n" +
 	"\n" +

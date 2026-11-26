@@ -453,6 +453,9 @@ message QuestionResolved {
   string by = 3;
   // Secret answers read "[secret]".
   repeated Answer answers = 4;
+  // A message sent while the agent waited answered it: that send's
+  // SendMessageRequest.client_message_id, as on UserMessage (工单 #115).
+  repeated string client_message_ids = 5;
 }
 
 message Session {
@@ -744,6 +747,11 @@ message UserMessage {
   // session's prompt typed in DSH itself), read as the turn's asker.
   string from = 3;
   string from_name = 4;
+  // The SendMessageRequest.client_message_id of each send it records, so
+  // that the sender's outbox can tell its message arrived (工单 #115): more
+  // than one when sends were joined into one prompt; empty for a send
+  // without one.
+  repeated string client_message_ids = 5;
 }
 
 message AgentMessage {
