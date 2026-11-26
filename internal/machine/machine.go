@@ -193,7 +193,10 @@ type Machine struct {
 	// directPort is the ephemeral TCP port of serveDirect when listening.
 	directPort atomic.Int32
 	// offers are what ACP agents' sessions offered (defaults.go).
-	offers map[string]provider.Offers
+	offers      map[string]provider.Offers
+	offersAt    map[string]time.Time // when a session offered them (zero: kept by an earlier Aide)
+	probeLogged map[string]time.Time // checkedOffers
+	probeFailed map[string]string
 	// customs are the agents the owner added here and custom their
 	// providers (customagents.go); customMu is never held while taking mu.
 	customMu sync.RWMutex
@@ -269,7 +272,7 @@ func Open(cfg Config) (*Machine, error) {
 		return nil, err
 	}
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
-		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, agentUsage: agentUsages{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{}, kept: map[string]keptModels{},
+		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, agentUsage: agentUsages{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, offersAt: map[string]time.Time{}, probeLogged: map[string]time.Time{}, probeFailed: map[string]string{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{}, kept: map[string]keptModels{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
@@ -588,6 +591,7 @@ func (n *Machine) checkAgents(force, onPurpose bool, maxAge time.Duration) <-cha
 				}
 				n.mu.Lock()
 				if n.provider(name) == p { // not removed or changed meanwhile
+					n.checkedOffers(name, p, info)
 					n.infos[name] = n.withOffers(name, info)
 					if name == "deepseek" {
 						n.dshBridge = bridge

@@ -59,7 +59,16 @@ func TestDSHModelsBeforeASession(t *testing.T) {
 // gateway of the owner's (工单 #129): DeepSeek's models and the gateway's
 // are listed before any session, and the probe leaves nothing in the
 // owner's DSH — no session, no projection, no configuration written.
-func TestRealDSHModelsBeforeASession(t *testing.T) {
+func TestRealDSHModelsBeforeASession(t *testing.T) { realDSHModels(t, false) }
+
+// TestRealDSHModelsKeysStored is it with the keys kept where the DSH app
+// keeps those its owner types in: its credentials store, not the
+// environment (工单 #129 返修). DSH answers a probe's session/new before
+// that store has loaded; the gateway's models were missing, and the
+// default model was listed alone.
+func TestRealDSHModelsKeysStored(t *testing.T) { realDSHModels(t, true) }
+
+func realDSHModels(t *testing.T, stored bool) {
 	dsh := os.Getenv("AIDE_REAL_DSH")
 	if testing.Short() || dsh == "" {
 		t.Skip("real DeepSeek Harness only: AIDE_REAL_DSH=<its dsh command>")
@@ -82,8 +91,16 @@ func TestRealDSHModelsBeforeASession(t *testing.T) {
 	if err := os.WriteFile(desktop, []byte(own), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	w := newOwnerMac(t, []string{"AIDE_DEEPSEEK_BIN=" + dsh, "PATH=" + os.Getenv("PATH"), "DSH_HOME=" + home, "DSH_TELEMETRY_DISABLED=1",
-		"DEEPSEEK_API_KEY=sk-test", "GW_TEST_KEY=sk-gw"}, &localv1.GrantSpec{Agents: []string{"deepseek"}})
+	env := []string{"AIDE_DEEPSEEK_BIN=" + dsh, "PATH=" + os.Getenv("PATH"), "DSH_HOME=" + home, "DSH_TELEMETRY_DISABLED=1"}
+	if stored {
+		keys := "version: 1\nrefs:\n  DEEPSEEK_API_KEY: sk-test\n  GW_TEST_KEY: sk-gw\n"
+		if err := os.WriteFile(filepath.Join(home, ".credentials.yaml"), []byte(keys), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		env = append(env, "DEEPSEEK_API_KEY=sk-test", "GW_TEST_KEY=sk-gw")
+	}
+	w := newOwnerMac(t, env, &localv1.GrantSpec{Agents: []string{"deepseek"}})
 	names := dshModels(t, w)
 	if !slices.Contains(names, "DeepSeek · deepseek-v4-flash") || !slices.Contains(names, "GW Test · gw-think") {
 		t.Fatalf("DSH's models before any session: %q", names)

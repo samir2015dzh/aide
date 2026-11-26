@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	identityv1 "github.com/samir2015dzh/aide/gen/go/aide/identity/v1"
@@ -379,5 +380,58 @@ func TestKeptOffersFromBefore(t *testing.T) {
 	b, _ := h.n.st.Get(kAgentOffers + "deepseek")
 	if !strings.Contains(string(b), `"Format":3`) {
 		t.Fatalf("kept: %s", b)
+	}
+}
+
+// probed is DSH as its check finds it: models a probe found at a time,
+// kept by later checks (工单 #166).
+type probed struct {
+	presets
+	models []provider.Model
+	at     time.Time
+}
+
+func (p *probed) Discover(ctx context.Context) provider.Info {
+	i := p.presets.Discover(ctx)
+	i.Models, i.Own.Model, i.ModelsAt = p.models, p.models[0].ID, p.at
+	return i
+}
+
+// TestProbeGivesWayToASession (工单 #129 返修): models a check kept from an
+// earlier probe do not stand over those a session offered since — on
+// bigalex a probe's one model was listed at every check after a session
+// had offered 24 — and a probe newer than the session's offer stands.
+func TestProbeGivesWayToASession(t *testing.T) {
+	flash := provider.Model{ID: `["deepseek-official","deepseek-v4-flash"]`, Name: "DeepSeek · deepseek-v4-flash"}
+	dsh := &probed{models: []provider.Model{flash}, at: time.Now().Add(-time.Minute)}
+	h := newHarnessWith(t, DefaultLimits(), map[string]provider.Provider{"deepseek": dsh})
+	listed := func() []string {
+		h.n.mu.Lock()
+		defer h.n.mu.Unlock()
+		var out []string
+		for _, m := range h.n.withOffers("deepseek", dsh.Discover(context.Background())).Models {
+			out = append(out, m.Name)
+		}
+		return out
+	}
+	if got := listed(); len(got) != 1 {
+		t.Fatalf("the probe's: %q", got)
+	}
+	full := []provider.Model{flash, {ID: `["magpie","m-one"]`, Name: "magpie · m-one"}, {ID: `["magpie","m-two"]`, Name: "magpie · m-two"}}
+	h.n.offered("deepseek", provider.Offers{Models: full, Own: provider.Settings{Model: flash.ID}})
+	if got := listed(); len(got) != 3 || got[1] != "magpie · m-one" {
+		t.Fatalf("after a session offered more: %q", got)
+	}
+	// Kept: aided started again, the session's offer is still newer than the probe.
+	h.n.mu.Lock()
+	h.n.offers, h.n.offersAt = map[string]provider.Offers{}, map[string]time.Time{}
+	h.n.mu.Unlock()
+	h.n.loadDefaults()
+	if got := listed(); len(got) != 3 {
+		t.Fatalf("after a restart: %q", got)
+	}
+	dsh.at = time.Now().Add(time.Second) // probed again since
+	if got := listed(); len(got) != 1 {
+		t.Fatalf("a newer probe: %q", got)
 	}
 }
