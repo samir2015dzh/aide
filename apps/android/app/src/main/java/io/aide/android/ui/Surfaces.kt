@@ -48,6 +48,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.aide.android.model.DotHue
+import io.aide.android.model.Presence
+import io.aide.android.model.presenceDot
 import kotlinx.coroutines.launch
 
 // Fluent Design surfaces for Android (工单 #106 / #109): 16dp rounded cards with subtle hairline edge,
@@ -169,16 +172,40 @@ fun toneSubtleFill(t: Tone): Color = when (t) {
     Tone.Quiet -> aide.fill
 }
 
-/** A Fluent state pill: subtle tinted capsule, 6dp vivid status dot, contrast-safe SemiBold label. */
+/** A Fluent state pill: subtle tinted capsule, 6dp vivid status dot (a hollow ring for ring), contrast-safe SemiBold label. */
 @Composable
-fun StatusPill(text: String, tone: Tone, modifier: Modifier = Modifier) {
+fun StatusPill(text: String, tone: Tone, modifier: Modifier = Modifier, ring: Boolean = false) {
     Row(
         modifier.heightIn(min = 24.dp).clip(CircleShape).background(toneSubtleFill(tone)).padding(start = 8.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(Modifier.size(6.dp).background(toneDotColor(tone), CircleShape))
+        Box(Modifier.size(6.dp).then(if (ring) Modifier.border(1.5.dp, toneDotColor(tone), CircleShape) else Modifier.background(toneDotColor(tone), CircleShape)))
         Text(text, color = toneColor(tone), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
+}
+
+/**
+ * The tone a presence is said in (工单 #135 P25 / 审计 B): read from its one dot (model presenceDot), so the same label is
+ * the same colour on the roster, a bot's page, a room's members and the devices tab — never from the label's words.
+ */
+fun presenceTone(p: Presence): Tone = when (presenceDot(p).hue) {
+    DotHue.GREEN -> Tone.Good
+    DotHue.BLUE -> Tone.Live
+    DotHue.ORANGE -> Tone.Warn
+    DotHue.RED -> Tone.Bad
+    DotHue.GREY -> Tone.Quiet
+}
+
+/** A presence's state pill: its word, its dot (a hollow ring while checking, as the desktop's). */
+@Composable
+fun StatusPill(text: String, presence: Presence, modifier: Modifier = Modifier) = StatusPill(text, presenceTone(presence), modifier, ring = presenceDot(presence).ring)
+
+/** A presence's dot on a face's corner, ringed in the card's colour: filled, or a hollow ring while checking. */
+@Composable
+fun Modifier.cornerDot(p: Presence): Modifier {
+    val c = toneDotColor(presenceTone(p))
+    val base = this.background(aide.card, CircleShape).padding(2.dp)
+    return if (presenceDot(p).ring) base.border(1.5.dp, c, CircleShape) else base.background(c, CircleShape)
 }
 
 /** A Fluent count badge: yellow #ffb900 with dark #201f1e text for attention, #0078d4 with white for live, neutral subtle otherwise. */
@@ -225,9 +252,9 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, of: St
 
 /** A face with its state on the corner: the dot is seen before the name is read. */
 @Composable
-fun FaceWithDot(agent: String, size: Int, dot: Color) {
+fun FaceWithDot(agent: String, size: Int, presence: Presence) {
     Box {
         AgentFace(agent, size)
-        Box(Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp).size(12.dp).background(aide.card, CircleShape).padding(2.dp).background(dot, CircleShape))
+        Box(Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp).size(12.dp).cornerDot(presence))
     }
 }

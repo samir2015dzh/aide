@@ -2,13 +2,10 @@ package io.aide.android.ui
 
 import android.content.Context
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,8 +58,6 @@ fun DeviceFace(kind: String, size: Int, online: Boolean? = null) {
     val color = Color(android.graphics.Color.parseColor(f.color))
     val glyph = Faces.paths(key, f)
     val dark = isSystemInDarkTheme()
-    val dotBorder = aide.card
-    val dotColor = if (online == true) aide.green else aide.disabled
     Box(Modifier.size(size.dp).semantics { contentDescription = "face:$key" }) {
         Canvas(Modifier.size(size.dp)) {
             val side = this.size.minDimension
@@ -88,9 +83,10 @@ fun DeviceFace(kind: String, size: Int, online: Boolean? = null) {
                 }
             }
         }
+        // A machine online is the same green dot as a personal agent online (工单 #135 P25): one mapping for both.
         if (online != null) Box(
             Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp).size(12.dp)
-                .background(dotBorder, CircleShape).padding(2.dp).background(dotColor, CircleShape),
+                .cornerDot(if (online) io.aide.android.model.Presence.ONLINE else io.aide.android.model.Presence.UNKNOWN),
         )
     }
 }

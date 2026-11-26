@@ -5,6 +5,7 @@ import io.aide.android.api.Machine
 import io.aide.android.api.Project
 import io.aide.android.api.Session
 import io.aide.android.api.SessionStatus
+import io.aide.android.ui.t
 
 // A bot's conversations (工单 #67, the owner's six rules), as the desktop's @aide/core conversations.ts: behind a coding
 // agent's bot are its sessions on its machine, each one the owner started a conversation. The bot's page goes on in its
@@ -27,6 +28,23 @@ fun botConversations(machineId: String, agent: String, sessions: Collection<Sess
         mine.filter { it.status == SessionStatus.ARCHIVED }.sortedWith(newest),
         its.filter { it.createdBy != "owner" && it.status != SessionStatus.ARCHIVED }.sortedWith(newest),
     )
+}
+
+/** How many there are of all (its own open and archived, those handed to it by other agents). */
+val BotConversations.total: Int get() = open.size + archived.size + others.size
+
+/**
+ * The count beside the list when it has more than one (工单 #135 P33, the desktop's conv.countHint): how many are shown
+ * of all and of which kinds, so the count and the list never disagree; null with one or none.
+ */
+fun convCountHint(c: BotConversations, shown: Int): String? {
+    if (c.total <= 1) return null
+    val detail = listOfNotNull(
+        c.open.size.takeIf { it > 0 }?.let { t("$it open", "$it 条未归档") },
+        c.archived.size.takeIf { it > 0 }?.let { t("$it archived", "$it 条已归档") },
+        c.others.size.takeIf { it > 0 }?.let { t("$it handed over", "$it 条由其它 agent 派发") },
+    ).joinToString(" · ")
+    return t("Showing $shown of ${c.total} ($detail)", "当前展示 $shown 条，共 ${c.total} 条（$detail）")
 }
 
 /** The conversation the next message goes to: the one chosen ("new" for a new one), else the one last active. */

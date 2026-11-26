@@ -33,6 +33,8 @@ data class ConnRow(
     val install: Boolean = false,
     /** The DSH session installing it, or that last tried. */
     val installSession: String = "",
+    /** Its dot when that is not what its state alone says (rowPresence): set where the label is about the sign-in. */
+    val presence: Presence? = null,
 )
 
 data class MachineConnections(val reachable: Boolean, val rows: List<ConnRow>, val state: ConnState)
@@ -91,6 +93,7 @@ fun machineConnections(m: Machine, now: Instant): MachineConnections {
             state = ConnState.UNKNOWN,
             text = t("Unknown", "状态未知"),
             was = r.text,
+            presence = null,
             lacks = if (!reachable) t("The machine can't be reached now: last known “${r.text}” ($whenText)", "机器暂时连不上：上次知道的是「${r.text}」（$whenText）")
             else t("Last checked $whenText, not confirmed since (it said “${r.text}”)", "上次检测是${whenText}，之后没再确认（当时是「${r.text}」）"),
         )
@@ -134,7 +137,7 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
                 "The Claude Code command line did not say whether it is signed in, and Aide does not take the Claude desktop app's sign-in for it: whether tasks can run with it is not confirmed. Sign it in below (it gives a sign-in address to open on any device), or check again.",
                 "Claude Code 命令行没说清自己登没登录，Aide 不拿 Claude Desktop 的登录代替它：派出的任务能不能跑还没确认。点下面的按钮给它登录（会给出登录地址，在任意设备上打开），或者重新检测。",
             ),
-            at, login = true,
+            at, login = true, presence = Presence.UNCONFIRMED,
         )
         a.available && a.login?.state in setOf("AGENT_LOGIN_STATE_FAILED", "AGENT_LOGIN_STATE_TIMED_OUT", "AGENT_LOGIN_STATE_CANCELLED") -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.MISSING, t("Not signed in", "未登录"),
@@ -204,6 +207,9 @@ private fun dshRows(a: AgentStatus): List<ConnRow> {
         dshText,
         if (dshUnconfirmed) t("DSH was detected, but its sign-in state is unconfirmed. Send a task or run a test task to verify automatically.", "DSH 已检测到，但登录状态未确认。可照常派活或发一轮测试任务自动验证。") else null,
         at,
+        // Its dot follows its own label, whatever the plugin's state makes the row's: "已登录" is signed in here as
+        // everywhere, "未确认" / "已检测到" unconfirmed (审计 B / P25).
+        presence = if (a.loggedIn) Presence.SIGNED_IN else Presence.UNCONFIRMED,
     )
     return listOf(dsh, bridge)
 }
@@ -221,7 +227,7 @@ private fun agentRow(a: AgentStatus): ConnRow {
                 "Whether $title is signed in shows only when it runs a task: not confirmed yet. Tasks can go to it; once one runs, this says signed in, and if it is not signed in the task says so.",
                 "$title 的登录状态只有跑任务时才知道：还没确认。可以照常派活，跑通一轮后这里会显示已登录；如果它没登录，任务会如实报出来。",
             ),
-            at,
+            at, presence = Presence.UNCONFIRMED,
         )
         !a.loggedIn -> ConnRow(a.name, a.name, title, ConnState.MISSING, t("Not signed in", "未登录"), t("$title is installed but not signed in: no task can go to it here.", "$title 装了但没登录：这台机器上暂时不能把任务派给它。"), at)
         else -> ConnRow(a.name, a.name, title, ConnState.OK, if (a.version.isNotEmpty()) t("Ready · ${a.version}", "可以用 · ${a.version}") else t("Ready", "可以用"), null, at)
