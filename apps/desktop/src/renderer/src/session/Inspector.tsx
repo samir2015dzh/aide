@@ -55,7 +55,7 @@ export function Inspector({ s }: { s: Session }) {
       },
       (e) => st.show(errorText(e)),
     );
-  // Its mode (an ACP agent's permission preset), changed while it lives (工单 #167): the next tool call is decided by
+  // Its mode (an ACP agent's permission preset), changed while it lives (工单 #170): the next tool call is decided by
   // the new one. DSH chooses its preset as a session starts and keeps it: said, not offered.
   const modes = m?.status?.agents.find((a) => a.name === s.agent)?.modes ?? [];
   const modeName = (id: string) => modes.find((x) => x.id === id)?.name || id;

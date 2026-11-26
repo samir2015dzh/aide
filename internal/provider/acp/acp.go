@@ -433,7 +433,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 			spec.Mode = "" // not set over ACP
 		}
 	}
-	// The mode Aide's own gate enforces, changed while it runs (工单 #167).
+	// The mode Aide's own gate enforces, changed while it runs (工单 #170).
 	var live *atomic.Value
 	if p.Name() == "antigravity" {
 		live = &atomic.Value{}
@@ -982,7 +982,7 @@ type session struct {
 	// liveMode: the mode Aide's own gate enforces (Antigravity), changed
 	// while it runs; fixedMode: the agent's mode is set as its process
 	// starts (DSH's presets). cfg: what the session said of its options,
-	// for a mode changed over ACP (工单 #167).
+	// for a mode changed over ACP (工单 #170).
 	liveMode  *atomic.Value
 	fixedMode bool
 	cfgMu     sync.Mutex
@@ -1815,7 +1815,7 @@ func firstNonEmpty(ss ...string) string {
 	return ""
 }
 
-// SetMode changes the running session's mode (工单 #167): Aide's own gate's
+// SetMode changes the running session's mode (工单 #170): Aide's own gate's
 // (Antigravity) at once, its next tool call decided by it; another agent's
 // through ACP, as it set it at the start.
 func (s *session) SetMode(ctx context.Context, mode string) error {
@@ -1838,5 +1838,5 @@ func (s *session) SetMode(ctx context.Context, mode string) error {
 }
 
 // ModesFixed: DSH's preset is chosen as its process starts and stays, a
-// resumed session's too (工单 #167).
+// resumed session's too (工单 #170).
 func (p *Provider) ModesFixed() bool { return p.DSHPresets }

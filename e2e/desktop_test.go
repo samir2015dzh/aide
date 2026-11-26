@@ -129,7 +129,7 @@ func TestDesktop(t *testing.T) {
 			if name == "newsession" { // its Gemini tells the machine its models, as Gemini CLI does
 				more = append(more, "FAKE_ACP_CONFIG=1")
 			}
-			if name == "sessionmode" { // its Gemini offers modes, to change a session's while it runs (工单 #167)
+			if name == "sessionmode" { // its Gemini offers modes, to change a session's while it runs (工单 #170)
 				more = append(more, "FAKE_ACP_MODES=ask,auto")
 			}
 			if name == "connect" { // DeepSeek Harness is there; Claude Code is not, whatever this computer has

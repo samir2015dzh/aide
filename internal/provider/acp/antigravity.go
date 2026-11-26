@@ -48,7 +48,7 @@ func antigravityValidMode(mode string) bool {
 }
 
 // antigravityLiveGate is antigravityPermissionGate with the mode the session
-// has now, each call (工单 #167: a mode changed while it runs decides its
+// has now, each call (工单 #170: a mode changed while it runs decides its
 // next call).
 func antigravityLiveGate(mode func() string, workDir string, next provider.Gate) provider.Gate {
 	return func(ctx context.Context, a provider.ToolAction) provider.Decision {

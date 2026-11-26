@@ -5930,7 +5930,7 @@ export const LocalService: GenService<{
     output: typeof ReadAttachmentResponseSchema;
   },
   /**
-   * A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #167).
+   * A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #170).
    *
    * @generated from rpc aide.local.v1.LocalService.SetSessionMode
    */

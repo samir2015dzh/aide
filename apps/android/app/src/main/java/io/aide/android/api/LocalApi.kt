@@ -145,7 +145,7 @@ class LocalApi(port: Long, token: String) {
     suspend fun archive(sessionId: String, on: Boolean): Session? =
         call<SessionIdRequest, SessionResponse>(if (on) "ArchiveSession" else "UnarchiveSession", SessionIdRequest(sessionId)).session
 
-    /** Its mode changed while it runs (工单 #167): from its next tool call, or its agent's next step; DSH says mode_fixed. */
+    /** Its mode changed while it runs (工单 #170): from its next tool call, or its agent's next step; DSH says mode_fixed. */
     suspend fun setSessionMode(sessionId: String, mode: String): Session? =
         call<SetSessionModeRequest, SessionResponse>("SetSessionMode", SetSessionModeRequest(sessionId, mode)).session
 

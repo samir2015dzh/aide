@@ -383,7 +383,7 @@ data class Session(
     val seen: SessionSeen? = null,
     /** Archived, its worktree kept: it had changes not in the last turn's snapshot (Session.workspace_kept). */
     val workspaceKept: Boolean = false,
-    /** The mode it runs with (工单 #167): "" from an older machine, or none chosen. */
+    /** The mode it runs with (工单 #170): "" from an older machine, or none chosen. */
     val mode: String = "",
 )
 

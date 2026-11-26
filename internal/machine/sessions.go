@@ -1590,7 +1590,7 @@ func (s *Sessions) Rename(ctx context.Context, p *Principal, id, title string) (
 	return s.toProto(row), nil
 }
 
-// SetMode changes a session's mode while it lives (工单 #167): one running
+// SetMode changes a session's mode while it lives (工单 #170): one running
 // takes it now (provider.ModeSetter: where Aide's own gate enforces it, its
 // next tool call is decided by it; a call already decided is not), one not
 // running starts with it. An agent whose mode is set as its process starts

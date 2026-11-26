@@ -1887,7 +1887,7 @@ type Session struct {
 	// machines, which freed it anyway.
 	WorkspaceKept bool `protobuf:"varint,28,opt,name=workspace_kept,json=workspaceKept,proto3" json:"workspace_kept,omitempty"`
 	// The mode it runs with (an ACP agent's permission or approval preset):
-	// the one it started with, or changed to (SetSessionMode, 工单 #167); ""
+	// the one it started with, or changed to (SetSessionMode, 工单 #170); ""
 	// when none was chosen (the agent's own default).
 	Mode          string `protobuf:"bytes,29,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields

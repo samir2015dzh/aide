@@ -2933,7 +2933,7 @@ func (o *Owner) ListSessionEvents(ctx context.Context, req *sessionv1.ListEvents
 	return res, err
 }
 
-// SetSessionMode changes a session's mode on its machine (工单 #167).
+// SetSessionMode changes a session's mode on its machine (工单 #170).
 func (o *Owner) SetSessionMode(ctx context.Context, req *sessionv1.SetSessionModeRequest) (*sessionv1.Session, error) {
 	if l := o.localSession(req.SessionId); l != nil {
 		return l.SetSessionMode(ctx, req.SessionId, req.Mode)

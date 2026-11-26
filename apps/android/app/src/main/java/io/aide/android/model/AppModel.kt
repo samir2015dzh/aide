@@ -750,7 +750,7 @@ class AppModel(private val context: Context) {
         humanError(e)
     }
 
-    /** Changes a session's mode while it runs (工单 #167); null when it worked, else why. */
+    /** Changes a session's mode while it runs (工单 #170); null when it worked, else why. */
     suspend fun setMode(s: Session, mode: String): String? = try {
         api!!.setSessionMode(s.sessionId, mode)?.let { replace(it) }
         null

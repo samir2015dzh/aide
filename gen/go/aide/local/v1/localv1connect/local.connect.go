@@ -498,7 +498,7 @@ type LocalServiceClient interface {
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v12.ToolOutputChunk], error)
 	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
 	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
-	// A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #167).
+	// A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #170).
 	SetSessionMode(context.Context, *v12.SetSessionModeRequest) (*v1.SessionResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
@@ -2515,7 +2515,7 @@ type LocalServiceHandler interface {
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v12.ToolOutputChunk]) error
 	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
 	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
-	// A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #167).
+	// A session's mode, while it lives (aide.session.v1.SessionService.SetSessionMode, 工单 #170).
 	SetSessionMode(context.Context, *v12.SetSessionModeRequest) (*v1.SessionResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding

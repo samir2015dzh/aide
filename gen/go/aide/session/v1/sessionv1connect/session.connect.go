@@ -196,7 +196,7 @@ type SessionServiceClient interface {
 	// 10 MiB) that a reply in this session showed.
 	ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error)
 	// SetSessionMode changes a session's mode (an ACP agent's permission or
-	// approval preset, AgentStatus.modes) while it lives (工单 #167). One
+	// approval preset, AgentStatus.modes) while it lives (工单 #170). One
 	// running takes it now: where Aide's own gate enforces it (Antigravity),
 	// its next tool call is decided by it; another agent's is set over ACP.
 	// A call already decided is not. One not running starts with it. An
@@ -685,7 +685,7 @@ type SessionServiceHandler interface {
 	// 10 MiB) that a reply in this session showed.
 	ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error)
 	// SetSessionMode changes a session's mode (an ACP agent's permission or
-	// approval preset, AgentStatus.modes) while it lives (工单 #167). One
+	// approval preset, AgentStatus.modes) while it lives (工单 #170). One
 	// running takes it now: where Aide's own gate enforces it (Antigravity),
 	// its next tool call is decided by it; another agent's is set over ACP.
 	// A call already decided is not. One not running starts with it. An

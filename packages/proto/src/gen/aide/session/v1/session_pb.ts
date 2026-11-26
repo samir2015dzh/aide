@@ -896,7 +896,7 @@ export type Session = Message<"aide.session.v1.Session"> & {
 
   /**
    * The mode it runs with (an ACP agent's permission or approval preset):
-   * the one it started with, or changed to (SetSessionMode, 工单 #167); ""
+   * the one it started with, or changed to (SetSessionMode, 工单 #170); ""
    * when none was chosen (the agent's own default).
    *
    * @generated from field: string mode = 29;
@@ -3829,7 +3829,7 @@ export const SessionService: GenService<{
   },
   /**
    * SetSessionMode changes a session's mode (an ACP agent's permission or
-   * approval preset, AgentStatus.modes) while it lives (工单 #167). One
+   * approval preset, AgentStatus.modes) while it lives (工单 #170). One
    * running takes it now: where Aide's own gate enforces it (Antigravity),
    * its next tool call is decided by it; another agent's is set over ACP.
    * A call already decided is not. One not running starts with it. An

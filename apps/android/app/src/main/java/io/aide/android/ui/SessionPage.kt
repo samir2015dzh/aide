@@ -435,7 +435,7 @@ private fun SettingsSheet(model: AppModel, s: Session, close: () -> Unit) {
 }
 
 /**
- * Its mode, changed while it runs (工单 #167): Antigravity's from its next
+ * Its mode, changed while it runs (工单 #170): Antigravity's from its next
  * tool call, another ACP agent's as it takes it. DSH chooses its preset when
  * its session starts, so it is shown and said to be fixed.
  */

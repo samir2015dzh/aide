@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { cli, launch, sessionList } from "./app";
 
-// A session's mode changed while it runs (工单 #167): its settings say the
+// A session's mode changed while it runs (工单 #170): its settings say the
 // mode it runs with, and an ACP agent's other modes are a click away.
 // (Its Gemini here offers the modes "ask" and "auto", named "Mode ask" and
 // "Mode auto": FAKE_ACP_MODES. They are shown by the names the agent gives.)

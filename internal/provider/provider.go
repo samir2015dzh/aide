@@ -381,7 +381,7 @@ type Provider interface {
 }
 
 // ModeSetter is a Session whose mode (an ACP agent's permission or approval
-// preset) can change while it runs (工单 #167): its next tool call is
+// preset) can change while it runs (工单 #170): its next tool call is
 // decided by the new one; a call already decided is not. ErrModeFixed: this
 // agent's mode is set when its process starts, and stays.
 type ModeSetter interface {
@@ -392,7 +392,7 @@ type ModeSetter interface {
 var ErrModeFixed = errors.New("this agent's mode is chosen when its session starts and can't change while it runs")
 
 // FixedModes is a Provider whose sessions keep the mode they started with
-// (DeepSeek Harness's presets, 工单 #167), resumed ones too.
+// (DeepSeek Harness's presets, 工单 #170), resumed ones too.
 type FixedModes interface {
 	ModesFixed() bool
 }

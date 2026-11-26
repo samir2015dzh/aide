@@ -14,7 +14,7 @@ import (
 	"github.com/samir2015dzh/aide/internal/reason"
 )
 
-// 工单 #167: a mode changed while an Antigravity session lives decides its
+// 工单 #170: a mode changed while an Antigravity session lives decides its
 // next tool call — Aide's own gate enforces it — and the session says it
 // runs in it; one of DeepSeek Harness, whose preset is set as its process
 // starts, is refused and says why.
@@ -104,7 +104,7 @@ func TestSetModeDSHIsFixed(t *testing.T) {
 }
 
 // Another ACP agent with modes takes the change over ACP while it runs, as
-// it took the one it started with (工单 #167).
+// it took the one it started with (工单 #170).
 func TestSetModeOverACP(t *testing.T) {
 	bin := fakeACP(t)
 	log := t.TempDir() + "/acp.log"
