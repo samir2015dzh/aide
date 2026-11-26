@@ -22,6 +22,10 @@ import (
 var fakeBin string
 
 func TestMain(m *testing.M) {
+	if mode := os.Getenv("AIDE_TEST_FAKE_DSH"); mode != "" {
+		fakeDSH(mode) // this binary, started as DSH (dshkeys_test.go)
+		os.Exit(0)
+	}
 	dir, err := os.MkdirTemp("", "fakeacp")
 	if err != nil {
 		panic(err)
