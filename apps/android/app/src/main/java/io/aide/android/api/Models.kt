@@ -733,6 +733,10 @@ data class TalkToPersonaResponse(
 @Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String, val mentions: List<String> = emptyList(), val lightChat: Boolean = false)
 @Serializable data class CreateRoomMember(val botKey: String, val projectId: String = "", val name: String = "")
 @Serializable data class CreateRoomRequest(val name: String, val members: List<CreateRoomMember>, val mode: String, val maxRounds: Int)
+// Whether the members picked for a room can be reached now, asked for real (工单 #159).
+@Serializable data class CheckRoomMembersRequest(val members: List<CreateRoomMember>)
+@Serializable data class RoomMemberCheck(val botKey: String = "", val problem: String = "", val detail: String = "", val lastSeen: String = "")
+@Serializable data class CheckRoomMembersResponse(val members: List<RoomMemberCheck> = emptyList())
 @Serializable data class RoomPatch(val roomId: String, val name: String? = null, val mode: String? = null, val maxRounds: Int? = null)
 @Serializable data class UpdateRoomRequest(val machineId: String, val room: RoomPatch)
 @Serializable data class RoomRef(val machineId: String, val roomId: String)

@@ -233,6 +233,11 @@ service LocalService {
   rpc StopRoom(RoomRef) returns (aide.machine.v1.Room);
   rpc MarkRoomSeen(RoomRef) returns (aide.machine.v1.Room);
   rpc DeleteRoom(RoomRef) returns (aide.machine.v1.DeleteRoomResponse);
+  // Whether the members picked for a room can be reached now, asked for
+  // real (工单 #159): the coding agents on their own machines, the personal
+  // agents on the machine CreateRoom would pick as host. A machine that
+  // doesn't answer has its members marked so.
+  rpc CheckRoomMembers(aide.machine.v1.CheckRoomMembersRequest) returns (aide.machine.v1.CheckRoomMembersResponse);
   // What waits at the post office for a machine that hosts rooms, by room:
   // every member's reply (personal agents' too) while it is away (工单 #74).
   rpc ListRoomWaiting(ListRoomWaitingRequest) returns (ListRoomWaitingResponse);

@@ -49,10 +49,22 @@ test("a round table of a personal agent and a coding agent, handing on to each o
   await sheet.getByRole("checkbox", { name: "Gemini CLI" }).click();
   await expect(sheet.getByRole("button", { name: "Gemini CLI 的项目" })).toBeVisible();
   await sheet.getByRole("checkbox", { name: "bot" }).click();
+  // Each member picked is asked of for real (工单 #159), its row saying whether it can take its turn, and the round
+  // table's rules are on the sheet as the room runs them.
+  await expect(sheet.locator(".room-pick-row.on .room-reach:not(.checking)")).toHaveCount(2, { timeout: 30_000 });
+  await expect(sheet).toContainText("没 @ 任何成员（或 @ 的 bot 不在房间里）就按成员顺序交给下一位");
   await snap(page, "rooms-new");
   await sheet.getByRole("button", { name: "建房间" }).click();
 
   const room = page.getByRole("region", { name: "发版评审" });
+  // One that may not take its turn (a personal agent that reads its inbox only when it checks) is named first, and
+  // the room is made once the owner makes it again knowing that.
+  const anyway = sheet.getByRole("button", { name: "仍然建房间" });
+  await expect(room.or(anyway)).toBeVisible({ timeout: 30_000 });
+  if (await anyway.isVisible()) {
+    await expect(sheet.getByRole("alert").filter({ hasText: "可能接不了力" })).toBeVisible();
+    await anyway.click();
+  }
   await expect(room.getByRole("list", { name: "成员" })).toContainText("Gemini CLI");
   await expect(room.getByRole("list", { name: "成员" })).toContainText("bot");
   await expect(rooms.getByRole("button", { name: /发版评审/ })).toBeVisible();

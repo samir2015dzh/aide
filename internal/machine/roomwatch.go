@@ -43,6 +43,14 @@ const (
 	roomUntaken = 24 * time.Hour
 )
 
+// roomSkipAfter: a member woken at a round table and not answering for so
+// long is skipped, and the table goes on without it (工单 #159). Three
+// minutes: a minute after the owner is told it is quiet (roomQuiet), so the
+// owner has that minute to step in; an agent that takes its letters at once
+// answers well within it, and one that doesn't take it in three minutes is
+// not coming in this turn. Not a setting; a var only so tests can shorten it.
+var roomSkipAfter = 3 * time.Minute
+
 // roomQueued is a wake waiting for a free place (工单 #70), kept with its room.
 type roomQueued struct {
 	Msg     string    `json:"msg"`
@@ -139,7 +147,7 @@ func (n *Machine) drainRooms(ctx context.Context) {
 			}
 		}
 		b.woken[q.Copy] = time.Now()
-		go_ = append(go_, next{st: st, msg: msg, room: cloneRoom(st.room), w: wake{mem: mem, speaker: q.Speaker, text: q.Text, copyID: q.Copy}, before: lastMsgs(st.msgs[:i])})
+		go_ = append(go_, next{st: st, msg: msg, room: cloneRoom(st.room), w: wake{mem: mem, speaker: q.Speaker, text: q.Text, copyID: q.Copy, wrapUp: msg.System}, before: lastMsgs(st.msgs[:i])})
 		n.settleRun(st)
 		b.save(st)
 		free--
@@ -323,7 +331,209 @@ func (n *Machine) roomTick(ctx context.Context, now time.Time) {
 	for _, x := range tell {
 		go n.notify(&sessionv1.Notice{Kind: "room", At: timestamppb.New(now), Title: x.name, RoomId: x.room, RoomLine: x.line}, "room:"+x.room, func() {})
 	}
+	n.skipQuiet(ctx, now)
 	n.drainRooms(ctx)
+}
+
+// skipQuiet: at a round table under way, a member woken and silent for
+// roomSkipAfter is skipped and the table goes on (工单 #159, skip). A coding
+// agent here whose session is still at work is not silent: it counts from
+// its session's last event.
+func (n *Machine) skipQuiet(ctx context.Context, now time.Time) {
+	b := n.roomBook()
+	type cand struct {
+		room, copy string
+		mem        *machinev1.RoomMember
+		woke       time.Time
+	}
+	var cands []cand
+	b.mu.Lock()
+	for _, st := range b.rooms {
+		if st.room.Mode != machinev1.RoomMode_ROOM_MODE_ROUNDTABLE || st.room.Direct || st.room.Run != machinev1.RoomRun_ROOM_RUN_RUNNING {
+			continue
+		}
+		for _, m := range chain(st) {
+			for _, d := range m.Deliveries {
+				if d.State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT && d.State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN {
+					continue
+				}
+				woke := m.At.AsTime()
+				if w, ok := b.woken[d.CopyId]; ok {
+					woke = w
+				}
+				if mem := memberOf(st.room, d.BotKey); mem != nil && now.Sub(woke) >= roomSkipAfter {
+					cands = append(cands, cand{room: st.room.RoomId, copy: d.CopyId, mem: proto.Clone(mem).(*machinev1.RoomMember), woke: woke})
+				}
+			}
+		}
+	}
+	b.mu.Unlock()
+
+	// Sessions are read without the rooms' lock (a session's turn ending takes it).
+	since := map[string]time.Time{}
+	for _, c := range cands {
+		since[c.copy] = c.woke
+		if t := n.atWork(c.mem); t.After(c.woke) {
+			since[c.copy] = t
+		}
+	}
+	type next struct {
+		st      *roomState
+		carrier *machinev1.RoomMessage
+		room    *machinev1.Room
+		wakes   []wake
+		before  []*machinev1.RoomMessage
+		notice  string
+	}
+	var todo []next
+	b.mu.Lock()
+	for _, c := range cands {
+		st := b.rooms[c.room]
+		if st == nil || st.room.Run != machinev1.RoomRun_ROOM_RUN_RUNNING || now.Sub(since[c.copy]) < roomSkipAfter {
+			continue
+		}
+		m, d := waitingCopy(st, c.copy)
+		if d == nil {
+			continue // answered meanwhile
+		}
+		x := next{st: st}
+		x.carrier, x.wakes, x.notice = n.skip(st, m, d, now.Sub(c.woke))
+		if x.carrier != nil {
+			x.wakes = pending(x.carrier, x.wakes)
+			x.wakes = b.admit(st, x.carrier, x.wakes)
+			x.before = lastMsgs(st.msgs[:slices.Index(st.msgs, x.carrier)])
+		}
+		n.settleRun(st)
+		st.room.UpdatedAt = timestamppb.Now()
+		if x.notice != "" {
+			st.room.Notice, st.room.NoticeAt = x.notice, timestamppb.Now()
+		}
+		b.save(st)
+		x.room = cloneRoom(st.room)
+		todo = append(todo, x)
+	}
+	b.mu.Unlock()
+	for _, x := range todo {
+		got := n.wakeAll(ctx, x.room, x.wakes, x.before)
+		b.mu.Lock()
+		if x.carrier != nil {
+			settle(x.carrier, got)
+			if x.carrier.System {
+				wrapNotSent(x.st, x.carrier)
+			}
+		}
+		n.settleRun(x.st)
+		b.save(x.st)
+		b.mu.Unlock()
+		if x.notice != "" {
+			go n.notify(&sessionv1.Notice{Kind: "room", At: timestamppb.Now(), Title: x.room.Name, RoomId: x.room.RoomId, RoomLine: x.notice}, "room:"+x.room.RoomId, func() {})
+		}
+	}
+}
+
+// skip marks a member's wake skipped, the room saying who and how long it
+// was waited for (工单 #159). When the table waits on nobody else, the same
+// word goes to the next in the room's order it has not reached yet (nor the
+// one who said it); with nobody left, the last bot to speak wraps the table
+// up, or, before any did, it stops. What to wake, on which message (b.mu held).
+func (n *Machine) skip(st *roomState, msg *machinev1.RoomMessage, d *machinev1.RoomDelivery, waited time.Duration) (carrier *machinev1.RoomMessage, wakes []wake, notice string) {
+	r := st.room
+	name := d.BotKey
+	if m := memberOf(r, d.BotKey); m != nil {
+		name = m.Name
+	}
+	d.State, d.Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SKIPPED, fmt.Sprintf("%s 超时未回复（等了 %s），已跳过", name, waitWords(waited))
+	n.audit.Log(AuditRecord{Kind: "room.skip", Subject: "owner", Session: r.RoomId, Decision: "allow", Detail: "to=" + d.BotKey})
+	say := func(text string) {
+		st.msgs = append(st.msgs, &machinev1.RoomMessage{MessageId: newID("msg_"), RoomId: r.RoomId, From: "system", System: true, Round: r.Round, At: timestamppb.Now(), Text: text})
+	}
+	for _, m := range chain(st) {
+		for _, x := range m.Deliveries {
+			if x.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT || x.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN || x.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_QUEUED {
+				say(d.Reason + "；圆桌在等别的成员。")
+				return nil, nil, ""
+			}
+		}
+	}
+	not := []string{msg.From}
+	for _, x := range msg.Deliveries {
+		not = append(not, x.BotKey)
+	}
+	speaker := memberOf(r, msg.From)
+	if to := nextInTurn(r, d.BotKey, not...); to != nil {
+		w := wake{mem: to, text: msg.Text}
+		if msg.System { // a call to wrap up
+			w.wrapUp, w.text = true, fmt.Sprintf("原本请来收口的 %s 超时未回复", name)
+			say(fmt.Sprintf("%s；改请 %s 汇总共识收口。", d.Reason, to.Name))
+			return msg, []wake{w}, ""
+		}
+		if speaker != nil {
+			w.speaker = speaker.Name
+		}
+		say(fmt.Sprintf("%s；圆桌继续，交给 %s 接力。", d.Reason, to.Name))
+		return msg, []wake{w}, ""
+	}
+	if speaker == nil {
+		// Nobody answered the owner, or nobody is left to wrap up.
+		say(d.Reason + "；没有别的成员接得上，圆桌停下了。你说一句，就从头开始。")
+		if msg.System {
+			tableOver(r)
+		}
+		return nil, nil, "圆桌停下了：没有成员接得上"
+	}
+	call, w := wrapUp(r, speaker, "没有别的成员能接力了", d.Reason+"；没有别的成员能接力，")
+	st.msgs = append(st.msgs, call)
+	return call, []wake{w}, ""
+}
+
+// waitingCopy is the message since the owner last spoke whose copy id still
+// waits for its member, and that delivery; nil when none (b.mu held).
+func waitingCopy(st *roomState, id string) (*machinev1.RoomMessage, *machinev1.RoomDelivery) {
+	for _, m := range chain(st) {
+		for _, d := range m.Deliveries {
+			if d.CopyId == id && (d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN) {
+				return m, d
+			}
+		}
+	}
+	return nil, nil
+}
+
+// chain is the room's messages since the owner last spoke, the owner's word
+// first (b.mu held).
+func chain(st *roomState) []*machinev1.RoomMessage {
+	for i := len(st.msgs) - 1; i >= 0; i-- {
+		if st.msgs[i].From == "owner" {
+			return st.msgs[i:]
+		}
+	}
+	return st.msgs
+}
+
+// waitWords is how long, in the room's words.
+func waitWords(d time.Duration) string {
+	d = d.Round(time.Second)
+	m, s := int(d/time.Minute), int(d%time.Minute/time.Second)
+	switch {
+	case m == 0:
+		return fmt.Sprintf("%d 秒", s)
+	case s == 0:
+		return fmt.Sprintf("%d 分钟", m)
+	}
+	return fmt.Sprintf("%d 分 %d 秒", m, s)
+}
+
+// atWork is when a coding agent here last showed its session at work; zero
+// for any other member. Called without b.mu.
+func (n *Machine) atWork(mem *machinev1.RoomMember) time.Time {
+	if mem.MachineId != n.machineID || mem.SessionId == "" || n.sessions == nil {
+		return time.Time{}
+	}
+	s, err := n.sessions.Get(&Principal{Kind: PrincipalOwner}, mem.SessionId)
+	if err != nil || s.GetProgress().GetLastEventAt() == nil {
+		return time.Time{}
+	}
+	return s.GetProgress().GetLastEventAt().AsTime()
 }
 
 // stirring tells whether a member woken at woke shows a sign of life (工单

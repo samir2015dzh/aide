@@ -114,6 +114,8 @@
 .room-pick-row+.room-pick-row::before{left:76px}
 .sheet-note+.fhead{margin-top:16px}
 .room-pick-row .picker{max-width:200px}
+.room-pick-row .room-reach{margin-top:0}
+.room-pick-row .room-reach.warn,.sheet p.warn{color:var(--orange-t)}
 .room-mode{display:flex;align-items:center;justify-content:flex-end;gap:8px}
 
 .bot-state-row{gap:10px}

@@ -295,6 +295,9 @@ const (
 	LocalServiceMarkRoomSeenProcedure = "/aide.local.v1.LocalService/MarkRoomSeen"
 	// LocalServiceDeleteRoomProcedure is the fully-qualified name of the LocalService's DeleteRoom RPC.
 	LocalServiceDeleteRoomProcedure = "/aide.local.v1.LocalService/DeleteRoom"
+	// LocalServiceCheckRoomMembersProcedure is the fully-qualified name of the LocalService's
+	// CheckRoomMembers RPC.
+	LocalServiceCheckRoomMembersProcedure = "/aide.local.v1.LocalService/CheckRoomMembers"
 	// LocalServiceListRoomWaitingProcedure is the fully-qualified name of the LocalService's
 	// ListRoomWaiting RPC.
 	LocalServiceListRoomWaitingProcedure = "/aide.local.v1.LocalService/ListRoomWaiting"
@@ -551,6 +554,11 @@ type LocalServiceClient interface {
 	StopRoom(context.Context, *v1.RoomRef) (*v11.Room, error)
 	MarkRoomSeen(context.Context, *v1.RoomRef) (*v11.Room, error)
 	DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error)
+	// Whether the members picked for a room can be reached now, asked for
+	// real (工单 #159): the coding agents on their own machines, the personal
+	// agents on the machine CreateRoom would pick as host. A machine that
+	// doesn't answer has its members marked so.
+	CheckRoomMembers(context.Context, *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error)
 	// What waits at the post office for a machine that hosts rooms, by room:
 	// every member's reply (personal agents' too) while it is away (工单 #74).
 	ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error)
@@ -1161,6 +1169,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("DeleteRoom")),
 			connect.WithClientOptions(opts...),
 		),
+		checkRoomMembers: connect.NewClient[v11.CheckRoomMembersRequest, v11.CheckRoomMembersResponse](
+			httpClient,
+			baseURL+LocalServiceCheckRoomMembersProcedure,
+			connect.WithSchema(localServiceMethods.ByName("CheckRoomMembers")),
+			connect.WithClientOptions(opts...),
+		),
 		listRoomWaiting: connect.NewClient[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse](
 			httpClient,
 			baseURL+LocalServiceListRoomWaitingProcedure,
@@ -1344,6 +1358,7 @@ type localServiceClient struct {
 	stopRoom                       *connect.Client[v1.RoomRef, v11.Room]
 	markRoomSeen                   *connect.Client[v1.RoomRef, v11.Room]
 	deleteRoom                     *connect.Client[v1.RoomRef, v11.DeleteRoomResponse]
+	checkRoomMembers               *connect.Client[v11.CheckRoomMembersRequest, v11.CheckRoomMembersResponse]
 	listRoomWaiting                *connect.Client[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse]
 	dSHSessionOptions              *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
 	listClaudeSessions             *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
@@ -2190,6 +2205,15 @@ func (c *localServiceClient) DeleteRoom(ctx context.Context, req *v1.RoomRef) (*
 	return nil, err
 }
 
+// CheckRoomMembers calls aide.local.v1.LocalService.CheckRoomMembers.
+func (c *localServiceClient) CheckRoomMembers(ctx context.Context, req *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error) {
+	response, err := c.checkRoomMembers.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListRoomWaiting calls aide.local.v1.LocalService.ListRoomWaiting.
 func (c *localServiceClient) ListRoomWaiting(ctx context.Context, req *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error) {
 	response, err := c.listRoomWaiting.CallUnary(ctx, connect.NewRequest(req))
@@ -2529,6 +2553,11 @@ type LocalServiceHandler interface {
 	StopRoom(context.Context, *v1.RoomRef) (*v11.Room, error)
 	MarkRoomSeen(context.Context, *v1.RoomRef) (*v11.Room, error)
 	DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error)
+	// Whether the members picked for a room can be reached now, asked for
+	// real (工单 #159): the coding agents on their own machines, the personal
+	// agents on the machine CreateRoom would pick as host. A machine that
+	// doesn't answer has its members marked so.
+	CheckRoomMembers(context.Context, *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error)
 	// What waits at the post office for a machine that hosts rooms, by room:
 	// every member's reply (personal agents' too) while it is away (工单 #74).
 	ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error)
@@ -3135,6 +3164,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("DeleteRoom")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceCheckRoomMembersHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceCheckRoomMembersProcedure,
+		svc.CheckRoomMembers,
+		connect.WithSchema(localServiceMethods.ByName("CheckRoomMembers")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListRoomWaitingHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListRoomWaitingProcedure,
 		svc.ListRoomWaiting,
@@ -3409,6 +3444,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceMarkRoomSeenHandler.ServeHTTP(w, r)
 		case LocalServiceDeleteRoomProcedure:
 			localServiceDeleteRoomHandler.ServeHTTP(w, r)
+		case LocalServiceCheckRoomMembersProcedure:
+			localServiceCheckRoomMembersHandler.ServeHTTP(w, r)
 		case LocalServiceListRoomWaitingProcedure:
 			localServiceListRoomWaitingHandler.ServeHTTP(w, r)
 		case LocalServiceDSHSessionOptionsProcedure:
@@ -3820,6 +3857,10 @@ func (UnimplementedLocalServiceHandler) MarkRoomSeen(context.Context, *v1.RoomRe
 
 func (UnimplementedLocalServiceHandler) DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.DeleteRoom is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) CheckRoomMembers(context.Context, *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.CheckRoomMembers is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error) {

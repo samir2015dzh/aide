@@ -75,11 +75,39 @@ run, and one timeline.
   member, and starts the room's chain anew (round 0, a trace of its own).
   A member naming another hands it on: the round goes up by one and the one
   named is woken with the speaker's words marked as peer input, never as
-  the owner's. At the round limit (default 6, at most 20) the room stops and
-  says so. Inside the room its rounds, not the hop limit, bound the chain
+  the owner's. At the round limit (default 6, at most 20) the room wraps up
+  and stops, saying so. Inside the room its rounds, not the hop limit, bound the chain
   (design §10).
 - **`[FINAL]`**: an answer starting with it is the room's agreed result,
   sealed with its SHA-256, shown as a card to copy or export as Markdown.
+- **Keeping the table going** (工单 #159):
+  - *No one named*: a member's answer naming no member (or only bots not in
+    the room) hands on to the next member in the room's order, round and
+    round; its letter says so ("轮到你接力"). One naming only the owner
+    (`@所有者`) hands nothing on: the table waits for the owner. A word that
+    answers no wake of its own hands nothing on either.
+  - *Silent members are skipped*: a member woken that has not answered for
+    `roomSkipAfter` (3 minutes: a minute after the owner is told it is
+    quiet; a coding agent here still at work counts from its session's last
+    event) is skipped (`ROOM_DELIVERY_STATE_SKIPPED`), the room saying who and
+    how long it waited, and, when the table waits on nobody else, the same
+    word goes to the next member in order it has not reached yet. What the
+    skipped one says later is kept as late, handing nothing on.
+  - *Wrapping up*: at the round limit with no `[FINAL]`, or when a skip
+    leaves nobody to hand on to, the last bot to speak is asked to wrap up
+    (the host's line names it); its answer is sealed as the room's result,
+    `[FINAL]` or not. Silent too, the next in order is asked; with nobody
+    left the table stops, said so.
+  - *Checked before it starts*: the new-room sheet asks for real whether
+    each member picked can be reached (`CheckRoomMembers`): a personal agent's
+    grant on the host, its inbox at the post office and whether anything
+    takes its letters now (a doorbell, a webhook, a session or hook while
+    connected, an MCP connection active lately; a command line that only
+    polls does not, online or not); a coding agent checked again on its own
+    machine (there, not paused, signed in, its sign-in confirmed), a machine
+    that does not answer marked so. Each row says why; a room with one that
+    may not take its turn is made only when the owner makes it again knowing
+    that.
 - **Stop**: nobody more is woken, coding agents at work for the room are
   stopped (on other machines too, with a stop wake), and what comes after is
   kept as late, handing nothing on.

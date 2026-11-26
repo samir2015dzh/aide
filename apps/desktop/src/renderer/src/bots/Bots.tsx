@@ -727,6 +727,7 @@ export function deliveryWords(t: TFunction<"common">, state: RoomDeliveryState, 
       return { text: t("bots.delivery.replied", { name }), bad: false };
     case RoomDeliveryState.REFUSED:
     case RoomDeliveryState.FAILED:
+    case RoomDeliveryState.SKIPPED: // 工单 #159: not answered in time at a round table, the reason says how long
       return { text: reason, bad: true };
   }
   return { text: "", bad: false };

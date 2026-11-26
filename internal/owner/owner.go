@@ -2090,6 +2090,77 @@ func (o *Owner) CreateRoom(ctx context.Context, req *localv1.CreateRoomRequest) 
 		func(n *peer.Machine) (*machinev1.Room, error) { return n.Admin.CreateRoom(ctx, r) })
 }
 
+// roomCheckWait is how long a machine has to say whether its members can be
+// reached: it checks its coding agents again, each CLI run.
+const roomCheckWait = 30 * time.Second
+
+// CheckRoomMembers asks, for real, whether each member picked for a room
+// can be reached now (工单 #159): each coding agent of its own machine, the
+// personal agents of the machine CreateRoom would make the room on. A machine
+// not online, or not answering in time, has its members marked so: the
+// roster's word is not taken for it.
+func (o *Owner) CheckRoomMembers(ctx context.Context, req *machinev1.CheckRoomMembersRequest) (*machinev1.CheckRoomMembersResponse, error) {
+	machines, err := o.roomMachines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(machines) == 0 {
+		return nil, reason.New(connect.CodeUnavailable, "no_room_host_online", "no machine of yours is online to keep the room: start Aide on one")
+	}
+	online := map[string]bool{}
+	for _, m := range machines {
+		online[m.MachineId] = true
+	}
+	by := map[string][]*machinev1.CreateRoomMember{} // the machine to ask → its members
+	for _, m := range req.Members {
+		where := machines[0].MachineId // the room's host
+		if mid, _, ok := strings.Cut(strings.TrimPrefix(m.BotKey, "m:"), "/"); ok && strings.HasPrefix(m.BotKey, "m:") {
+			where = mid
+		}
+		by[where] = append(by[where], m)
+	}
+	got := map[string]*machinev1.RoomMemberCheck{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for mid, members := range by {
+		wg.Go(func() {
+			r := &machinev1.CheckRoomMembersRequest{Members: members}
+			var res *machinev1.CheckRoomMembersResponse
+			err := errors.New("not online")
+			if online[mid] {
+				ctx, cancel := context.WithTimeout(ctx, roomCheckWait)
+				defer cancel()
+				res, err = onDSHMachine(ctx, o, mid, func(l *machine.Local) (*machinev1.CheckRoomMembersResponse, error) {
+					return l.CheckRoomMembers(ctx, r), nil
+				},
+					func(n *peer.Machine) (*machinev1.CheckRoomMembersResponse, error) {
+						return n.Admin.CheckRoomMembers(ctx, r)
+					})
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				problem := machinev1.RoomMemberProblem_ROOM_MEMBER_PROBLEM_MACHINE_OFFLINE
+				if connect.CodeOf(err) == connect.CodeUnimplemented {
+					problem = machinev1.RoomMemberProblem_ROOM_MEMBER_PROBLEM_MACHINE_OUTDATED
+				}
+				for _, m := range members {
+					got[m.BotKey] = &machinev1.RoomMemberCheck{BotKey: m.BotKey, Problem: problem}
+				}
+			}
+			for _, c := range res.GetMembers() {
+				got[c.BotKey] = c
+			}
+		})
+	}
+	wg.Wait()
+	out := &machinev1.CheckRoomMembersResponse{}
+	for _, m := range req.Members {
+		out.Members = append(out.Members, got[m.BotKey])
+	}
+	return out, nil
+}
+
 func (o *Owner) UpdateRoom(ctx context.Context, req *localv1.UpdateRoomRequest) (*machinev1.Room, error) {
 	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.UpdateRoom(req.Room) },
 		func(n *peer.Machine) (*machinev1.Room, error) { return n.Admin.UpdateRoom(ctx, req.Room) })

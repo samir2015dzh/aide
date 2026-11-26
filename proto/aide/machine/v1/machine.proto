@@ -728,6 +728,15 @@ service MachineAdminService {
   rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
+  // Whether the members picked for a room can be reached now (工单 #159),
+  // asked for real, not read from the roster: a personal agent's grant
+  // here, its inbox at the post office and whether anything takes its
+  // letters now; a coding agent of this machine's, checked again now. The
+  // owner's device asks each coding agent's own machine of it, and the
+  // room's host of the personal agents.
+  rpc CheckRoomMembers(CheckRoomMembersRequest) returns (CheckRoomMembersResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
   rpc ApplyAdminCommand(ApplyAdminCommandRequest) returns (ApplyAdminCommandResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
@@ -1518,6 +1527,10 @@ enum RoomDeliveryState {
   // Not sent yet: the host's limit of bots at work at once is reached
   // (工单 #70); it is woken as soon as one of them is done.
   ROOM_DELIVERY_STATE_QUEUED = 6;
+  // At a round table, not answered in time (工单 #159): skipped, the table
+  // went on without it; the reason says how long it was waited for. What it
+  // says later is kept, handing nothing on.
+  ROOM_DELIVERY_STATE_SKIPPED = 7;
 }
 
 message RoomDelivery {
@@ -1556,7 +1569,8 @@ message RoomMessage {
   // (its text's SHA-256; nothing changes it).
   bool final = 11;
   string final_sha256 = 12;
-  // Came after the owner stopped the room: kept, hands nothing on.
+  // Came after the owner stopped the room, or after its wake was skipped
+  // (工单 #159): kept, hands nothing on.
   bool late = 13;
   // In manual mode, the bots a member named (@): the owner may hand it on.
   repeated string asks = 14;
@@ -1651,3 +1665,52 @@ message DeleteRoomRequest {
 }
 
 message DeleteRoomResponse {}
+
+message CheckRoomMembersRequest {
+  repeated CreateRoomMember members = 1;
+}
+
+message CheckRoomMembersResponse {
+  // One for each member asked of, in the order asked.
+  repeated RoomMemberCheck members = 1;
+}
+
+message RoomMemberCheck {
+  string bot_key = 1;
+  // Unset: it can be reached.
+  RoomMemberProblem problem = 2;
+  // In the check's own words, when it says more (a coding agent's problem).
+  string detail = 3;
+  // A personal agent's: when it was last at the post office.
+  google.protobuf.Timestamp last_seen = 4;
+}
+
+// Why a member picked for a room may not take its turn (工单 #159).
+enum RoomMemberProblem {
+  ROOM_MEMBER_PROBLEM_UNSPECIFIED = 0;
+  // A personal agent whose grant has not reached the room's host.
+  ROOM_MEMBER_PROBLEM_NO_GRANT = 1;
+  // Not among the owner's contacts at the post office (its card does not
+  // verify, its grant is revoked).
+  ROOM_MEMBER_PROBLEM_NOT_CONTACT = 2;
+  // Its inbox is not registered: its Aide never set one up.
+  ROOM_MEMBER_PROBLEM_NO_INBOX = 3;
+  // Its inbox is registered, but nothing takes its letters now: not
+  // connected, not active lately, no doorbell or webhook to wake it.
+  ROOM_MEMBER_PROBLEM_NOT_TAKING = 4;
+  // The room's host can't reach the post office now.
+  ROOM_MEMBER_PROBLEM_RELAY_UNREACHABLE = 5;
+  // Its machine did not answer.
+  ROOM_MEMBER_PROBLEM_MACHINE_OFFLINE = 6;
+  // Its machine's Aide is too old to be asked.
+  ROOM_MEMBER_PROBLEM_MACHINE_OUTDATED = 7;
+  // The coding agent is not on its machine now (not found, not working,
+  // hidden).
+  ROOM_MEMBER_PROBLEM_AGENT_MISSING = 8;
+  // The coding agent is signed out.
+  ROOM_MEMBER_PROBLEM_AGENT_SIGNED_OUT = 9;
+  // The coding agent's sign-in could not be confirmed.
+  ROOM_MEMBER_PROBLEM_AGENT_UNCONFIRMED = 10;
+  // The coding agent, or its machine, is paused by the owner.
+  ROOM_MEMBER_PROBLEM_AGENT_PAUSED = 11;
+}

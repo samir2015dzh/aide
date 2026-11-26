@@ -482,6 +482,8 @@ class AppModel(private val context: Context) {
     /** A room as its host has it now, with its messages; null when it can't be read now. */
     suspend fun readRoom(machineId: String, roomId: String): io.aide.android.api.ListRoomMessagesResponse? = runCatching { api!!.listRoomMessages(machineId, roomId) }.getOrNull()
     suspend fun createRoom(req: io.aide.android.api.CreateRoomRequest): io.aide.android.api.Room? = report { api!!.createRoom(req) }
+    /** Whether the members picked for a room can be reached now, asked for real (工单 #159); null when it couldn't be asked (said so). */
+    suspend fun checkRoomMembers(members: List<io.aide.android.api.CreateRoomMember>): List<io.aide.android.api.RoomMemberCheck>? = report { api!!.checkRoomMembers(members).members }
     suspend fun updateRoom(machineId: String, patch: io.aide.android.api.RoomPatch): io.aide.android.api.Room? = report { api!!.updateRoom(machineId, patch) }
     suspend fun stopRoom(machineId: String, roomId: String): io.aide.android.api.Room? = report { api!!.stopRoom(machineId, roomId) }
     suspend fun markRoomSeen(machineId: String, roomId: String) {
