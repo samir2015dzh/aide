@@ -952,7 +952,7 @@ function LostSpans({ s }: { s: Session }) {
   if (!last) return null;
   const hm = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const text = last.to ? coreT("link.lostSpan", { from: hm(last.from), to: hm(last.to) }) : coreT("link.lostSpanOpen", { from: hm(last.from) });
-  return <span className="ph lostspan" title={spans.map((x) => `${hm(x.from)}–${x.to ? hm(x.to) : ""}`).join(", ")}>{text}</span>;
+  return <span className="ph lostspan" title={spans.map((x) => `${hm(x.from)}–${x.to ? hm(x.to) : ""}`).join(coreT("conn.listSeparator"))}>{text}</span>;
 }
 
 /** When the turn in progress started: from its events, else when the session was created. */

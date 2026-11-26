@@ -518,7 +518,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
       : stuck
         ? { text: t(stuck === "projectGone" ? "conv.stuckProject" : "conv.stuckAgent"), tone: "warn" as const }
         : projects.length === 0
-          ? { text: t("bots.noProject"), tone: "quiet" as const }
+          ? { text: t("bots.noProject"), tone: "quiet" as const, action: { label: t("bots.settings"), run: () => st.set({ selection: { kind: "bot", key: b.key, pane: "settings" } }) } }
           : permission.above
             ? { text: permission.above, tone: "warn" as const }
             : b.state.usable === "unverified"

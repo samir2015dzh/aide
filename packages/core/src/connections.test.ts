@@ -81,7 +81,18 @@ describe("connections", () => {
     expect([claude.state, claude.text]).toEqual(["ok", "已登录 · 2.1.330"]);
     const dsh = agentEntry(c, "deepseek")!;
     expect(dsh.rows.map((r) => r.title)).toEqual(["DSH", "DSH 的 Aide 插件"]);
-    expect(dsh.rows[0].note).toBe("模型：DeepSeek V4");
+    expect(dsh.rows[0].note).toBe("它可用的模型：\nDeepSeek V4");
+    // 工单 #136 P18: a line a provider, its models by their IDs (DSH's ["provider","model"], named "Provider · model"),
+    // a long list cut with how many more — not raw IDs in a row.
+    const many = machineConnections(
+      machine([{ name: "deepseek", available: true, loggedIn: true, models: [
+        { id: '["deepseek-official","deepseek-v4-flash"]', name: "DeepSeek · deepseek-v4-flash" },
+        { id: '["deepseek-official","deepseek-v4-pro"]', name: "DeepSeek · deepseek-v4-pro" },
+        ...["a", "b", "c", "d", "e"].map((x) => ({ id: `["magpie","m-${x}"]` })),
+      ] }]),
+      now,
+    );
+    expect(agentEntry(many, "deepseek")!.rows[0].note).toBe("它可用的模型：\nDeepSeek：deepseek-v4-flash、deepseek-v4-pro\nmagpie：m-a、m-b、m-c、m-d 等 1 个");
     expect([dsh.state, dsh.text]).toEqual(["partial", "已检测到 · 1.4.0"]);
     expect(c.rows.some((r) => r.title.includes("DeepSeek"))).toBe(false);
     expect(agentEntry(c, "codex")!.text).toBe("可以用");

@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { AgentStatusSchema } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
-import { agentTiles, defaultModelChoice, folderName, isAbsolutePath, listedModel, modelChoices, modelTitle, platformTitle } from "./machines";
+import { agentTiles, defaultModelChoice, folderName, isAbsolutePath, listedModel, modelChoices, modelGroups, modelTitle, platformTitle } from "./machines";
 
 describe("machines", () => {
   test("models read as their agent names them, Claude's IDs as people call them", () => {
@@ -90,5 +90,22 @@ describe("project paths", () => {
     expect(folderName("C:\\code\\my-app")).toBe("my-app");
     expect(folderName("C:\\")).toBe("C:");
     expect(folderName("")).toBe("");
+  });
+});
+
+describe("modelGroups (工单 #136 P18)", () => {
+  test("each provider once, in order, with its models' own IDs", () => {
+    expect(
+      modelGroups([
+        { id: '["deepseek-official","deepseek-v4-flash"]', name: "DeepSeek · deepseek-v4-flash" },
+        { id: '["magpie","gw-1"]', name: "" },
+        { id: '["deepseek-account","deepseek-v4-flash"]', name: "DeepSeek · deepseek-v4-flash" },
+        { id: "claude-opus-5-5", name: "" },
+      ] as never),
+    ).toEqual([
+      { provider: "DeepSeek", models: ["deepseek-v4-flash"] },
+      { provider: "magpie", models: ["gw-1"] },
+      { provider: "", models: ["Opus 5.5"] },
+    ]);
   });
 });

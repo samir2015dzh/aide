@@ -57,7 +57,10 @@ test("DeepSeek: detected, a test, a test task, and DSH's own sessions; Claude an
     await main.getByRole("tab", { name: "Codex" }).click();
     await expect(main.getByRole("status").filter({ hasText: "在 owner-mac 上找到了，但还没登录" })).toBeVisible({ timeout: 30_000 });
     await expect(main.locator("code").filter({ hasText: /codex" login$/ })).toBeVisible();
-    await expect(main.getByRole("button", { name: "运行测试" })).toBeDisabled();
+    // Not usable yet: one line pointing at the status, no buttons that can't be pressed (工单 #136 P16).
+    const verify = main.getByRole("region", { name: "确认能用" });
+    await expect(verify).toHaveText(/^确认能用Codex 在 owner-mac 上能用了，才能在这里测试：先按上面「状态」里说的处理。$/);
+    await expect(verify.getByRole("button")).toHaveCount(0);
   }
   await app.close();
 });
@@ -165,6 +168,34 @@ test("Antigravity's line installs its ACP server with one button, and says what 
     await expect(before).toContainText("还没登录：这一步只能你本人完成");
     await expect(main.getByText("aide agent login antigravity").first()).toBeVisible();
     await snap(settings, "connect-133-antigravity-installed");
+  } finally {
+    await app.close();
+  }
+});
+
+// 工单 #136: every coding agent Aide knows has a
+// row of its own with how it stands — WorkBuddy among them (P09) — and a project list reads as Chinese (P32).
+test("the Connect pages list every known coding agent with its state, and name projects as Chinese does", async () => {
+  const { app, page } = await launch();
+  try {
+    // (P07's directions are checked over every text in renderer/src/directions.test.ts.)
+    const settings = await openSettings(app, page, "connect/custom");
+    const main = settings.getByRole("main", { name: "连接" });
+    await expect(main.getByRole("tab", { name: "其他 Agent" })).toHaveAttribute("aria-selected", "true");
+    const known = main.getByRole("region", { name: "Aide 认识的其他编码 Agent" });
+    const workbuddy = known.getByRole("group", { name: "CodeBuddy Code（WorkBuddy）" });
+    await expect(workbuddy).toBeVisible();
+    await expect(workbuddy).toContainText(/owner-mac/, { timeout: 30_000 });
+    for (const name of ["Gemini CLI", "Cursor", "Qwen Code"]) await expect(known.getByRole("group", { name })).toBeVisible();
+    await expect(known.getByRole("group", { name: "DSH" })).toHaveCount(0); // its own line above
+    await expect(main).not.toContainText("例如 WorkBuddy");
+    await snap(settings, "connect-136-known-agents");
+
+    // DSH's line: its projects named with 、, never ", ".
+    await main.getByRole("tab", { name: "DSH", exact: true }).click();
+    const verify = main.getByRole("region", { name: "确认能用" });
+    await expect(verify).toContainText("可以用", { timeout: 30_000 });
+    await expect(verify).not.toContainText(", ");
   } finally {
     await app.close();
   }

@@ -162,7 +162,7 @@ export function resolutionTitle(r: QuestionResolved, name: (by: string) => strin
   const you = r.by === "owner";
   switch (r.resolution) {
     case QuestionResolution.ANSWERED: {
-      const answers = r.answers.map((x) => [...x.selected, ...(x.text === "" ? [] : [x.text])].join(", ")).join(t("resolution.separator"));
+      const answers = r.answers.map((x) => [...x.selected, ...(x.text === "" ? [] : [x.text])].join(t("resolution.itemSeparator"))).join(t("resolution.separator"));
       return you ? t("resolution.answeredByYou", { answers }) : t("resolution.answeredBy", { name: name(r.by), answers });
     }
     case QuestionResolution.DECLINED:

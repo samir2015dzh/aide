@@ -410,7 +410,7 @@
     "grant": "Its grant",
     "cantSend": "{{word}}: can't hand work now ({{line}})",
     "unverified": "Not confirmed lately — it can be sent, but whether it is there is not checked",
-    "noProject": "No project here for this agent yet: add one in Settings › Projects and management.",
+    "noProject": "No project here for this agent yet: add one under Projects and management on its Settings page.",
     "identityAdd": "Add",
     "chat": "Conversation",
     "chatEmpty": "Write to {{name}}: it answers here.",

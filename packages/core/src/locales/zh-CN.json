@@ -115,7 +115,8 @@
     "declinedBy": "{{name}} 跳过了回答",
     "timedOut": "无人回答，Agent 已自行继续",
     "withdrawn": "问题已撤回",
-    "separator": "；"
+    "separator": "；",
+    "itemSeparator": "、"
   },
   "steps": {
     "read": {
@@ -235,10 +236,13 @@
     "loginNoReason": "没有给出原因",
     "loginTimedOut": "上次登录 15 分钟内没有完成，已停止。可以再试一次。",
     "loginCancelled": "上次登录已取消。",
-    "dshModels": "模型：{{models}}",
+    "dshModels": "它可用的模型：",
     "bridgeInstalling": "DSH 在那台电脑上装插件、重启 DSH Desktop，装完会告诉 Aide，这一行会自己更新。",
     "bridgeInstallFailed": "DSH 没装上，也没说原因：打开它的安装任务看做到了哪一步。",
-    "bridgeInstallRestart": "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。"
+    "bridgeInstallRestart": "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。",
+    "dshModelGroup": "{{provider}}：{{models}}",
+    "listSeparator": "、",
+    "andMore": " 等 {{count}} 个"
   },
   "roster": {
     "online": "在线",

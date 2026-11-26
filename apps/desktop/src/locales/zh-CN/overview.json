@@ -104,7 +104,7 @@
     "here": "在这台 Mac",
     "here_win": "在这台电脑",
     "seen_other": "今天 {{count}} 个任务 · 最近一次 {{ago}}",
-    "revokeElsewhere": "要登出它，到 设置 › 访问。"
+    "revokeElsewhere": "要登出它，到 设置 › 授权。"
   },
   "tiles": {
     "label": "一览",
