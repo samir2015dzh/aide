@@ -27,6 +27,9 @@ func TestMain(m *testing.M) {
 	// The CLI's words are read in English here, whatever this computer's
 	// language (work order #38); TestCLIInChinese asks for Chinese.
 	os.Setenv("AIDE_LANG", "en")
+	// The machines started here keep to the built-in model catalog
+	// snapshot rather than download models.dev and LiteLLM (#114).
+	os.Setenv("AIDE_NO_MODEL_CATALOG_SYNC", "1")
 	code := m.Run()
 	cleanup()
 	os.Exit(code)
