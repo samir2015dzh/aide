@@ -6,7 +6,7 @@
   "thisMac_win": "这台电脑",
   "runningCount_other": "{{count}} 个运行中",
   "add": {
-    "newGrant": "连接 agent…",
+    "newGrant": "连接 Agent…",
     "addMachine": "添加机器…",
     "addProject": "添加项目…"
   },
@@ -44,7 +44,7 @@
     "hintPick": "点击任意节点，仅查看经过该节点的任务",
     "today": "今天",
     "todayStats_other": "今天 <b>{{count}}</b> 个任务 · 完成 <b>{{done}}</b> · 出错 <bad>{{failed}}</bad>",
-    "personalAgent": "个人 agent",
+    "personalAgent": "个人 Agent",
     "expiresToday": "今天到期",
     "expiresIn_other": "{{count}} 天后到期",
     "machineSettings": "机器设置…",
@@ -81,7 +81,12 @@
     "streak": "连续使用",
     "days_other": "{{count}} 天",
     "cells": "近一年 {{tokens}} tokens，{{active}} 天有用量",
-    "byAgent": "按编码 agent",
+    "byAgent": "按编码 Agent",
+    "group": "分组",
+    "byMachine": "按机器",
+    "byMachineHint": "个人 Agent 跟着账号走，不属于哪台机器：它派的活算在实际干活的编码 Agent 所在的机器上",
+    "other": "其他",
+    "goneMachine": "已移除的机器",
     "empty": "开始用之后，这里会一天天点亮。",
     "less": "少",
     "more": "多",
@@ -91,20 +96,20 @@
     "behind": "{{machines}} 的统计截至 {{time}}"
   },
   "card": {
-    "ownKey": "个人 agent · 自己保管密钥",
+    "ownKey": "个人 Agent · 自己保管密钥",
     "custodian": "密钥由 {{host}} 保管",
     "fullAccess": "授权给了它完全权限：在下面这些项目里，它能读写文件、运行命令，和你自己在终端里一样。",
     "projects": "在这里能用",
     "allProjects": "所有项目",
-    "agents": "编码 agent",
-    "allAgents": "所有编码 agent",
+    "agents": "编码 Agent",
+    "allAgents": "所有编码 Agent",
     "expiry": "有效期",
     "daysLeft_other": "还剩 {{count}} 天 · {{date}}",
     "noExpiry": "不会到期",
     "here": "在这台 Mac",
     "here_win": "在这台电脑",
     "seen_other": "今天 {{count}} 个任务 · 最近一次 {{ago}}",
-    "revokeElsewhere": "要登出它，到 设置 › 访问。"
+    "revokeElsewhere": "要登出它，到 设置 › 授权。"
   },
   "tiles": {
     "label": "一览",
@@ -112,6 +117,6 @@
     "done": "已完成",
     "running": "进行中",
     "machines": "机器在线",
-    "offline_other": "{{count}} 台离线"
+    "machinesOffline_other": "机器在线 · {{count}} 台离线"
   }
 }

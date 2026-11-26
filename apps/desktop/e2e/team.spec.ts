@@ -22,7 +22,7 @@ test("the window opens on the overview, and again the next time", async () => {
   await app.close();
 });
 
-test("the sidebar is bots alone; every session is a page of its own, its list beside the one open; collapsed, the rail shows the bots (工单 #63)", async () => {
+test("the sidebar is bots alone; every session is a page of its own, its list beside the one open; hidden, it is gone (工单 #63, #141)", async () => {
   const { app, page } = await launch();
   await page.setViewportSize({ width: 1240, height: 800 });
   const sidebar = page.getByRole("complementary", { name: "边栏" });
@@ -43,19 +43,12 @@ test("the sidebar is bots alone; every session is a page of its own, its list be
   await expect(list).toBeVisible();
   await snap(page, "sidebar-session");
 
-  // Collapsed, the sidebar is its rail: each bot's face, saying on hover how it stands; a click opens its page.
-  await page.getByRole("button", { name: "收成窄栏" }).click();
-  const rail = page.getByRole("complementary", { name: "窄栏" });
-  const gemini = rail.getByRole("button", { name: /^Gemini CLI · / });
-  await gemini.hover();
-  await expect(page.getByRole("tooltip")).toHaveText(/^Gemini CLI · /);
-  await gemini.click();
-  await expect(page.getByRole("region", { name: /^Gemini CLI/ })).toBeVisible();
-  await expect(gemini).toHaveAttribute("aria-current", "true");
-  await navTo(page, /^概览/);
-  await expect(page.getByRole("heading", { name: "概览", level: 1 })).toBeVisible();
-  await expect(rail).toBeVisible();
-  await page.getByRole("button", { name: "展开边栏" }).click();
+  // Hidden, the sidebar is gone, no rail of icons (工单 #141): the page has the window; the same button, where it was,
+  // shows it again.
+  await page.getByRole("button", { name: "隐藏边栏" }).click();
+  await expect(sidebar).toHaveCount(0);
+  await expect(page.locator("aside.rail")).toHaveCount(0);
+  await page.getByRole("button", { name: "显示边栏" }).click();
   await expect(sidebar).toBeVisible();
   await app.close();
 });

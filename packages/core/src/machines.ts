@@ -81,6 +81,26 @@ function choiceOf(agent: string, m: AgentModel): ModelChoice {
 }
 
 /**
+ * An agent's models by where they come from (工单 #136 P18: their IDs in a row, wrapped, told nothing): each provider
+ * once, in the order first met, with its models' own IDs — DSH's ["provider","model"], or a name "Provider · model"
+ * (工单 #99); a model from no provider in particular under "".
+ */
+export function modelGroups(models: AgentModel[]): { provider: string; models: string[] }[] {
+  const out: { provider: string; models: string[] }[] = [];
+  for (const m of models) {
+    let provider = "";
+    let model = m.name || modelTitle(m.id);
+    const parts = idText(m.id).split("/");
+    const named = (m.name ?? "").split(" · ");
+    if (named.length === 2) [provider, model] = named;
+    else if (m.id.startsWith("[") && parts.length === 2) [provider, model] = parts;
+    const g = out.find((x) => x.provider === provider) ?? out[out.push({ provider, models: [] }) - 1];
+    if (!g.models.includes(model)) g.models.push(model);
+  }
+  return out;
+}
+
+/**
  * An agent's models as its model lists show them (工单 #99): each its specific model, as the machine found it. current,
  * a model a conversation runs that is not among them (an alias it ran as, resolved; one listed no more), comes first.
  */

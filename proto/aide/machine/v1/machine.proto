@@ -335,10 +335,12 @@ message AgentStatus {
   repeated AgentMode modes = 14;
   // One the owner added on this machine (ListCustomAgents).
   bool custom = 15;
-  // Claude plan usage read on this machine (Claude Code only, else unset),
-  // for the scheduler to pace work by. Read from the signed-in Claude
-  // Desktop's token here; the token never leaves the machine, only these
-  // windows' utilization and reset times are reported.
+  // Plan usage read on this machine, for the scheduler to pace work by.
+  // Claude Code: the reading of docs/claude-usage.md (its cache, its
+  // /usage, the usage endpoint, or asked when it is checked). Codex: what
+  // it answered when it was last checked on purpose (工单 #143), unset
+  // until it answered one with windows. Other agents: unset. No token ever
+  // leaves the machine, only these windows' utilization and reset times.
   ClaudeUsage usage = 16;
   // The owner hid it (SetAgentHidden): the apps leave it out of the lists,
   // and say how many are hidden, to show again.
@@ -500,7 +502,13 @@ message ClaudeUsage {
   // Where the reading came from (工单 #86): "claude_code" (this machine's
   // Claude Code answered /usage itself), "api" (the usage endpoint asked
   // with the token found here, the fallback). Empty with no reading.
+  // Also "claude_code_cache" (工单 #104), "claude_code_check" (Claude
+  // Code's check asked it get_usage) and "codex_check" (Codex's check asked
+  // it account/rateLimits/read; 工单 #143).
   string source = 7;
+  // The plan, when the source says it (get_usage: "max"; Codex: "pro");
+  // empty otherwise (工单 #143).
+  string plan = 8;
 }
 
 // UsageWindow is one rate-limit window's reading: how full it is (0-100)

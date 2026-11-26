@@ -89,8 +89,11 @@ type agentUsage struct {
 	// part its HTTP status and a summary of the answer; never a token.
 	Detail string `json:"detail,omitempty"`
 	// Source: where the reading came from, "claude_code_cache",
-	// "claude_code" or "api" (工单 #86, #104).
+	// "claude_code" or "api" (工单 #86, #104), or the agent's check:
+	// "claude_code_check", "codex_check" (工单 #143).
 	Source string `json:"source,omitempty"`
+	// Plan: the plan, when the source says it ("max", "pro"; 工单 #143).
+	Plan string `json:"plan,omitempty"`
 }
 
 type usageWindow struct {
@@ -105,7 +108,7 @@ func usageFrom(u *machinev1.ClaudeUsage) *agentUsage {
 	if u == nil {
 		return nil
 	}
-	out := &agentUsage{Stale: u.Stale, Unavailable: u.Unavailable, Renew: u.Renew, Detail: u.Detail, Source: u.Source, Windows: []usageWindow{}}
+	out := &agentUsage{Stale: u.Stale, Unavailable: u.Unavailable, Renew: u.Renew, Detail: u.Detail, Source: u.Source, Plan: u.Plan, Windows: []usageWindow{}}
 	if u.FetchedAt != nil {
 		out.FetchedAt = u.FetchedAt.AsTime().UnixMilli()
 	}

@@ -39,7 +39,7 @@
     "customMissing": "检查命令：这个程序装在 {{machine}} 上了吗？名字或完整路径对不对？在下面编辑这个 Agent，点「测试连接」看看结果。"
   },
   "project": {
-    "none": "{{agent}} 在 {{machine}} 上还没有项目（允许它工作的文件夹）。测试任务需要一个。",
+    "none": "开始测试任务要在一个项目里：{{agent}} 在 {{machine}} 上还没有项目（允许它工作的文件夹），先添加一个。",
     "some_other": "{{agent}} 在 {{machine}} 上可以用 {{count}} 个项目：{{names}}。",
     "add": "添加项目…",
     "adding": "正在添加…"
@@ -56,8 +56,8 @@
     "prompt": "这是来自 Aide 的测试。请用一句话回复：打个招呼，并说出你正在工作的文件夹。不要修改任何文件。",
     "started": "测试任务已开始，在 Aide 的任务列表里。",
     "open": "在 Aide 中打开",
-    "needsProject": "先添加一个项目：测试任务要在项目里进行。",
-    "notLoggedIn": "没成功：Claude Code 命令行还没登录。Claude Desktop 的登录不会续给它，派给 Claude 的任务在这台机器上会失败。"
+    "notLoggedIn": "没成功：Claude Code 命令行还没登录。Claude Desktop 的登录不会续给它，派给 Claude 的任务在这台机器上会失败。",
+    "notReady": "{{agent}} 在 {{machine}} 上能用了，才能在这里测试：先按上面「状态」里说的处理。"
   },
   "deepseek": {
     "intro": "DSH 是一个编码 Agent（桌面应用，用你的 DeepSeek 账号或 API 密钥工作）。Aide 运行你电脑上装的 DSH：桌面应用里自带的那个，或者 dsh 命令。",
@@ -116,21 +116,31 @@
   },
   "antigravity": {
     "intro": "Antigravity 是 Google 的主力编码 Agent，通过官方 ACP 服务在你的电脑上运行，支持三档权限预设（仅可查看 / 工作区内修改 / 完全权限）与真实会话模型发现。",
-    "need1": "运行它的电脑上装好 Google Antigravity ACP 服务（agy_acp_server；可从官方发布包安装到 ~/.local/share/antigravity-acp/）。",
-    "need2": "Antigravity 已完成登录：在终端运行一次 aide agent login antigravity。",
     "step1": "在上面选装了 Antigravity 的电脑（默认就是这台）。",
     "step2": "看「状态」：应该显示「已检测到」。如果没有，按下面的清单逐项检查，然后点「重新检查」。",
     "step3": "如果 Antigravity 还没有项目，点「添加项目…」，选一个允许它工作的文件夹。",
     "step4": "点「运行测试」。Antigravity 会回答一个简短的问题。",
     "step5": "点「开始测试任务」。一个真正的任务会开始，并在 Aide 里打开。",
-    "fixInstall": "在 {{machine}} 上装好 Google Antigravity 官方 ACP 服务（agy_acp_server）。仅安装桌面应用是不够的。",
-    "fixWhere": "已经装了？确认 agy_acp_server 在新开终端的 PATH 里，或放在 ~/.local/share/antigravity-acp/（Windows 也可放 %LOCALAPPDATA%\\antigravity-acp\\）。",
+    "fixInstall": "点上面的「安装 Antigravity ACP 服务」：Antigravity 桌面应用不带这个服务，Aide 会替你装好。",
+    "fixWhere": "想自己装？把官方发布包解压到 ~/.local/share/antigravity-acp/（Windows 是 %LOCALAPPDATA%\\antigravity-acp\\），或让 agy_acp_server 在新开终端的 PATH 里。",
     "fixSignIn": "给 Antigravity 登录一次：打开终端（Windows 上是 PowerShell），粘贴下面的命令回车并按提示完成登录。",
     "testFailedHint": "如果原因是没登录或权限受限，按上面「状态」里的说明运行 aide agent login antigravity 登录后再测。",
-    "where1": "你在 Aide 里用 Antigravity 开的任务都在 Aide 的任务列表里，支持选机器、选项目、选三档权限与继续对话，所有设备上都能看到。"
+    "where1": "你在 Aide 里用 Antigravity 开的任务都在 Aide 的任务列表里，支持选机器、选项目、选三档权限与继续对话，所有设备上都能看到。",
+    "needServer": "Google 官方的 Antigravity ACP 服务（agy_acp_server）：Aide 运行的是它，不是 Antigravity 桌面应用。",
+    "needServerMissing": "{{machine}} 上还没有 Google 官方的 Antigravity ACP 服务（桌面应用不带它）：在下面「状态」里点「安装 Antigravity ACP 服务」，Aide 会装好。",
+    "needServerBroken": "{{machine}} 上的 Antigravity ACP 服务运行不了：看下面「状态」里的原因，可以点「安装 Antigravity ACP 服务」重新装一遍。",
+    "needServerOk": "{{machine}} 上已装好 Google 官方的 Antigravity ACP 服务。",
+    "needSignIn": "你的 Google 账号登录：只能你本人在浏览器里完成，Aide 替不了你。",
+    "needSignInMissing": "还没登录：这一步只能你本人完成。在终端运行一次 aide agent login antigravity，在打开的浏览器里用 Google 账号授权。",
+    "needSignInUnconfirmed": "登录状态要跑一轮才知道：点下面的「运行测试」。如果说没登录，在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
+    "needSignInOk": "已用你的 Google 账号登录。",
+    "needSignInLater": "服务装好后再登录：这一步只能你本人完成，在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
+    "install": "安装 Antigravity ACP 服务",
+    "installing": "正在下载并校验…",
+    "installWhat": "Aide 会从 Google 的官方发布处下载 Antigravity ACP 服务，按官方 ACP 注册表的 SHA-256 校验后装到 {{machine}} 上 Aide 找它的位置，装好后自动重新检查。"
   },
   "custom": {
-    "intro": "Aide 没列出的编码 Agent，只要支持 Agent Client Protocol（ACP），都可以连接。告诉 Aide 怎么启动它；Aide 会把它保存在那台电脑上，和其他 Agent 列在一起。不支持 ACP、但能在终端里运行命令的 Agent（例如 WorkBuddy），在下面的「助手」里选「其他 Agent」连接。",
+    "intro": "Aide 没列出的编码 Agent，只要支持 Agent Client Protocol（ACP），都可以连接。告诉 Aide 怎么启动它；Aide 会把它保存在那台电脑上，和其他 Agent 列在一起。不支持 ACP、但能在终端里运行命令的 Agent，在下面的「助手」里选「其他 Agent」连接。",
     "need1": "运行它的电脑上装好这个 Agent，并准备好它自己的登录或密钥。",
     "need2": "以 ACP 模式启动它的命令，见它的文档（通常带一个 --acp 参数）。",
     "step1": "在上面选运行这个 Agent 的电脑。",
@@ -214,20 +224,28 @@
       "chatgpt": "在 ChatGPT 里打开 设置 › 连接器（Connectors），在「高级」里打开开发者模式，然后点「创建」，把下面的网址填进 MCP 服务器 URL。"
     },
     "mcp2": "{{app}} 会打开 Aide 服务器的登录页：输入你的 Aide 账号和密码，点「连接」。",
-    "mcp3": "连接后它会出现在这里（也在 设置 › 访问 里）。接着确认它已补齐两件套——保持 MCP 会话常开保活 + 按平台配好信箱盯守（内置定时轮询、message_wake webhook 或外部轮询 hook），再从 Aide App 发一条真实消息验收它能自动取信并回复。",
+    "mcp3": "连接后它会出现在这里（也在 设置 › 授权 里）。接着确认它已补齐两件套——保持 MCP 会话常开保活 + 按平台配好信箱盯守（内置定时轮询、message_wake webhook 或外部轮询 hook），再从 Aide App 发一条真实消息验收它能自动取信并回复。",
     "cli1": "复制下面的消息，把里面的 {{password}} 换成你的 Aide 密码，发给 {{name}}。",
     "cli2": "{{name}} 照着消息装好 Aide 命令行、登录并声明它的信箱盯守方式：不用你批准，也没有码要核对。",
-    "cli3": "登录后它会出现在这里（也在 设置 › 访问 里）。最后从 Aide App 给它发一条真实消息，确认无需其他通道提醒就能自动取走并回复，才算接入完成。",
+    "cli3": "登录后它会出现在这里（也在 设置 › 授权 里）。最后从 Aide App 给它发一条真实消息，确认无需其他通道提醒就能自动取走并回复，才算接入完成。",
     "mcpOlder": "你服务器上的 Aide 版本较旧，还不提供 MCP 地址，所以这里没有网址可以粘贴。先把服务器更新到最新版，更新后这里会自动显示网址。也可以让这个助手改用命令行连接（选「其他 Agent」）。",
     "mcpOff": "你的服务器没有提供 MCP 地址，所以这里没有网址可以粘贴：服务器上的 MCP 没有开启（启动服务器时加上 AIDE_RELAY_MCP=1）。如果服务器是旧版，也请先更新到最新版。处理好后这里会自动显示网址。也可以让这个助手改用命令行连接（选「其他 Agent」）。",
     "mcpOffline": "还没连上你的服务器，连上后这里会显示要粘贴的网址。",
     "copy": "复制",
     "copied": "已复制",
-    "password": "拿到你密码的任何人都能登录你的账号，并在你的电脑上运行任务。只发给你信任的助手；不想再让它用时，在 设置 › 访问 里登出它，或者改密码（所有助手都会被登出）。",
+    "password": "拿到你密码的任何人都能登录你的账号，并在你的电脑上运行任务。只发给你信任的助手；不想再让它用时，在 设置 › 授权 里登出它，或者改密码（所有助手都会被登出）。",
     "waiting": "等待 {{name}} 登录…",
     "connected": "{{name}} 已连接",
     "connectedBody": "它已授权使用你的项目。请注意：仅显示在线不算接入完成——确认它已配好「保活 + 信箱盯守」（常驻定时轮询 / message_wake webhook / 外部轮询 hook），并从 App 发一条真实消息确认能自动取走并回复。",
     "scope": "调整它能用什么…"
   },
-  "details": "连接细项"
+  "details": "连接细项",
+  "installFailed": "没装上：{{reason}}",
+  "listSeparator": "、",
+  "known": {
+    "title": "Aide 认识的其他编码 Agent",
+    "note": "这些 Agent 不用填表：装在 {{machine}} 上，Aide 就会检测到，可以直接在项目和授权里选。下面是它们现在的状态。",
+    "installHint": "装好 {{agent}} 的命令行后点「重新检查」。",
+    "signInHint": "按 {{agent}} 自己的说明，在终端里登录一次。"
+  }
 }

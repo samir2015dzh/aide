@@ -2053,10 +2053,12 @@ type AgentStatus struct {
 	Modes []*AgentMode `protobuf:"bytes,14,rep,name=modes,proto3" json:"modes,omitempty"`
 	// One the owner added on this machine (ListCustomAgents).
 	Custom bool `protobuf:"varint,15,opt,name=custom,proto3" json:"custom,omitempty"`
-	// Claude plan usage read on this machine (Claude Code only, else unset),
-	// for the scheduler to pace work by. Read from the signed-in Claude
-	// Desktop's token here; the token never leaves the machine, only these
-	// windows' utilization and reset times are reported.
+	// Plan usage read on this machine, for the scheduler to pace work by.
+	// Claude Code: the reading of docs/claude-usage.md (its cache, its
+	// /usage, the usage endpoint, or asked when it is checked). Codex: what
+	// it answered when it was last checked on purpose (工单 #143), unset
+	// until it answered one with windows. Other agents: unset. No token ever
+	// leaves the machine, only these windows' utilization and reset times.
 	Usage *ClaudeUsage `protobuf:"bytes,16,opt,name=usage,proto3" json:"usage,omitempty"`
 	// The owner hid it (SetAgentHidden): the apps leave it out of the lists,
 	// and say how many are hidden, to show again.
@@ -2819,7 +2821,13 @@ type ClaudeUsage struct {
 	// Where the reading came from (工单 #86): "claude_code" (this machine's
 	// Claude Code answered /usage itself), "api" (the usage endpoint asked
 	// with the token found here, the fallback). Empty with no reading.
-	Source        string `protobuf:"bytes,7,opt,name=source,proto3" json:"source,omitempty"`
+	// Also "claude_code_cache" (工单 #104), "claude_code_check" (Claude
+	// Code's check asked it get_usage) and "codex_check" (Codex's check asked
+	// it account/rateLimits/read; 工单 #143).
+	Source string `protobuf:"bytes,7,opt,name=source,proto3" json:"source,omitempty"`
+	// The plan, when the source says it (get_usage: "max"; Codex: "pro");
+	// empty otherwise (工单 #143).
+	Plan          string `protobuf:"bytes,8,opt,name=plan,proto3" json:"plan,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2899,6 +2907,13 @@ func (x *ClaudeUsage) GetDetail() string {
 func (x *ClaudeUsage) GetSource() string {
 	if x != nil {
 		return x.Source
+	}
+	return ""
+}
+
+func (x *ClaudeUsage) GetPlan() string {
+	if x != nil {
+		return x.Plan
 	}
 	return ""
 }
@@ -9033,7 +9048,7 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\n" +
 	"AgentPause\x120\n" +
 	"\x05since\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x127\n" +
-	"\tresume_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bresumeAt\"\xfe\x01\n" +
+	"\tresume_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bresumeAt\"\x92\x02\n" +
 	"\vClaudeUsage\x126\n" +
 	"\awindows\x18\x01 \x03(\v2\x1c.aide.machine.v1.UsageWindowR\awindows\x129\n" +
 	"\n" +
@@ -9042,7 +9057,8 @@ const file_aide_machine_v1_machine_proto_rawDesc = "" +
 	"\vunavailable\x18\x04 \x01(\tR\vunavailable\x12\x14\n" +
 	"\x05renew\x18\x05 \x01(\tR\x05renew\x12\x16\n" +
 	"\x06detail\x18\x06 \x01(\tR\x06detail\x12\x16\n" +
-	"\x06source\x18\a \x01(\tR\x06source\"z\n" +
+	"\x06source\x18\a \x01(\tR\x06source\x12\x12\n" +
+	"\x04plan\x18\b \x01(\tR\x04plan\"z\n" +
 	"\vUsageWindow\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12 \n" +
 	"\vutilization\x18\x02 \x01(\x01R\vutilization\x127\n" +

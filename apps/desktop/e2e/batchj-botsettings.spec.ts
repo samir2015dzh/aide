@@ -44,11 +44,9 @@ test("a coding agent's page has no settings; its settings page has each once, an
   // Its page: its head (face, name, state, the way to its settings), its conversations, its task board.
   await expect(bot.getByRole("heading", { level: 1 })).toHaveText("DSH");
   await expect(bot.getByRole("list", { name: "对话" })).toBeVisible();
-  const board = bot.getByRole("complementary", { name: "任务看板" });
-  await expect(board).toBeVisible();
-  await expect(board).toContainText("DSH 现在没有任务");
+  // No tasks: no task board taking a column to say so (工单 #140 P26).
+  await expect(bot.getByRole("complementary", { name: "任务看板" })).toHaveCount(0);
   await noSettings(bot);
-  await height("dsh-page board", board);
   await snap(page, "after-dsh-page");
 
   // Its settings: each there once.
@@ -81,7 +79,7 @@ test("a coding agent's page has no settings; its settings page has each once, an
   await expect(mac.getByRole("button", { name: /^深思/ })).toBeVisible();
 
   // Its kind: filed personal there, it is listed with the personal agents; back to told from what it is, it returns.
-  const personal = roster.getByRole("group", { name: "个人 agent", exact: true });
+  const personal = roster.getByRole("group", { name: "个人 Agent", exact: true });
   const kind = renamed.getByRole("button", { name: "类别" });
   await pick(kind, "个人 Agent");
   await expect(personal.getByRole("button", { name: /^深思/ })).toBeVisible({ timeout: 30_000 });
@@ -117,9 +115,8 @@ test("a personal agent's page has no grant card; its settings have its grant, it
   const roster = page.getByRole("region", { name: "Bot" });
   await roster.getByRole("button", { name: /^Muse/ }).click({ timeout: 30_000 });
   const bot = page.getByRole("region", { name: "Muse", exact: true });
-  await expect(bot.getByRole("complementary", { name: "任务看板" })).toBeVisible();
+  await expect(bot.getByRole("complementary", { name: "任务看板" })).toHaveCount(0); // none yet (工单 #140 P26)
   await noSettings(bot);
-  await height("muse-page board", bot.getByRole("complementary", { name: "任务看板" }));
   await snap(page, "after-muse-page");
 
   const settings = await openSettings(page, bot, "Muse");

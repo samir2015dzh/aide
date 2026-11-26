@@ -423,6 +423,12 @@ func DedicatedBuiltin(e Entry) string {
 	return ""
 }
 
+// Builtin is the built-in Aide agent a registry id is the program of, or "":
+// Google's Antigravity ACP server (registry id antigravity-acp) is what the
+// built-in antigravity agent runs (工单 #133). It is installed where that
+// agent finds it (InstallTo), never as a custom agent beside it.
+func Builtin(registryID string) string { return DedicatedBuiltin(Entry{ID: registryID}) }
+
 // BestDistribution chooses the preferred installable distribution for platform:
 // binary (platform-matched, https, with a declared SHA-256, in a format Aide
 // installs) > npx > uvx. sha256Verified: the install is checked against the
@@ -564,7 +570,65 @@ func (r *Registry) Install(ctx context.Context, registryID, desiredName string, 
 			return InstallResult{}, fmt.Errorf("the name %q is already used by another agent on this machine: choose another name, or remove that agent first", name)
 		}
 	}
+	entry, err := r.entry(ctx, registryID)
+	if err != nil {
+		return InstallResult{}, err
+	}
 
+	kind, _, reason := BestDistribution(*entry, r.platform)
+	if kind == "" {
+		return InstallResult{}, fmt.Errorf("%s cannot be installed: %s", entry.ID, reason)
+	}
+
+	if name == "" {
+		name = NormalizeAgentName(entry.ID, reserved)
+	}
+
+	switch kind {
+	case "binary":
+		return r.installBinary(ctx, *entry, entry.Distribution.Binary[r.platform], name, "")
+	case "npx":
+		return r.installRunner(*entry, "npx", entry.Distribution.NPX, name)
+	case "uvx":
+		return r.installRunner(*entry, "uvx", entry.Distribution.UVX, name)
+	default:
+		return InstallResult{}, fmt.Errorf("unsupported distribution %q", kind)
+	}
+}
+
+// InstallTo installs a built-in agent's program (Builtin) from its registry
+// entry's binary archive for this platform, its SHA-256 checked, into dir,
+// where that agent finds it: what was there is replaced (工单 #133).
+func (r *Registry) InstallTo(ctx context.Context, registryID, dir string) (InstallResult, error) {
+	name := Builtin(registryID)
+	if name == "" {
+		return InstallResult{}, fmt.Errorf("%q is not a built-in agent's program", registryID)
+	}
+	// Read afresh (the cache falls back when the registry can't be read): the
+	// owner installs now what the registry names now.
+	var entry *Entry
+	for _, e := range r.List(ctx, true).Entries {
+		if e.ID == registryID {
+			entry = &e
+			break
+		}
+	}
+	if entry == nil {
+		return InstallResult{}, fmt.Errorf("ACP registry agent %q not found", registryID)
+	}
+	target, ok := entry.Distribution.Binary[r.platform]
+	if !ok || strings.TrimSpace(target.Archive) == "" || strings.TrimSpace(target.Cmd) == "" {
+		return InstallResult{}, fmt.Errorf("%s has no download for this computer (%s)", entry.Name, r.platform)
+	}
+	if strings.TrimSpace(target.SHA256) == "" {
+		return InstallResult{}, fmt.Errorf("%s's download for %s names no SHA-256 to check it by", entry.Name, r.platform)
+	}
+	return r.installBinary(ctx, *entry, target, name, dir)
+}
+
+// entry is registryID's entry, the registry read again once if it is not
+// in the cached one (it may have been updated upstream).
+func (r *Registry) entry(ctx context.Context, registryID string) (*Entry, error) {
 	listed := r.List(ctx, false)
 	var entry *Entry
 	for i := range listed.Entries {
@@ -584,28 +648,9 @@ func (r *Registry) Install(ctx context.Context, registryID, desiredName string, 
 		}
 	}
 	if entry == nil {
-		return InstallResult{}, fmt.Errorf("ACP registry agent %q not found", registryID)
+		return nil, fmt.Errorf("ACP registry agent %q not found", registryID)
 	}
-
-	kind, _, reason := BestDistribution(*entry, r.platform)
-	if kind == "" {
-		return InstallResult{}, fmt.Errorf("%s cannot be installed: %s", entry.ID, reason)
-	}
-
-	if name == "" {
-		name = NormalizeAgentName(entry.ID, reserved)
-	}
-
-	switch kind {
-	case "binary":
-		return r.installBinary(ctx, *entry, entry.Distribution.Binary[r.platform], name)
-	case "npx":
-		return r.installRunner(*entry, "npx", entry.Distribution.NPX, name)
-	case "uvx":
-		return r.installRunner(*entry, "uvx", entry.Distribution.UVX, name)
-	default:
-		return InstallResult{}, fmt.Errorf("unsupported distribution %q", kind)
-	}
+	return entry, nil
 }
 
 func (r *Registry) installRunner(entry Entry, runner string, target *PackageTarget, name string) (InstallResult, error) {
@@ -631,7 +676,9 @@ func (r *Registry) installRunner(entry Entry, runner string, target *PackageTarg
 	}, nil
 }
 
-func (r *Registry) installBinary(ctx context.Context, entry Entry, target BinaryTarget, name string) (InstallResult, error) {
+// installBinary downloads and checks entry's archive and places it in finalDir,
+// by default <data>/acp-registry/installed/<name>/<version>.
+func (r *Registry) installBinary(ctx context.Context, entry Entry, target BinaryTarget, name, finalDir string) (InstallResult, error) {
 	if r.dataDir == "" {
 		return InstallResult{}, errors.New("machine data directory is not configured")
 	}
@@ -664,13 +711,14 @@ func (r *Registry) installBinary(ctx context.Context, entry Entry, target Binary
 		return InstallResult{}, fmt.Errorf("extract %s: %w", entry.ID, err)
 	}
 
-	verDir := sanitizeSegment(entry.Version)
-	if verDir == "" {
-		verDir = "latest"
+	if finalDir == "" {
+		verDir := sanitizeSegment(entry.Version)
+		if verDir == "" {
+			verDir = "latest"
+		}
+		finalDir = filepath.Join(r.installedRoot(), sanitizeSegment(name), verDir)
 	}
-	agentRoot := filepath.Join(r.installedRoot(), sanitizeSegment(name))
-	finalDir := filepath.Join(agentRoot, verDir)
-	if err := os.MkdirAll(agentRoot, 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
 		return InstallResult{}, err
 	}
 	_ = os.RemoveAll(finalDir)

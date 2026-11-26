@@ -4,6 +4,7 @@ import { kindNamed } from "@aide/ui";
 import { codingAgentTitle } from "./agents";
 import { t } from "./i18n";
 import { agoText } from "./text";
+import { modelGroups } from "./machines";
 
 // Connections (工单 #49): one account of what a machine's coding agents are
 // connected to, worked out from what the machine itself last reported
@@ -261,7 +262,12 @@ function dshRows(a: AgentStatus): ConnRow[] {
       text: a.problem === AgentProblem.NOT_FOUND ? t("conn.notInstalled") : t("conn.broken"),
       lacks: a.problem === AgentProblem.NOT_FOUND ? undefined : a.detail }];
   }
-  const models = [...new Set(a.models.map((x) => x.name || x.id).filter(Boolean))];
+  // A line a provider, its models listed by their IDs (工单 #136 P18), a long list cut with how many more.
+  const models = modelGroups(a.models).map((g) => {
+    const shown = g.models.slice(0, 4).join(t("conn.listSeparator"));
+    const more = g.models.length > 4 ? t("conn.andMore", { count: g.models.length - 4 }) : "";
+    return g.provider ? t("conn.dshModelGroup", { provider: g.provider, models: shown + more }) : shown + more;
+  });
   // 工单 #135 P17：DSH 的登录确认口径与连接页同源——未确认登录时不标成绿点「已检测到」，已登录标「已登录」
   const dshUnconfirmed = !a.loggedIn && a.loginUnconfirmed;
   const dshText = a.loggedIn
@@ -277,7 +283,7 @@ function dshRows(a: AgentStatus): ConnRow[] {
     checkedAt,
     text: dshText,
     lacks: dshUnconfirmed ? t("conn.agentUnconfirmed", { agent: title }) : undefined,
-    note: models.length ? t("conn.dshModels", { models: models.slice(0, 3).join(" · ") }) : undefined,
+    note: models.length ? `${t("conn.dshModels")}\n${models.join("\n")}` : undefined,
     // Its dot follows its own label, whatever the plugin's state makes the row's: "已登录" is signed in here as
     // everywhere, "未确认" / "已检测到" unconfirmed (审计 B / P25).
     presence: a.loggedIn ? "signedIn" : "unconfirmed",

@@ -9,7 +9,7 @@ import { Icon } from "./icons";
 export type PickerOption<T extends string | number> = { value: T; label: string; sub?: string; icon?: ReactNode; disabled?: boolean } | null;
 
 export function Picker<T extends string | number>({
-  value, options, onChange, label, disabled = false, size = "", className = "", chip = false, placeholder = "",
+  value, options, onChange, label, disabled = false, size = "", className = "", chip = false, placeholder = "", showLabel = false,
 }: {
   value: T;
   /** null: a separator. */
@@ -23,6 +23,8 @@ export function Picker<T extends string | number>({
   /** Drawn as a quiet chip (in a composer), not as a button. */
   chip?: boolean;
   placeholder?: string;
+  /** Says what it picks before the choice ("推理强度 · 高"), where a bare value would not say (工单 #140 P11). */
+  showLabel?: boolean;
 }) {
   const [open, setOpen] = useState<false | "mouse" | "key">(false);
   const btn = useRef<HTMLButtonElement>(null);
@@ -84,6 +86,7 @@ export function Picker<T extends string | number>({
         onKeyDown={(e) => (e.key === "ArrowDown" || e.key === "ArrowUp") && !open && (e.preventDefault(), setOpen("key"))}
       >
         {chosen?.icon}
+        {showLabel && <span className="picker-k">{label}</span>}
         <span className="picker-v">{chosen?.label ?? placeholder}</span>
         <Icon name={chip ? "chevD" : "chevUD"} className="sm picker-c" />
       </button>

@@ -42,6 +42,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.sp
+import io.aide.android.api.AttachmentInfo
+import io.aide.android.model.AttachKind
+import io.aide.android.model.PendingFile
+import io.aide.android.model.SentPictures
+import io.aide.android.model.attachKind
+import io.aide.android.model.kindWord
+import io.aide.android.model.sizeText
 import io.aide.android.model.OutboxCodec
 import io.aide.android.model.OutboxMessage
 import io.aide.android.model.OutboxStatus
@@ -431,7 +443,9 @@ internal fun ItemView(item: Item, starter: String = "", dsh: Boolean = false, na
             by?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 6.dp, bottom = 2.dp)) }
             // Fluent #106 user bubble: #0078d4 accent fill + white text + 18dp radius with 6dp bottom-end tail (both light & dark).
             val shape = RoundedCornerShape(topStart = Radius.Bubble, topEnd = Radius.Bubble, bottomStart = Radius.Bubble, bottomEnd = Radius.BubbleTail)
-            Surface(color = aide.bubble, contentColor = aide.onBubble, shape = shape, modifier = Modifier.widthIn(max = 320.dp)) {
+            // The files that went with it (工单 #143), over its words: a picture sent from this phone as its thumbnail.
+            if (item.files.isNotEmpty()) SentFiles(item.files)
+            if (item.text.isNotEmpty()) Surface(color = aide.bubble, contentColor = aide.onBubble, shape = shape, modifier = Modifier.widthIn(max = 320.dp)) {
                 SelectionContainer { Text(item.text, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyLarge, color = aide.onBubble) }
             }
         }
@@ -617,6 +631,25 @@ private fun QuestionPanel(model: AppModel, s: Session, q: Question) {
                     busy = true
                     scope.launch { model.answer(s, emptyList(), decline = true); busy = false }
                 }, enabled = !busy) { Text(t("Let it decide", "让它自己决定")) }
+            }
+        }
+    }
+}
+
+/** The files that went with a message (工单 #143): a picture this phone sent as its thumbnail, any other by name. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SentFiles(files: List<AttachmentInfo>) {
+    FlowRow(Modifier.widthIn(max = 320.dp).padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (f in files) {
+            val kind = attachKind(PendingFile(f.name, f.mediaType, f.size))
+            val pic = if (kind == AttachKind.IMAGE) SentPictures.of(f.sha256) else null
+            Box(Modifier.heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp)).background(aide.fill2)) {
+                if (pic != null) Image(pic, f.name, Modifier.size(96.dp), contentScale = ContentScale.Crop)
+                else Column(Modifier.widthIn(max = 200.dp).padding(horizontal = 10.dp, vertical = 8.dp)) {
+                    Text(f.name, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${kindWord(kind)} · ${sizeText(f.size)}", fontSize = 11.sp, color = aide.faint, maxLines = 1)
+                }
             }
         }
     }

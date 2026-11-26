@@ -149,7 +149,8 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
                     <PausedTag a={a} />
                     <span>{projectsFor(projects, a.name).length > 0 ? t("prepare.projects", { count: projectsFor(projects, a.name).length }) : t("prepare.noProjects")}</span>
                     {set && <span>{set}</span>}
-                    {a.name === "claude" && usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
+                    {/* Claude Code's reading (#86), and Codex's once a check asked it (#143): whichever the machine sends. */}
+                    {usageText(a, t) && <span className="mono ag-usage">{usageText(a, t)}</span>}
                   </span>
                   {/* Which program was found and answered: what tells an installed agent from one uninstalled elsewhere. */}
                   {a.binary && (
@@ -255,7 +256,7 @@ function defaultsText(a: AgentStatus, t: T): string {
   return [d.model && modelName(a, d.model), d.effort && effortName(t, d.effort), d.speed ? speedName(t, d.speed) : "", d.mode && modeName(a, d.mode)].filter(Boolean).join(" · ");
 }
 
-/** The Claude plan usage in one line (工单 #86): "Plan 5h 20% · Week 59% · read 3 min ago"; kept after a refresh that
+/** The agent's plan usage in one line (工单 #86; Codex's too, #143): "Plan 5h 20% · Week 59% · read 3 min ago"; kept after a refresh that
  * failed, "last reading, 20 min ago" in its place, never blank, never the failure's own words; "not read yet" before
  * any reading. "" when the machine reads none at all (switched off). */
 export function usageText(a: AgentStatus, t: T, now = new Date()): string {

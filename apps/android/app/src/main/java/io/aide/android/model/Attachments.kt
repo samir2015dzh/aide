@@ -84,3 +84,22 @@ fun sessionsByProject(open: Session, sessions: Collection<Session>): List<Projec
     return by.map { (p, list) -> ProjectSessions(p, list.sortedByDescending { instant(it.updatedAt) }) }
         .sortedWith(compareByDescending<ProjectSessions> { instant(it.sessions.first().updatedAt) }.thenBy { it.projectId })
 }
+
+/**
+ * Pictures this phone sent (工单 #143), by their SHA-256: a message's bubble shows each as its thumbnail. Only those
+ * sent from here while the app runs: the machine has no way to give a file back yet, so one sent elsewhere shows by name.
+ */
+object SentPictures {
+    private const val MOST = 60
+    private val kept = LinkedHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+
+    fun sha256(bytes: ByteArray): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    @Synchronized fun keep(bytes: ByteArray, thumb: androidx.compose.ui.graphics.ImageBitmap) {
+        kept[sha256(bytes)] = thumb
+        while (kept.size > MOST) kept.remove(kept.keys.first())
+    }
+
+    @Synchronized fun of(sha: String): androidx.compose.ui.graphics.ImageBitmap? = kept[sha]
+}

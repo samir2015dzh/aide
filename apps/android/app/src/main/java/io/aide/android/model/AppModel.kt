@@ -14,6 +14,8 @@ import io.aide.android.api.Device
 import io.aide.android.api.GetLoginResponse
 import io.aide.android.api.LocalApi
 import io.aide.android.api.Persona
+import io.aide.android.api.QueryWorkRequest
+import io.aide.android.api.QueryWorkResponse
 import io.aide.android.api.Session
 import io.aide.android.api.SetLoginRequest
 import io.aide.android.connection.ConnectionService
@@ -226,6 +228,16 @@ class AppModel(private val context: Context) {
                 // The core ended the watch (a profile changed, a watcher behind): watch again.
             }
             delay(500)
+        }
+    }
+
+    /** The work over a range (QueryWork, 工单 #142); null when the core cannot be asked now (the card keeps what it had). */
+    suspend fun queryWork(req: QueryWorkRequest): QueryWorkResponse? {
+        val api = api ?: return null
+        return try {
+            api.queryWork(req)
+        } catch (e: ApiError) {
+            null
         }
     }
 

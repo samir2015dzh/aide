@@ -71,6 +71,43 @@ called with the account's OAuth access token as a bearer and the
 always there; a plan may add model-specific weekly caps (`seven_day_opus`,
 …), and a window the account has none of comes as `null` and is dropped.
 
+**Asked when Claude Code is checked (工单 #143, after upstream 1c862bde).**
+A check on purpose (the owner's Check Again, or the first check of a
+version) already starts Claude Code to ask it its models (the `initialize`
+control request, 工单 #99, #112). While aided reads plan usage, the same
+process, once it answered, is asked the control request `get_usage`
+(`skip_behaviors`: only the limits, not the scan of every transcript) before
+its input ends — no turn, no session kept, no other process. Its answer
+(Claude Code 2.1.330, fixture `claude-2.1.330-get-usage.json`) carries
+`subscription_type` (the plan) and `rate_limits`, which is the usage
+endpoint's own answer with the plan's rows in `limits` as `/usage`'s twin
+has them, so it reads into the same windows as source 2 (the rows first,
+else the endpoint's windows); `rate_limits_available` false (an API key)
+is no reading. It is **not a fourth source** beside the three: it is taken
+as the reading itself when newer than the one held (`source:
+claude_code_check`, with `plan`), and the chain's next refresh then waits
+its fifteen minutes from it, so the endpoint is not asked twice. An answer
+without windows, or none (an older version), changes nothing: the chain
+asks its sources in turn as before.
+
+**Codex the same way.** Codex has no source of its own above; a check on
+purpose already starts its `codex app-server` for its models, and the same
+app-server is then asked `account/rateLimits/read` (Codex 0.171, fixture
+`codex-0.171-rate-limits-read.json`): `rateLimits.primary` and
+`.secondary` (either null), each `usedPercent`, `windowDurationMins` and
+`resetsAt`, and `planType`. They go into the Codex agent's `usage`, the same
+message and window names (five hours `five_hour`, a week `seven_day`,
+another `window_<minutes>m`), kept the same way: on disk across a restart
+(stale until asked again), a failed ask keeping the last reading stale, an
+answer with no window (an API key) clearing it. Until an answer with
+windows came, Codex's `usage` is unset. Nothing polls it: it moves only when
+Codex is checked on purpose.
+
+Neither is asked with aided's switch off (`AIDE_NO_CLAUDE_USAGE=1`), nor by
+a passive check, nor while the agent is signed out. Antigravity is not
+asked: Aide runs Google's standalone ACP server, which says no limits (its
+`/usage` is agy's, the separate CLI Aide does not run).
+
 ## Finding the token (on the machine only)
 
 aided looks for the access token in two places, in order, and never writes

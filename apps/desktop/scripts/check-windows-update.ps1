@@ -32,6 +32,13 @@ function Wait($what, $seconds, [scriptblock]$done) {
   Fail "waited $seconds s for $what"
 }
 
+# From a clean start: the app keeps when it last checked for updates in the data folder, which uninstalling leaves,
+# and checks again only 4 hours on (checkEvery). An app an earlier step left open past its first check (30 s after it
+# starts, against the real feed: check-windows-setup.ps1) left that time there, and this one would not look for the
+# newer build at all (工单 #128: main's CI, 2026-11-26, "waited 300 s for --squirrel-updated").
+$desktop = Join-Path $env:LOCALAPPDATA "Aide\desktop"
+Remove-Item (Join-Path $desktop "updates.json"), (Join-Path $desktop "update") -Recurse -Force -ErrorAction SilentlyContinue
+
 $server = Start-Process python -ArgumentList "-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", (Resolve-Path $Release) -PassThru -WindowStyle Hidden
 try {
   Write-Host "> installing the older build"

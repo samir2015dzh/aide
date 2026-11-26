@@ -45,7 +45,7 @@ describe("English", () => {
     progressOf(done).turnCount = 1;
     progressOf(done).diffStat = create(DiffStatSchema, { filesChanged: 1, insertions: 5, deletions: 2 });
     expect(noticeDiff(noticeSnapshots([running]), [done], () => "Grok Bot")).toEqual([
-      { kind: "turnDone", sessionId: "s", title: "“Fix sign-in” finished turn 1", body: "1 file +5 −2" },
+      { kind: "turnDone", sessionId: "s", title: "“Fix sign-in”: the agent replied", body: "1 file +5 −2" },
     ]);
     const crashed = clone(SessionSchema, running);
     crashed.status = SessionStatus.CRASHED;

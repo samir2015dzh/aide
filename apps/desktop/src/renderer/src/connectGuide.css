@@ -18,6 +18,9 @@
 .cg-list{margin:0;padding:10px 14px 10px 32px;background:var(--win2);border-radius:var(--r-card);display:flex;flex-direction:column;gap:6px;line-height:1.5}
 .cg-fix .cg-list{background:none;padding:4px 0 0 18px}
 .cg-fix{margin-top:8px;font-size:12.5px;color:var(--l2)}
+.cg-install{margin-top:8px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--l2)}
+.cg-install p{margin:0}
+.cg-install .cg-err{color:var(--red-t)}
 .cg-status{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--win2);border-radius:var(--r-card)}
 .cg-status>span{flex:1;min-width:0}
 .cg-status>i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--l3)}
@@ -51,3 +54,5 @@
 .cg-reg-list{max-height:300px;overflow:auto}
 .cg-reg-row{gap:10px;align-items:center}
 .cg-reg-row .ft{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cg-known{gap:10px;align-items:flex-start}
+.cg-known .ft{display:flex;flex-direction:column;gap:2px;min-width:0}

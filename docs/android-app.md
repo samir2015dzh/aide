@@ -16,7 +16,7 @@ and signs nothing, and sees every machine's sessions. It is never a machine.
 | Place | What it shows |
 |---|---|
 | Logging in | The server, the owner's account and password ([accounts.md](accounts.md)): nothing to approve or compare. Or a new server, with the setup code it printed and the account and password it will keep |
-| Sessions | Every machine's sessions by state (Needs You, In Progress, Recent), each with who sent the work (the agent's grant name, "Her", or "You", and the name it started under), the coding agent, project, machine and state; older pages on request |
+| Sessions | Every machine's sessions by state (Needs You, In Progress, Recent), each with who sent the work (the agent's grant name, "Her", or "You", and the name it started under), the coding agent, project, machine and state; older pages on request. Under them, the past year's tokens by coding agent or by machine (工单 #142) |
 | A session | Its conversation, live: the owner's messages, the agent's replies (a reply being written shows as it is written), tool calls folded into one line a run, opening to each call and its result, questions and how they were resolved. At the bottom the agent's question to answer (options, multi-select, free text, secrets hidden) or leave to the agent, or Interrupt while it works |
 | Hand work | Sessions' 派活 button: the owner's contacts ([personas.md](personas.md)); one picked, a message to it goes on in its session or starts one with its presets, which then opens. Contacts are added, changed and deleted here too |
 | Needs you | The sessions waiting for an answer |

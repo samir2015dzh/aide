@@ -285,8 +285,10 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	// Its models as it lists them here (工单 #99); one too old to, the
 	// aliases it takes, their specific models unknown. Listing them starts
 	// Claude Code: only on purpose (工单 #112), else an earlier list stands.
+	// Asked on purpose, a signed-in one is asked its plan usage on the same
+	// process too (工单 #143): the machine takes it into 工单 #86's reading.
 	if provider.IsOnPurpose(ctx) {
-		info.Models, info.Own.Model = listModels(ctx, env, bin)
+		info.Models, info.Own.Model, info.PlanUsage = listModels(ctx, env, bin, provider.AsksUsage(ctx) && info.LoggedIn)
 	} else {
 		info.ModelsSkipped = true
 	}

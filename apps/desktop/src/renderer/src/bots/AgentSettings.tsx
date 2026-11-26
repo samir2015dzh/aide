@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { projectTitle, type Bot } from "@aide/core";
+import { projectTitle, type Bot, stateDetail } from "@aide/core";
 import { botLook } from "@aide/core/avatar";
 import type { Machine } from "@aide/proto/local";
 import { AgentPage, PauseSection, projectsFor, usageText } from "../AgentList";
@@ -52,7 +52,7 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
                   <i className={`dotc ${botDot(b)}`} />
                   {b.state.word}
                 </span>
-                <span className="muted">{b.state.line}</span>
+                <span className="muted">{stateDetail(b.state)}</span>
               </div>
               {coding && b.state.fix === "claudeLogin" && (
                 <div className="frow">
@@ -77,13 +77,13 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
   );
 }
 
-/** Its plan's usage (Claude Code's, #86), with how it stands. */
+/** Its plan's usage (Claude Code's, #86; Codex's, asked at its check, #143), with how it stands. */
 function Usage({ b, m }: { b: Bot; m: Machine }) {
   const { t } = useTranslation("common");
   const tf = useTranslation("firstrun").t;
   const now = useNow(30_000);
   const a = m.status?.agents.find((x) => x.name === b.agent);
-  const usage = a && b.agent === "claude" ? usageText(a, tf, now) : "";
+  const usage = a ? usageText(a, tf, now) : "";
   return usage ? <Row k={t("agentSettings.usage")}><span className="mono agent-usage">{usage}</span></Row> : null;
 }
 

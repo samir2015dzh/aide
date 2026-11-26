@@ -106,7 +106,7 @@ test("a node clicked on the link map narrows 正在干活, names the condition a
   const tokens = (await today.textContent())!.match(/(\d+) tokens/)![1];
   await expect(page.getByRole("region", { name: "用量" }).locator(".u-kpi").first()).toContainText(tokens);
   const bot = map.getByRole("button", { name: "bot", exact: true });
-  await expect(bot).toContainText("个人 agent"); // its grant is not about to expire
+  await expect(bot).toContainText("个人 Agent"); // its grant is not about to expire
   // Hovering a grant shows where it may work: here, every machine and project.
   await bot.hover();
   await expect(map.locator(".lm-edge.scope")).toHaveCount(2); // hub → this Mac, this Mac → demo
@@ -160,8 +160,41 @@ test("用量 shows a year of tokens with today's turns", async () => {
   const usage = page.getByRole("region", { name: "用量" });
   await expect(usage).toContainText("近一年 · tokens");
   await expect(usage.getByRole("img", { name: /^近一年 \d+(\.\d)?[KM]? tokens，1 天有用量$/ })).toBeVisible();
-  await expect(usage).toContainText("Gemini 100%");
   await expect(usage).toContainText("连续使用1 天");
+  // 分组 (工单 #142): the year's tokens by coding agent to start with, or by the machine that ran them; either way
+  // the parts add up to the year's total (here one agent on this computer did it all). The fixture's sessions go
+  // on, so the total and its parts are read together until they agree.
+  const group = usage.getByRole("radiogroup", { name: "分组" });
+  await expect(group.getByRole("radio")).toHaveText(["按编码 Agent", "按机器"]);
+  await expect(group.getByRole("radio", { name: "按编码 Agent" })).toHaveAttribute("aria-checked", "true");
+  const parts = usage.locator(".u-part");
+  const reconciles = (name: string) =>
+    expect(async () => {
+      const total = await usage.locator(".u-big b").textContent();
+      await expect(parts).toHaveText([`${name}${total}100%`], { timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
+  await reconciles("Gemini");
+  await group.getByRole("radio", { name: "按机器" }).click();
+  await expect(group.getByRole("radio", { name: "按机器" })).toHaveAttribute("aria-checked", "true");
+  await expect(group.getByRole("radio", { name: "按编码 Agent" })).toHaveAttribute("aria-checked", "false");
+  await reconciles(thisComputer);
+  await expect(group.getByRole("radio", { name: "按机器" })).toHaveAttribute("title", /个人 Agent 跟着账号走/);
+  // A day's tip names its parts too, and they are the day's tokens.
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await usage.locator(".u-cells .today").hover();
+    const day = (await usage.locator(".u-tip b").textContent({ timeout: 2_000 }))!.replace(/ tokens$/, "");
+    await expect(usage.locator(".u-tip .u-parts")).toHaveText(`${thisComputer}${day}`, { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  await snap(page, "overview-usage-machine");
+  // Back by agent, the same total again; the grouping is kept while the app runs, as the overview comes and goes.
+  await group.getByRole("radio", { name: "按编码 Agent" }).click();
+  await reconciles("Gemini");
+  await group.getByRole("radio", { name: "按机器" }).click();
+  await (await sessionList(page)).getByRole("listitem").first().click();
+  await navTo(page, /^概览/);
+  await expect(usage.getByRole("radiogroup", { name: "分组" }).getByRole("radio", { name: "按机器" })).toHaveAttribute("aria-checked", "true");
+  await usage.getByRole("radiogroup", { name: "分组" }).getByRole("radio", { name: "按编码 Agent" }).click();
   // The tip is up while the pointer is on the cell. 用量 is the page's last section, under lists that grow and
   // shrink as the fixture's sessions go on: when one does, the cell moves from under a pointer that stays where
   // it is, and the tip goes with it. So the pointer is put on the cell again until the tip is read.
@@ -198,7 +231,7 @@ test("the overview stays centered when resizing the window or hiding the sidebar
     for (const width of [980, 1360]) {
       await app.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setContentSize(width, 900), width);
       for (const sidebar of [true, false]) {
-        if (!sidebar) await page.getByRole("button", { name: "收成窄栏" }).click();
+        if (!sidebar) await page.getByRole("button", { name: "隐藏边栏" }).click();
         await page.locator(".mainwrap").evaluate((el) => Promise.all(el.getAnimations().map((animation) => animation.finished)));
         await expect.poll(() => page.locator(".ov").evaluate((el) => {
           const scroll = el.parentElement!;
@@ -215,7 +248,7 @@ test("the overview stays centered when resizing the window or hiding the sidebar
         expect(layout.width).toBeCloseTo(Math.min(980, layout.available), 0);
         expect(layout.overflow).toBeLessThanOrEqual(1);
         await snap(page, `overview-centered-${width}-${sidebar ? "sidebar" : "no-sidebar"}`);
-        if (!sidebar) await page.getByRole("button", { name: "展开边栏" }).click();
+        if (!sidebar) await page.getByRole("button", { name: "显示边栏" }).click();
       }
     }
   } finally {

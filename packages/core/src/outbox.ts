@@ -1,4 +1,5 @@
 import type { SessionEvent } from "@aide/proto/session";
+import { userWords } from "./transcript";
 
 /**
  * Weak-network outbound queue & inbound stream catch-up primitives (工单 #115).
@@ -301,19 +302,22 @@ export function echoedClientMessageIds(e: SessionEvent): readonly string[] {
 
 const attachedNote = "[Aide] Attached files";
 
-function isEchoText(item: OutboxMessage, recorded: string): boolean {
+function isEchoText(item: OutboxMessage, recorded: string, recordedAttachments: number): boolean {
   const sent = item.text.trim();
+  // A machine that records the files apart from the words (工单 #143): the words as written.
+  if (recordedAttachments > 0) return userWords(recorded, recordedAttachments).trim() === sent;
   const got = recorded.trim();
   if (item.attachments.length === 0) return sent !== "" && got === sent;
-  // The server lists the saved files after the text.
+  // An older machine lists the saved files after the text.
   return sent === "" ? got.startsWith(attachedNote) : got.startsWith(sent + "\n\n" + attachedNote);
 }
 
 function enqueuedBefore(item: OutboxMessage, e: SessionEvent): boolean {
   if (item.afterSeq !== undefined) return e.seq > BigInt(item.afterSeq);
-  // An item persisted before afterSeq existed: by time instead.
+  // An item persisted before afterSeq existed: by time instead, and when there is no time to go by,
+  // any event (a marker that can never clear is worse than one cleared by an older identical message).
   const created = Date.parse(item.createdAt);
-  if (!e.ts || Number.isNaN(created)) return false;
+  if (!e.ts || Number.isNaN(created)) return true;
   return Number(e.ts.seconds) * 1000 + Math.floor(e.ts.nanos / 1e6) >= created - 1000;
 }
 
@@ -342,7 +346,7 @@ export function reconcileOutboxWithEvents(state: OutboxState, sessionId: string,
     const users = events.filter((e) => e.kind.case === "userMessage");
     for (const item of mine.filter((it) => it.status === "sent").sort((a, b) => a.clientSeq - b.clientSeq)) {
       const hit = users.find(
-        (e) => !used.has(e) && e.kind.case === "userMessage" && enqueuedBefore(item, e) && isEchoText(item, e.kind.value.text),
+        (e) => !used.has(e) && e.kind.case === "userMessage" && enqueuedBefore(item, e) && isEchoText(item, e.kind.value.text, e.kind.value.attachments.length),
       );
       if (hit) {
         used.add(hit);

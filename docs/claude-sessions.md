@@ -69,3 +69,26 @@ it goes ("可寄信：c_…/…") or that it takes none ("不可寄信"). With n
 says which index folders were read, or that no app data was found.
 
 Android: not yet (the work order asked for the desktop app).
+
+## 4. Aide's own sessions in the app (工单 #131)
+
+A Claude Code session Aide runs is Claude Code's own: its transcript is in
+`<config>/projects/<folder>/<id>.jsonl`, where the app's Claude Code keeps
+its own, and nothing of Aide's stands in for it. The app lists only those
+it has a record of, so:
+
+- As a session starts, Aide writes its record in the app's index
+  (`internal/provider/claude/desktop.go`). The app reads its index only as
+  it starts, and its Microsoft Store (MSIX) build — the one on the owner's
+  PC — is said to pass over records written from outside, so this alone is
+  not counted on.
+- **Open in Claude**, in a session's settings (on the computer that runs
+  it): the app's own import link, `claude://resume?session=<Claude Code's
+  session id>`. The app writes the record itself (`local_<id>`, the key it
+  de-duplicates on) and opens the session; it is in its list from then on,
+  and the owner goes on with it there. Only once Aide is done with the turn:
+  the app runs a process of its own on the session, and one still running
+  would be run twice (anthropics/claude-code#111489). The session's id is
+  not in what lists show (`machine.BasicSession`): the page reads the full
+  session when asked. The app's main process opens no other `claude://`
+  link (`shared/claudeDesktop.ts`).

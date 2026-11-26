@@ -214,47 +214,28 @@ test("工单 #134: 侧栏两态图标位置守恒、左上角不重复、清掉�
   // 1. 概览页与任务动态页不许出现空 .ctool 死空间行（#134 补充二）
   await expect(page.locator(".content .ctool")).toHaveCount(0);
 
-  // 记录展开态各固定导航控件的坐标
+  // 侧栏只剩显示与隐藏两态（工单 #141 取代 #134 的窄栏口径）：切换钮与搜索框在两态下位置守恒（#134 正文）
   const boxOf = async (loc: ReturnType<Page["locator"]>) => (await loc.boundingBox())!;
-  const toggleBefore = await boxOf(page.getByRole("button", { name: "收成窄栏" }));
+  const toggleBefore = await boxOf(page.getByRole("button", { name: "隐藏边栏" }));
   const searchBefore = await boxOf(page.locator(".side-top").getByRole("button", { name: "搜索" }));
-  const overviewBefore = await boxOf(page.locator(".side-nav button").nth(0));
-  const tasksBefore = await boxOf(page.locator(".side-nav button").nth(1));
-  const accountBefore = await boxOf(page.getByRole("button", { name: "账号与设置" }));
   await snap(page, "desktop-134-sidebar-expanded");
 
-  // 2. 点击收起成窄栏：切换钮、搜索、概览、任务动态、账号锚点必须守恒（不从左上角跳到左下角）
-  await page.getByRole("button", { name: "收成窄栏" }).click();
-  await expect(page.getByRole("complementary", { name: "窄栏" })).toBeVisible();
-  // 等宽度过渡完成
-  await expect.poll(async () => Math.round((await page.locator(".rail").boundingBox())!.width)).toBe(72);
-
-  // 窄栏底栏只保留账号，不允许再塞入重复的搜索钮或展开钮
-  await expect(page.locator(".rail-foot button")).toHaveCount(1);
-  await expect(page.locator(".rail-top")).toHaveCount(0);
-  // 窗口左上角最多只有 1 个菜单按钮（Windows）且绝不重复
+  // 2. 隐藏侧栏：没有图标窄栏，左上角只有这一组按钮（#134 补充一），切换钮与搜索框不跳位
+  await page.getByRole("button", { name: "隐藏边栏" }).click();
+  await expect(page.getByRole("complementary", { name: "边栏" })).toHaveCount(0);
+  await expect(page.locator("aside.rail")).toHaveCount(0);
   expect(await page.getByRole("button", { name: "菜单" }).count()).toBeLessThanOrEqual(1);
-
-  const expandAfter = await boxOf(page.getByRole("button", { name: "展开边栏" }));
+  expect(await page.getByRole("button", { name: /^(隐藏边栏|显示边栏)$/ }).count()).toBe(1);
+  const expandAfter = await boxOf(page.getByRole("button", { name: "显示边栏" }));
   const searchAfter = await boxOf(page.locator(".side-top").getByRole("button", { name: "搜索" }));
-  const overviewAfter = await boxOf(page.locator(".rail-nav > button.rb").nth(0));
-  const tasksAfter = await boxOf(page.locator(".rail-nav > button.rb").nth(1));
-  const accountAfter = await boxOf(page.getByRole("button", { name: "账号与设置" }));
-
-  // 切换钮与搜索框：x / y 完全守恒
   expect(Math.abs(expandAfter.x - toggleBefore.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(expandAfter.y - toggleBefore.y)).toBeLessThanOrEqual(1);
   expect(Math.abs(searchAfter.x - searchBefore.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(searchAfter.y - searchBefore.y)).toBeLessThanOrEqual(1);
-  // 概览、任务动态、账号：垂直中心点 Y 守恒（≤ 2px）
-  const cy = (b: { y: number; height: number }) => b.y + b.height / 2;
-  expect(Math.abs(cy(overviewAfter) - cy(overviewBefore))).toBeLessThanOrEqual(2);
-  expect(Math.abs(cy(tasksAfter) - cy(tasksBefore))).toBeLessThanOrEqual(2);
-  expect(Math.abs(cy(accountAfter) - cy(accountBefore))).toBeLessThanOrEqual(2);
   await snap(page, "desktop-134-sidebar-collapsed");
 
-  // 3. 点原位切换钮展开回来
-  await page.getByRole("button", { name: "展开边栏" }).click();
+  // 3. 点原位切换钮显示回来
+  await page.getByRole("button", { name: "显示边栏" }).click();
   await expect(page.getByRole("complementary", { name: "边栏" })).toBeVisible();
   await expect.poll(async () => Math.round((await page.locator(".side").boundingBox())!.width)).toBe(280);
 
@@ -389,20 +370,6 @@ test("工单 #135: 状态口径统一（P03/P04/P08/P17/P25/P33）", async () =>
   // 三种正常/半正常状态颜色必须互不相同（P25）
   expect(new Set([dotsExpanded.chatgpt.bg, dotsExpanded.claude.bg, dotsExpanded.dsh.bg, dotsExpanded.codex.bg]).size).toBe(4);
 
-  // 收起态窄栏同样保持四色分离（P25）
-  await page.getByRole("button", { name: "收成窄栏" }).click();
-  await expect(page.getByRole("complementary", { name: "窄栏" })).toBeVisible();
-  const railDotColors = await page.locator(".rail-nav").evaluate((root) => {
-    const pick = (prefix: string) => {
-      const btn = [...root.querySelectorAll("button.rb")].find((el) => (el.getAttribute("aria-label") ?? "").startsWith(prefix));
-      const dot = btn?.querySelector(".dotc") as HTMLElement | null;
-      return dot ? getComputedStyle(dot).backgroundColor : "";
-    };
-    return [pick("ChatGPT"), pick("Claude Code"), pick("DSH"), pick("Codex")];
-  });
-  expect(new Set(railDotColors.filter(Boolean)).size).toBe(4);
-  await snap(page, "desktop-135-rail-status-dots");
-  await page.getByRole("button", { name: "展开边栏" }).click();
 
   // 审计 B（P25）：同一文字同一点色，页页相同——侧栏 MacBook Pro 下每个 bot 的「文字 → 点色」与机器页（设置 · 机器）
   // 逐一相同；「未确认」DSH 与 ACP agent（Gemini）同为黄点，「已登录」在两页都是蓝点。

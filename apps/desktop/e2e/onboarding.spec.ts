@@ -26,8 +26,8 @@ const password = "correct horse battery";
 
 /** The window grew into the main window. */
 async function expectMainWindow(app: ElectronApplication, page: Page) {
-  // A session on a small display keeps the navigation in its icon rail.
-  await expect(page.locator("aside.side, aside.rail")).toBeVisible();
+  // The main window's frame (on a small display the sidebar may be hidden: no rail, 工单 #141).
+  await expect(page.locator(".win-titlebar")).toBeVisible();
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width ?? 0)).toBeGreaterThan(900);
 }
 
@@ -179,7 +179,7 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   // Nothing is set up before 继续 here. Setting a server up makes this computer one of the owner's devices: no switch.
   await expect(page.getByRole("switch", { name: "你的设备" })).toHaveCount(0);
   await expect(page.getByRole("list", { name: "设置步骤" })).toHaveCount(0);
-  await expect(page.getByRole("switch", { name: "安全可信地共享本机 agent" })).toBeChecked();
+  await expect(page.getByRole("switch", { name: "安全可信地共享本机 Agent" })).toBeChecked();
   await expect(page.getByText("不读取 API Key 和 Token", { exact: false }).first()).toBeVisible();
   await expect(page.getByRole("switch", { name: "有事时提醒我" })).toBeChecked();
   await snap(page, "first-03-authorize");
@@ -426,8 +426,8 @@ test("logging in to a server set up already: a wrong password said, then this co
   await logIn(page, server, "not the password");
   // One of the owner's devices unless turned off; sharing its agents and reminders on.
   await expect(page.getByRole("switch", { name: "你的设备" })).toBeChecked();
-  await expect(page.getByText("在这里查看和管理你的所有机器、agent 和任务。")).toBeVisible();
-  await expect(page.getByRole("switch", { name: "安全可信地共享本机 agent" })).toBeChecked();
+  await expect(page.getByText("在这里查看和管理你的所有机器、Agent 和任务。")).toBeVisible();
+  await expect(page.getByRole("switch", { name: "安全可信地共享本机 Agent" })).toBeChecked();
   await expect(page.getByRole("switch", { name: "有事时提醒我" })).toBeChecked();
   await page.getByRole("button", { name: "继续" }).click();
   const trouble = page.getByRole("alertdialog", { name: "没能登录" });
@@ -480,7 +480,7 @@ test("a work Mac logs in as a machine only (你的设备 off): its own projects 
   await page.getByRole("switch", { name: "你的设备" }).click();
   await expect(page.getByRole("switch", { name: "你的设备" })).not.toBeChecked();
   await expect(page.getByText("关闭：这台电脑只作为执行机器，只运行任务，看不到你的其他机器。适合公司的电脑。")).toBeVisible();
-  await expect(page.getByRole("switch", { name: "安全可信地共享本机 agent" })).toHaveCount(0);
+  await expect(page.getByRole("switch", { name: "安全可信地共享本机 Agent" })).toHaveCount(0);
   await expect(page.getByText("必需")).toBeVisible();
   await snap(page, "machine-01-authorize");
   await page.getByRole("button", { name: "继续" }).click();
@@ -510,7 +510,7 @@ test("a work Mac logs in as a machine only (你的设备 off): its own projects 
   await expect(nav.getByRole("button")).toHaveText(["通用", "这台 Mac", "账号"]);
   await nav.getByRole("button", { name: "这台 Mac" }).click();
   const panel = settings.getByRole("main", { name: "这台 Mac" });
-  await expect(panel.getByRole("switch", { name: "安全可信地共享本机 agent" })).toHaveCount(0);
+  await expect(panel.getByRole("switch", { name: "安全可信地共享本机 Agent" })).toHaveCount(0);
   await expect(panel.getByRole("button", { name: "添加机器…" })).toHaveCount(0);
   await expect(panel.getByRole("button", { name: "移除…" })).toHaveCount(0);
   await snap(settings, "machine-05-settings");
@@ -574,10 +574,10 @@ test("a work Mac logs in as a machine only (你的设备 off): its own projects 
   await expect(card).toHaveCount(0);
   // Clicked, it stays, and 正在干活 keeps only its sessions.
   await agent.click();
-  await expect(card).toContainText("个人 agent · 自己保管密钥");
+  await expect(card).toContainText("个人 Agent · 自己保管密钥");
   await expect(card).toContainText("授权给了它完全权限");
   await expect(card).toContainText("在这里能用所有项目");
-  await expect(card).toContainText("编码 agent所有编码 agent");
+  await expect(card).toContainText("编码 Agent所有编码 Agent");
   await expect(card).toContainText("有效期不会到期");
   await expect(card).toContainText("在这台 Mac今天 1 个任务 · 最近一次");
   await expect(page.getByRole("status").filter({ hasText: "Grok Bot 发起的任务" })).toBeVisible();
@@ -651,10 +651,10 @@ test("Settings › Account: a new device logging in shows in Add Device; a new p
 
   // The account and its password, changed with the current one; the new one typed twice.
   await expect(panel).toContainText(`账号 ${account}`);
-  await expect(panel).toContainText(`新的电脑、手机、机器或 agent 输入服务器 ${server}、这个账号和密码即可登录，不需要批准。`);
+  await expect(panel).toContainText(`新的电脑、手机、机器或 Agent 输入服务器 ${server}、这个账号和密码即可登录，不需要批准。`);
   await panel.getByRole("button", { name: "修改账号或密码…" }).click();
   await expect(panel.getByLabel("账号", { exact: true })).toHaveValue(account);
-  await expect(panel.getByText("改密码会登出你的其他设备和所有 agent", { exact: false })).toBeVisible();
+  await expect(panel.getByText("改密码会登出你的其他设备和所有 Agent", { exact: false })).toBeVisible();
   const save = panel.getByRole("button", { name: "保存" });
   await expect(save).toBeDisabled(); // the current password first
   const next = "a newer battery staple";
@@ -667,7 +667,7 @@ test("Settings › Account: a new device logging in shows in Add Device; a new p
   await snap(settings, "settings-change-password");
   await save.click();
   // The other device and the agent signed out, not this one nor its machine.
-  await expect(settings.getByRole("status").filter({ hasText: "密码已修改，已登出 2 个设备和 agent" })).toBeVisible({ timeout: 30_000 });
+  await expect(settings.getByRole("status").filter({ hasText: "密码已修改，已登出 2 个设备和 Agent" })).toBeVisible({ timeout: 30_000 });
   await expect.poll(async () => (await second.getStatus({})).removed, { timeout: 30_000 }).toBe(true);
   await expect(devices.getByRole("listitem")).toHaveCount(1);
   expect((await home.getStatus({})).removed).toBe(false);

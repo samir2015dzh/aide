@@ -1,6 +1,8 @@
 package acp
 
 import (
+	"path"
+	"path/filepath"
 	"runtime"
 
 	"github.com/samir2015dzh/aide/internal/provider"
@@ -52,6 +54,14 @@ func antigravityAgent(goos string) Agent {
 	return Agent{Name: "antigravity", Command: command, Args: args,
 		Paths:       paths,
 		DesktopApps: []string{"Antigravity.app"}}
+}
+
+// AntigravityDir is where Aide installs Google's Antigravity ACP server
+// (with what its archive keeps beside it) for the built-in agent to find it
+// (工单 #133): the last of the places it looks, under home.
+func AntigravityDir(home, goos string) string {
+	paths := antigravityAgent(goos).Paths
+	return filepath.Join(home, filepath.FromSlash(path.Dir(paths[len(paths)-1])))
 }
 
 // Providers returns a provider for every known ACP agent.

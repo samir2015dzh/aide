@@ -20,7 +20,7 @@ import "./connections.css";
 // why, where to fix it, and when it was checked; a finding the machine has
 // not confirmed lately says it is unknown rather than pass for now.
 
-export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) => boolean }) {
+export function ConnectionsCard({ m, only, bare }: { m: Machine; only?: (r: ConnRow) => boolean; bare?: (r: ConnRow) => boolean }) {
   const { t } = useTranslation("common");
   const st = useStore();
   const now = useNow(30_000);
@@ -41,7 +41,7 @@ export function ConnectionsCard({ m, only }: { m: Machine; only?: (r: ConnRow) =
       <div className="fgroup">
         {rows.length === 0 && <div className="frow muted">{m.online || m.local ? t("conn.noneYet") : t("conn.offline")}</div>}
         {rows.map((r) => (
-          <ConnRowView key={r.id} r={r} m={m} recheck={recheck} />
+          <ConnRowView key={r.id} r={r} m={m} recheck={recheck} bare={bare?.(r)} />
         ))}
         {grants.map((g) => (
           <GrantRow key={g.clientId} g={g} />

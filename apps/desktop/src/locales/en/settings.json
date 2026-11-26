@@ -60,7 +60,7 @@
     "agentQuestions": "Agent questions",
     "agentQuestionsDesc": "Expire after 30 minutes if no one answers",
     "sessionFailed": "Failed tasks",
-    "turnDone": "Finished turns",
+    "turnDone": "Agent replied",
     "menuBar": "Menu Bar",
     "menuBar_win": "Notification Area",
     "menuBadge": "Show a dot on the icon when something needs you"
@@ -89,7 +89,6 @@
     "signOutRemovedMessage": "This computer was signed out of your Aide account. Leave, then log in again if you like.",
     "signOutButton": "Sign Out",
     "signOutFirstMessage": "This computer is still logged in to your account. Sign it out from another of your devices (Settings › Account & Devices), then leave here. Or change the password here, and sign it out from another device.",
-    "ownServer": "Your own server · {{host}}",
     "notConnected": "Not connected",
     "connected": "Connected",
     "alsoMachine": "Worker machine · {{status}}",
@@ -151,7 +150,9 @@
       "logOut": "Log the CLI out (revoke)",
       "loggedIn": "This computer's CLI is logged in as {{name}}",
       "loggedOut": "This computer's CLI is logged out and revoked"
-    }
+    },
+    "ownServerShort": "Your own server",
+    "thisDeviceSignOut": "Sign this one out below"
   },
   "grants": {
     "expiresIn_one": "Expires in {{count}} day",
@@ -159,7 +160,6 @@
     "daysLeft_one": "{{count}} day left",
     "daysLeft_other": "{{count}} days left",
     "none": "No agents have access yet.",
-    "connect": "Connect Agent…",
     "note": "Access controls which projects, machines, and coding agents an agent can use, and for how long.",
     "disconnectTitle": "Disconnect “{{name}}”?",
     "disconnectMessage": "It will lose access immediately. Any running tasks will be interrupted, while task history is preserved. Reconnect it if you want to use it again.",
@@ -202,7 +202,9 @@
     "renameButton": "Save",
     "icon": "Avatar",
     "iconAuto": "Use its default avatar",
-    "validity": "Valid"
+    "validity": "Valid",
+    "cliOn": "Aide command line · {{machine}}",
+    "toConnect": "To connect a new agent, go to Connect."
   },
   "ops": {
     "none": "No agent has run a command yet.",

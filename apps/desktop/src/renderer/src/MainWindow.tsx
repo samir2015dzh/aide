@@ -12,7 +12,6 @@ import { RoomPage } from "./bots/Rooms";
 import { SearchPalette } from "./Search";
 import { SessionPage } from "./SessionPage";
 import { SheetHost } from "./Sheets";
-import { Rail } from "./Rail";
 import { Sidebar, TaskColumn } from "./Sidebar";
 import { useCommands } from "./commands";
 import { useLeaving } from "./components";
@@ -78,7 +77,6 @@ export function MainWindow() {
     return () => document.removeEventListener("keydown", esc);
   }, [peeking, set]);
   const { sidebar } = layoutOf(st);
-  const sidebarOpen = sidebar !== "rail";
   // The page of every session keeps its list beside the session opened from it (工单 #63: no list in the sidebar).
   const [fromList, setFromList] = useState(false);
   useEffect(() => {
@@ -89,21 +87,18 @@ export function MainWindow() {
   // The search, keyed by what it was opened for; closed, it fades out as it was.
   const search = useLeaving(st.searching ? JSON.stringify(st.searchFor) : null);
   return (
-    <div className={`mainwrap ${sidebar === "docked" ? "" : "railed"} ${sidebar === "over" ? "peek" : ""} ${listed ? "listed" : ""}`}>
-      {/* Fluent 40px 窗口标题栏（DESIGN-107 §0.2 / #134）：左上角唯一一组菜单与侧栏切换钮两态守恒不跳位，居中搜索框，右侧留窗口按钮区 */}
+    <div className={`mainwrap ${sidebar === "docked" ? "" : "noside"} ${sidebar === "over" ? "peek" : ""} ${listed ? "listed" : ""}`}>
+      {/* Fluent 40px 窗口标题栏（DESIGN-107 §0.2 / §0.5c #5A）：左侧菜单与侧栏切换，居中搜索框，右侧留窗口按钮区 */}
       <header className="win-titlebar side-top drag">
         <div className="win-titlebar-l">
           <div className="tl-room" aria-hidden="true" />
           <AppMenuButton />
-          <button
-            className="tb"
-            onClick={() => setSidebar(st, !sidebarOpen)}
-            title={`${t(sidebarOpen ? "window.hideSidebar" : "rail.expand")} ${keys(ownKeys.toggleSidebar)}`}
-            aria-label={t(sidebarOpen ? "window.hideSidebar" : "rail.expand")}
-            aria-expanded={sidebarOpen}
-          >
-            <Icon name="sidebar" />
-          </button>
+          {/* Hide and show in one place, the sidebar there or not (工单 #141; #134: the button does not move). */}
+          {((shown) => (
+            <button className="tb" onClick={() => setSidebar(st, !shown)} title={`${t(shown ? "window.hideSidebar" : "window.showSidebar")} ${keys(ownKeys.toggleSidebar)}`} aria-label={t(shown ? "window.hideSidebar" : "window.showSidebar")} aria-pressed={shown}>
+              <Icon name="sidebar" />
+            </button>
+          ))(sidebar !== "hidden")}
           <span className="win-titlebar-brand">Aide</span>
         </div>
         <button className="side-searchbox" onClick={() => st.set({ searching: true })} title={`${t("sidebar.search")} ${keys("CmdOrCtrl+K")}`} aria-label={t("sidebar.search")}>
@@ -113,9 +108,8 @@ export function MainWindow() {
         </button>
         <div className="win-titlebar-r" aria-hidden="true" />
       </header>
-      {/* The sidebar, or its rail (docs/her-team.md §14.9): asked for while there is no room, it shows over the rail. */}
-      {sidebar === "docked" ? <Sidebar /> : <Rail />}
-      {sidebar === "over" && <Sidebar />}
+      {/* The sidebar, beside the page or, asked for while there is no room, over it; hidden is hidden (工单 #141). */}
+      {sidebar !== "hidden" && <Sidebar />}
       {/* Over the conversation, the sidebar goes again with a click beside it. */}
       {sidebar === "over" && <div className="peek-scrim" onClick={() => setSidebar(st, false)} />}
       {listed && <TaskColumn />}

@@ -8,7 +8,7 @@ import {
   type SessionEvent,
 } from "@aide/proto/session";
 import { describe, expect, test } from "vitest";
-import { checkpoints, interrupter, isInterruption, resolutionTitle, transcript, turnStartedAt } from "./transcript";
+import { checkpoints, interrupter, isInterruption, resolutionTitle, transcript, turnStartedAt, userWords } from "./transcript";
 import { at } from "./testing";
 
 let seq = 0n;
@@ -126,5 +126,19 @@ describe("transcript", () => {
     expect(interrupter({ kind: FailureKind.INTERRUPTED, message: "interrupted by c_abc" } as never)).toBe("c_abc");
     expect(interrupter({ kind: FailureKind.INTERRUPTED, message: "agent revoked" } as never)).toBeUndefined();
     expect(interrupter({ kind: FailureKind.RATE_LIMIT, message: "interrupted by owner" } as never)).toBeUndefined();
+  });
+});
+
+describe("a message's files (工单 #143)", () => {
+  const list = "[Aide] Attached files, saved on this machine outside the worktree:\n- /m/a/shot.png (image/png, 12.0 KiB, shown as an image)";
+  test("its words are the writer's, the list the agent reads left out; its files go with it", () => {
+    const items = transcript([ev(1, { case: "userMessage", value: { text: `看这张\n\n${list}`, attachments: [{ name: "shot.png", mediaType: "image/png", size: 12n << 10n, sha256: "ab", image: true }] } })], false);
+    const u = items.find((i) => i.kind === "user");
+    expect(u?.kind === "user" && u.text).toBe("看这张");
+    expect(u?.kind === "user" && u.attachments?.map((a) => a.name)).toEqual(["shot.png"]);
+  });
+  test("files alone have no words; words without files are as written", () => {
+    expect(userWords(list, 1)).toBe("");
+    expect(userWords(`a\n\n${list}`, 0)).toBe(`a\n\n${list}`);
   });
 });

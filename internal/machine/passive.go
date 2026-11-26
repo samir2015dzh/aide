@@ -38,10 +38,16 @@ func (n *Machine) discover(name string, p provider.Provider, onPurpose bool) pro
 	if onPurpose || !ok {
 		ctx = provider.OnPurpose(ctx)
 	}
+	// Reading plan usage here, a check that starts the agent asks it that
+	// too (工单 #143), taken into the one reading (claudeusage.go).
+	if n.usageOn() {
+		ctx = provider.AskUsage(ctx)
+	}
 	info := p.Discover(ctx)
 	if info.ModelsSkipped && info.Available && (!ok || k.Version != info.Version) {
-		info = p.Discover(provider.OnPurpose(context.Background())) // a version never asked: once
+		info = p.Discover(provider.OnPurpose(ctx)) // a version never asked: once
 	}
+	n.noteCheckedUsage(name, info)
 	switch {
 	case !info.Available:
 	case info.ModelsSkipped:

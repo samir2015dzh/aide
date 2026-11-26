@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { admitAttachments, attachmentKind, attachmentNote, sizeText, type AttachmentKind } from "@aide/core";
+import { admitAttachments, attachmentKind, attachmentNote, freshFiles, pasteAttaches, sizeText, type AttachmentKind } from "@aide/core";
 import { Icon } from "../icons";
 import "./composer.css";
 
@@ -39,7 +39,9 @@ export function useAttachments(): Attachments {
   useEffect(() => () => live.current.forEach((d) => d.url && URL.revokeObjectURL(d.url)), []);
   const add = useCallback((more: File[]) => {
     const pending = (fs: File[]) => fs.map((file) => ({ file, name: file.name || "file", type: file.type, size: file.size }));
-    const { take, refused } = admitAttachments(pending(live.current.map((d) => d.file)), pending(more));
+    // The same file pasted or dropped twice goes once (工单 #143).
+    const have = pending(live.current.map((d) => d.file));
+    const { take, refused } = admitAttachments(have, freshFiles(have, pending(more)));
     const drafts = take.map(({ file }) => {
       const kind = attachmentKind({ name: file.name, type: file.type });
       return { id: crypto.randomUUID(), file, kind, url: kind === "image" ? URL.createObjectURL(file) : undefined };
@@ -139,22 +141,41 @@ export function Composer({
     if (dictation === "mac") window.aide?.startDictation();
     setHint(t(dictation === "mac" ? "composer.dictationMac" : "composer.dictationWin"));
   };
+  // A paste attaches a screenshot, a picture or files copied; words copied with a picture of them (a spreadsheet's
+  // cells) paste as the words (工单 #143).
   const paste = (e: ClipboardEvent) => {
-    if (!attach || e.clipboardData.files.length === 0) return;
+    const fs = [...e.clipboardData.files];
+    if (!attach || !pasteAttaches(e.clipboardData.getData("text/plain"), fs.length, fs.map((f) => window.aide?.pathForFile(f) ?? ""))) return;
     e.preventDefault();
-    attach.add([...e.clipboardData.files]);
+    attach.add(fs);
   };
-  const dragging = (e: DragEvent) => {
-    if (!attach || disabled || !e.dataTransfer.types.includes("Files")) return;
-    e.preventDefault();
-    setOver(true);
-  };
-  const drop = (e: DragEvent) => {
-    setOver(false);
-    if (!attach || disabled || e.dataTransfer.files.length === 0) return;
-    e.preventDefault();
-    attach.add([...e.dataTransfer.files]);
-  };
+  // Files dragged anywhere over the window come to this box (工单 #143): it says it takes them while they are over,
+  // and takes them where they are let go.
+  const take = useRef<((fs: File[]) => void) | null>(null);
+  take.current = attach && !disabled ? (fs) => (attach.add(fs), area.current?.focus()) : null;
+  useEffect(() => {
+    const files = (e: DragEvent) => !!take.current && !!e.dataTransfer?.types.includes("Files");
+    const over = (e: DragEvent) => {
+      if (!files(e)) return;
+      e.preventDefault();
+      setOver(true);
+    };
+    const leave = (e: DragEvent) => e.relatedTarget === null && setOver(false);
+    const drop = (e: DragEvent) => {
+      setOver(false);
+      if (!files(e) || !e.dataTransfer?.files.length) return;
+      e.preventDefault();
+      take.current?.([...e.dataTransfer.files]);
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+    };
+  }, []);
   const items: PlusItem[] = [
     ...(attach
       ? (["image", "file", "audio"] as const).map((k) => ({ id: `attach-${k}`, label: t(`composer.attach.${k}`), icon: k === "image" ? "image" : k === "audio" ? "audio" : "doc", run: () => pick.current[k]?.click() }))
@@ -170,7 +191,13 @@ export function Composer({
           {why.action && <button type="button" className="link" onClick={why.action.run}>{why.action.label}</button>}
         </div>
       )}
-      <div className={`composer-box ${disabled ? "off" : ""} ${over ? "over" : ""}`} onDragOver={dragging} onDragLeave={() => setOver(false)} onDrop={drop}>
+      <div className={`composer-box ${disabled ? "off" : ""} ${over ? "over" : ""}`}>
+        {over && (
+          <div className="composer-drop" aria-hidden="true">
+            <b>{t("composer.dropTitle")}</b>
+            <span>{t("composer.dropHint")}</span>
+          </div>
+        )}
         {shown.length > 0 && (
           <div className="vmenu composer-cmds" role="listbox" aria-label={t("composer.commands")}>
             {shown.map((c, i) => (

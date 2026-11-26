@@ -93,7 +93,6 @@ func (n *Machine) refreshHealth() {
 			n.CheckAgents(true, 0)
 		}
 	}
-	n.kickStatus()
 }
 
 // freshHealth reads the health again when it is older than healthEvery.

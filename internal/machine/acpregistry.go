@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"os"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -81,6 +83,9 @@ func (n *Machine) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.
 		if installedAs == "" && builtinAvail[builtin] {
 			installedAs = builtin
 		}
+		if b := acpregistry.Builtin(e.ID); b != "" && builtinAvail[b] {
+			installedAs = b // the built-in agent's own program (工单 #133)
+		}
 		out.Entries = append(out.Entries, &machinev1.ACPRegistryEntry{
 			Id:                e.ID,
 			Name:              e.Name,
@@ -106,6 +111,9 @@ func (n *Machine) ListACPRegistry(ctx context.Context, refresh bool) *machinev1.
 func (n *Machine) InstallACPRegistryAgent(ctx context.Context, req *machinev1.InstallACPRegistryAgentRequest) (*machinev1.InstallACPRegistryAgentResponse, error) {
 	if req == nil || strings.TrimSpace(req.RegistryId) == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("registry_id is required"))
+	}
+	if name := acpregistry.Builtin(req.RegistryId); name != "" {
+		return n.installBuiltinProgram(ctx, req.RegistryId, name)
 	}
 	reserved := func(name string) bool {
 		if n.cfg.Providers[name] != nil || slices.Contains(append(AgentNames(), "fake"), name) {
@@ -150,6 +158,37 @@ func (n *Machine) InstallACPRegistryAgent(ctx context.Context, req *machinev1.In
 	})
 	return &machinev1.InstallACPRegistryAgentResponse{
 		Agent:      def,
+		InstallDir: inst.InstallDir,
+		Sha256:     inst.SHA256,
+	}, nil
+}
+
+// installBuiltinProgram installs the program a built-in agent runs —
+// Google's Antigravity ACP server, which neither the Antigravity desktop app
+// nor agy brings (工单 #133) — from its official registry entry, checked,
+// where the agent finds it, and checks the agent again: done only once the
+// agent is found there, not when the files are.
+func (n *Machine) installBuiltinProgram(ctx context.Context, registryID, name string) (*machinev1.InstallACPRegistryAgentResponse, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	inst, err := n.acpRegistry().InstallTo(ctx, registryID, acp.AntigravityDir(home, runtime.GOOS))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	// A check under way began before the files were there: it ends first, then
+	// the agent is checked again unless what it found already has it.
+	<-n.CheckAgents(true, 0)
+	info := n.providerInfo(name)
+	if !info.Available {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s is installed in %s, but it does not start: %s", inst.RegistryID, inst.InstallDir, cmp.Or(info.Detail, "not found")))
+	}
+	n.audit.Log(AuditRecord{Kind: "agent", Subject: name, Action: "install_program",
+		Detail: fmt.Sprintf("%s@%s (binary, sha256 %s) in %s", inst.RegistryID, inst.RegistryVersion, inst.SHA256, inst.InstallDir)})
+	return &machinev1.InstallACPRegistryAgentResponse{
+		Agent: &machinev1.CustomAgent{Name: name, Command: inst.Command, Args: inst.Args, Source: "builtin",
+			RegistryId: inst.RegistryID, RegistryVersion: inst.RegistryVersion, Distribution: inst.Distribution},
 		InstallDir: inst.InstallDir,
 		Sha256:     inst.SHA256,
 	}, nil

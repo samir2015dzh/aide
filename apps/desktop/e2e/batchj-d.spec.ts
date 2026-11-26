@@ -57,7 +57,7 @@ test("工单 #100 / #109: the account is a drawn person, every device and machin
 test("工单 #101 / #109: the owner's bubble is Fluent blue (#0078d4) with white words, links and code, light and dark", async () => {
   const { page } = await launch();
   const roster = page.getByRole("region", { name: "Bot" });
-  await roster.getByRole("group", { name: "个人 agent" }).getByRole("button", { name: /^bot/ }).click();
+  await roster.getByRole("group", { name: "个人 Agent" }).getByRole("button", { name: /^bot/ }).click();
   const botPage = page.getByRole("region", { name: "bot" });
   const log = botPage.getByRole("log", { name: "对话" });
   await botPage.getByRole("textbox", { name: "给 bot 发消息" }).fill("**发版**前看一下 [检查单](https://example.com/list) 和 `make check`\n\n> 引用一句");
@@ -90,7 +90,7 @@ test("工单 #101: a sender kept as \"bot (127.0.0.1)\" reads as its connection'
   };
   await rename("bot (127.0.0.1)");
   const roster = page.getByRole("region", { name: "Bot" });
-  await roster.getByRole("group", { name: "个人 agent" }).getByRole("button", { name: /^bot/ }).click();
+  await roster.getByRole("group", { name: "个人 Agent" }).getByRole("button", { name: /^bot/ }).click();
   const botPage = page.getByRole("region", { name: /^bot/ }).first();
   const log = botPage.getByRole("log", { name: "对话" });
   await botPage.getByRole("textbox", { name: /^给 bot/ }).fill("在吗");

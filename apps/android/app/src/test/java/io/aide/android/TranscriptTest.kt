@@ -1,6 +1,7 @@
 package io.aide.android
 
 import io.aide.android.api.AgentDraft
+import io.aide.android.api.AttachmentInfo
 import io.aide.android.api.AgentMessage
 import io.aide.android.api.Question
 import io.aide.android.api.QuestionAsked
@@ -68,5 +69,16 @@ class TranscriptTest {
         assertEquals(1, t.items().size)
         t.add(SessionEvent(seq = 4, turnCompleted = TurnCompleted(isError = true, failure = Failure(message = "rate limited"))))
         assertEquals(Item.TurnEnd("e4", true, "rate limited"), t.items().last())
+    }
+
+    // 工单 #143: a message's bubble has its words as written, without the list of its files the machine adds for the
+    // agent, and the files themselves.
+    @Test fun messageFiles() {
+        val t = Transcript()
+        val list = "[Aide] Attached files, saved on this machine outside the worktree:\n- /m/a/shot.png (image/png, 3 bytes)"
+        val shot = AttachmentInfo(name = "shot.png", mediaType = "image/png", size = 3, sha256 = "ab", image = true)
+        t.add(SessionEvent(seq = 1, userMessage = UserMessage(text = "看这张\n\n$list", attachments = listOf(shot))))
+        t.add(SessionEvent(seq = 2, userMessage = UserMessage(text = list, attachments = listOf(shot))))
+        assertEquals(listOf(Item.User("e1", "看这张", files = listOf(shot)), Item.User("e2", "", files = listOf(shot))), t.items())
     }
 }

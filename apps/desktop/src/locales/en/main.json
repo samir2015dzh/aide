@@ -40,8 +40,8 @@
       "nextActive": "Next Task in Progress",
       "showInspector": "Show Sessions",
       "hideInspector": "Hide Sessions",
-      "showSidebar": "Expand Sidebar",
-      "hideSidebar": "Collapse Sidebar",
+      "showSidebar": "Show Sidebar",
+      "hideSidebar": "Hide Sidebar",
       "fullScreen": "Enter Full Screen"
     },
     "session": {

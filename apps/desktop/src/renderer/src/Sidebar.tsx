@@ -260,9 +260,9 @@ type AccountItem = { id: "settings" | "account" | "newGrant" | "addMachine" | "c
 
 /**
  * The account menu, from the avatar at the sidebar's foot: it opens upward, as wide as the foot, with what adds
- * something and the settings. compact: the rail's foot, the avatar alone; the menu then opens beside the rail.
+ * something and the settings.
  */
-export function AccountMenu({ compact = false }: { compact?: boolean }) {
+export function AccountMenu() {
   const st = useStore();
   const { t } = useTranslation("common");
   // "key": opened from the keyboard, so the first item is chosen at once, as in a native menu.
@@ -329,7 +329,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
     }
   };
   return (
-    <div className={`acct ${compact ? "compact" : ""}`} ref={ref}>
+    <div className="acct" ref={ref}>
       {open && (
         <div className="acct-menu" role="menu" aria-label={t("sidebar.account")} tabIndex={-1} ref={menu} onKeyDown={onKeyDown} onMouseLeave={() => menu.current?.focus()}>
           {items.map((it, i) =>
@@ -346,12 +346,10 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
           )}
         </div>
       )}
-      <button className="side-foot" ref={foot} aria-label={t("sidebar.account")} title={compact ? t("sidebar.account") : undefined} aria-haspopup="menu" aria-expanded={!!open} onClick={(e) => setOpen(open ? false : e.detail ? "mouse" : "key")}>
+      <button className="side-foot" ref={foot} aria-label={t("sidebar.account")} aria-haspopup="menu" aria-expanded={!!open} onClick={(e) => setOpen(open ? false : e.detail ? "mouse" : "key")}>
         <DeviceFace kind="person" size={32} />
         {/* Something waits for the owner in a page the menu opens: a dot on the avatar. */}
         {due > 0 && <i className="acct-due" aria-label={t("sidebar.attention", { count: due })} role="img" />}
-        {/* The rail has room for the avatar alone; a dot on it when not connected. */}
-        {compact ? (!st.status?.relayConnected && <i className="dotc" aria-hidden="true" />) : <>
         <span className="who">
           <b>{window.aide?.userName ?? "Aide"}</b>
           <span>
@@ -362,7 +360,6 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
           </span>
         </span>
         <Icon name="chevD" className="sm chev" />
-        </>}
       </button>
     </div>
   );

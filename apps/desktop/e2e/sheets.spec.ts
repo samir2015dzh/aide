@@ -145,9 +145,9 @@ test("connecting an assistant: the message to send, it logs in with the account 
     if (!text.includes("所有项目")) await box.setChecked(text.includes("/ demo"));
   }
   await projects.getByRole("button", { name: "好" }).click();
-  const agents = scope.getByRole("group", { name: "编码 agent" });
+  const agents = scope.getByRole("group", { name: "编码 Agent" });
   await agents.getByRole("button", { name: "修改" }).click();
-  const allAgents = agents.getByRole("checkbox", { name: "所有编码 agent（包括以后安装的）" });
+  const allAgents = agents.getByRole("checkbox", { name: "所有编码 Agent（包括以后安装的）" });
   await expect(allAgents).toBeChecked();
   await allAgents.setChecked(false);
   await agents.getByRole("checkbox", { name: "Gemini CLI" }).setChecked(true);

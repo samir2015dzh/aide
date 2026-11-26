@@ -212,18 +212,20 @@ object OutboxCodec {
 
     private const val ATTACHED_NOTE = "[Aide] Attached files"
 
-    private fun isEchoText(m: OutboxMessage, recorded: String): Boolean {
+    private fun isEchoText(m: OutboxMessage, recorded: String, recordedAttachments: Int): Boolean {
         val sent = m.text.trim()
+        // A machine that records the files apart from the words (工单 #143): the words as written.
+        if (recordedAttachments > 0) return userWords(recorded, recordedAttachments).trim() == sent
         val got = recorded.trim()
         if (m.attachments.isEmpty()) return sent.isNotEmpty() && got == sent
-        // The machine lists the saved files after the text.
+        // An older machine lists the saved files after the text.
         return if (sent.isEmpty()) got.startsWith(ATTACHED_NOTE) else got.startsWith("$sent\n\n$ATTACHED_NOTE")
     }
 
     private fun enqueuedBefore(m: OutboxMessage, e: SessionEvent): Boolean {
         m.afterSeq?.let { return e.seq > it }
-        // Kept before afterSeq existed: by time instead.
-        return runCatching { !Instant.parse(e.ts).isBefore(Instant.parse(m.createdAt).minusSeconds(1)) }.getOrDefault(false)
+        // Kept before afterSeq existed: by time instead, and with no time to go by, any event (mirrors core).
+        return runCatching { !Instant.parse(e.ts).isBefore(Instant.parse(m.createdAt).minusSeconds(1)) }.getOrDefault(true)
     }
 
     /**
@@ -244,7 +246,7 @@ object OutboxCodec {
             val users = events.filter { it.userMessage != null }
             val used = BooleanArray(users.size)
             for (m in mine.filter { it.status == OutboxStatus.SENT }.sortedBy { it.clientSeq }) {
-                val i = users.indices.firstOrNull { !used[it] && enqueuedBefore(m, users[it]) && isEchoText(m, users[it].userMessage!!.text) }
+                val i = users.indices.firstOrNull { !used[it] && enqueuedBefore(m, users[it]) && isEchoText(m, users[it].userMessage!!.text, users[it].userMessage!!.attachments.size) }
                 if (i != null) {
                     used[i] = true
                     drop += m.id

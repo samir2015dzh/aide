@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { admitAttachments, attachmentKind, attachmentNote, maxAttachments, shownAsImage, sizeText } from "./attachments";
+import { admitAttachments, attachmentKind, attachmentNote, freshFiles, maxAttachments, pasteAttaches, shownAsImage, sizeText } from "./attachments";
 
 const f = (name: string, type: string, size = 10) => ({ name, type, size });
 
@@ -32,5 +32,20 @@ describe("attachments (工单 #91)", () => {
 
   test("sizes as people read them", () => {
     expect([sizeText(820), sizeText(12 * 1024), sizeText(3.4 * 1024 * 1024), sizeText(32 << 20)]).toEqual(["820 B", "12 KB", "3.4 MB", "32 MB"]);
+  });
+});
+
+describe("paste and drop (工单 #143)", () => {
+  test("a screenshot attaches; words copied with a picture of them paste as the words; files copied attach", () => {
+    expect(pasteAttaches("", 1, [""])).toBe(true);
+    expect(pasteAttaches("收入\t123\n成本\t45", 1, [""])).toBe(false);
+    expect(pasteAttaches("report.pdf", 1, ["/home/me/report.pdf"])).toBe(true);
+    expect(pasteAttaches("hello", 0, [])).toBe(false);
+  });
+  test("the same file twice goes once", () => {
+    const a = { name: "a.png", type: "image/png", size: 3 };
+    const b = { name: "b.png", type: "image/png", size: 3 };
+    expect(freshFiles([a], [{ ...a }, b, { ...b }])).toEqual([b]);
+    expect(freshFiles([a], [{ ...a, size: 4 }])).toHaveLength(1);
   });
 });

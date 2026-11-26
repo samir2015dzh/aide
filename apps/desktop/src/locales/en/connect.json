@@ -39,7 +39,7 @@
     "customMissing": "Check the command: is the program installed on {{machine}}, under that name or at that full path? Edit the agent below and click Test Connection to see what happens."
   },
   "project": {
-    "none": "{{agent}} has no project on {{machine}} yet: a folder it may work in. A test task needs one.",
+    "none": "A test task runs in a project: {{agent}} has none on {{machine}} yet (a folder it may work in). Add one first.",
     "some_one": "{{agent}} may work in {{count}} project on {{machine}}: {{names}}.",
     "some_other": "{{agent}} may work in {{count}} projects on {{machine}}: {{names}}.",
     "add": "Add Project…",
@@ -57,8 +57,8 @@
     "prompt": "This is a test from Aide. Reply with one short sentence: say hello and name the folder you are working in. Do not change any files.",
     "started": "Test task started. It shows in Aide’s task list.",
     "open": "Open It in Aide",
-    "needsProject": "Add a project first: a test task works in one.",
-    "notLoggedIn": "Didn't work: Claude Code's command line is not signed in. The desktop app's sign-in doesn't carry over, so tasks for Claude fail on this machine."
+    "notLoggedIn": "Didn't work: Claude Code's command line is not signed in. The desktop app's sign-in doesn't carry over, so tasks for Claude fail on this machine.",
+    "notReady": "Test {{agent}} here once it can be used on {{machine}}: first do what Status above says."
   },
   "deepseek": {
     "intro": "DSH is a coding agent (a desktop app that works with your DeepSeek account or API key). Aide runs the DSH installed on your computer: the one in the desktop app, or the dsh command.",
@@ -117,21 +117,31 @@
   },
   "antigravity": {
     "intro": "Antigravity is Google’s first-class coding agent, running on your computer via its official ACP server with three-tier permission presets (Read only / Workspace write / Full access) and live session model discovery.",
-    "need1": "Google Antigravity’s official ACP server installed on the computer that runs it (agy_acp_server, e.g. under ~/.local/share/antigravity-acp/).",
-    "need2": "Antigravity signed in: run aide agent login antigravity once in a terminal.",
     "step1": "Choose the computer that has Antigravity above (this one is chosen for you).",
     "step2": "Look at Status: it should say “Detected”. If it doesn’t, follow the list under it, then click Check Again.",
     "step3": "If Antigravity has no project yet, click Add Project… and choose a folder it may work in.",
     "step4": "Click Run Test. Antigravity answers one short question.",
     "step5": "Click Start Test Task. A real task starts and opens in Aide.",
-    "fixInstall": "Install Google Antigravity’s official ACP server (agy_acp_server) on {{machine}}. The desktop app alone isn’t enough.",
-    "fixWhere": "Installed already? Check that agy_acp_server is on a new terminal’s PATH, or placed in ~/.local/share/antigravity-acp/ (or %LOCALAPPDATA%\\antigravity-acp\\ on Windows).",
+    "fixInstall": "Click Install Antigravity ACP Server above: the Antigravity desktop app doesn’t bring this server, and Aide installs it for you.",
+    "fixWhere": "Rather install it yourself? Unpack the official release into ~/.local/share/antigravity-acp/ (%LOCALAPPDATA%\\antigravity-acp\\ on Windows), or put agy_acp_server on a new terminal’s PATH.",
     "fixSignIn": "Sign Antigravity in once: open a terminal (PowerShell on Windows), paste the command below and follow the sign-in link.",
     "testFailedHint": "If the reason says it isn’t logged in, run aide agent login antigravity (see Status above) and run the test again.",
-    "where1": "Tasks you start in Aide with Antigravity are in Aide’s task list on every device, with machine/project selection, three-tier permission presets, and full conversation continuation."
+    "where1": "Tasks you start in Aide with Antigravity are in Aide’s task list on every device, with machine/project selection, three-tier permission presets, and full conversation continuation.",
+    "needServer": "Google’s official Antigravity ACP server (agy_acp_server): it is what Aide runs, not the Antigravity desktop app.",
+    "needServerMissing": "{{machine}} doesn’t have Google’s official Antigravity ACP server yet (the desktop app doesn’t bring it): click Install Antigravity ACP Server under Status below, and Aide installs it.",
+    "needServerBroken": "The Antigravity ACP server on {{machine}} doesn’t run: see why under Status below; Install Antigravity ACP Server installs it again.",
+    "needServerOk": "Google’s official Antigravity ACP server is installed on {{machine}}.",
+    "needSignIn": "Your Google account’s sign-in: only you can give it, in a browser; Aide can’t do it for you.",
+    "needSignInMissing": "Not signed in yet, which only you can do: run aide agent login antigravity once in a terminal, and allow it with your Google account in the browser that opens.",
+    "needSignInUnconfirmed": "Whether it is signed in shows once it runs: click Run Test below. If it says it isn’t, run aide agent login antigravity once in a terminal and allow it with your Google account.",
+    "needSignInOk": "Signed in with your Google account.",
+    "needSignInLater": "Sign in once the server is installed, which only you can do: run aide agent login antigravity once in a terminal and allow it with your Google account.",
+    "install": "Install Antigravity ACP Server",
+    "installing": "Downloading and checking…",
+    "installWhat": "Aide downloads the Antigravity ACP server from Google’s official releases, checks it against the official ACP registry’s SHA-256, installs it on {{machine}} where Aide looks for it, and checks again."
   },
   "custom": {
-    "intro": "Connect any coding agent Aide doesn’t list, if it speaks the Agent Client Protocol (ACP). Tell Aide how to start it; Aide keeps it on that computer and lists it with the others. An agent without ACP that can run commands in a terminal (WorkBuddy, for one) connects under Assistants below, as Other Agent.",
+    "intro": "Connect any coding agent Aide doesn’t list, if it speaks the Agent Client Protocol (ACP). Tell Aide how to start it; Aide keeps it on that computer and lists it with the others. An agent without ACP that can run commands in a terminal connects under Assistants below, as Other Agent.",
     "need1": "The agent installed on the computer that runs it, and its own sign-in or key ready.",
     "need2": "The command that starts it in ACP mode, from its documentation (often an --acp argument).",
     "step1": "Choose the computer that runs the agent above.",
@@ -230,5 +240,13 @@
     "connectedBody": "It is authorized for your projects. Showing online alone is not done: verify both keepalive and inbox watching (daemon cron, message_wake webhook, or external poll hook), and confirm it picks up and replies to a real message from the Aide app.",
     "scope": "Change What It Can Use…"
   },
-  "details": "Connection details"
+  "details": "Connection details",
+  "installFailed": "Not installed: {{reason}}",
+  "listSeparator": ", ",
+  "known": {
+    "title": "Other coding agents Aide knows",
+    "note": "These need no form: installed on {{machine}}, Aide detects them and you can choose them in projects and access. How each stands now:",
+    "installHint": "Install {{agent}}’s command-line tool, then click Check Again.",
+    "signInHint": "Sign {{agent}} in once in a terminal, as its own instructions say."
+  }
 }

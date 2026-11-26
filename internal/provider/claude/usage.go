@@ -15,6 +15,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/samir2015dzh/aide/internal/provider"
 )
 
 // Claude plan usage (docs/claude-usage.md). aided reads the account's OAuth
@@ -34,12 +36,9 @@ const (
 // renewLeeway refreshes a token this long before it would expire.
 const renewLeeway = 10 * time.Minute
 
-// Window is one rate-limit window's reading.
-type Window struct {
-	Key         string    `json:"key"`
-	Utilization float64   `json:"utilization"`
-	ResetsAt    time.Time `json:"resets_at"`
-}
+// Window is one rate-limit window's reading: the same as an agent's check
+// says it (provider.UsageWindow, 工单 #143), so both are one reading.
+type Window = provider.UsageWindow
 
 // Usage is a reading of the account's plan usage.
 type Usage struct {
@@ -56,9 +55,12 @@ type Usage struct {
 	// transport error with its host. Never a token, header or URL path.
 	Detail string
 	// Source is where a reading came from: "claude_code_cache" (CacheUsage,
-	// 工单 #104), "claude_code" (CLIUsage) or "api" (UsageReader); set by
-	// whoever chose between them.
+	// 工单 #104), "claude_code" (CLIUsage), "claude_code_check" (asked at
+	// Claude Code's check, get_usage, 工单 #143) or "api" (UsageReader); set
+	// by whoever chose between them.
 	Source string
+	// Plan is the plan, when the source says it ("max"; get_usage does).
+	Plan string
 }
 
 // UsageReader reads plan usage. The zero value works (real endpoints, real

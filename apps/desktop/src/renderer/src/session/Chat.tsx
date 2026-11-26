@@ -2,11 +2,11 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { useTranslation } from "react-i18next";
 import type { Client, Machine } from "@aide/proto/local";
 import { Workspace } from "@aide/proto/identity";
-import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
+import { FailureKind, SessionLink, SessionStatus, type AttachmentInfo, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
 import {
-  agoText, checkpoints, clockText, codingBotState, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, failureTitle, groupSteps, isActive, isArchivable, isFailed,
+  agoText, checkpoints, clockText, codingBotState, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
-  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, type OutboxMessage, type Step,
+  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, attachmentKind, sizeText, type OutboxMessage, type Step,
 } from "@aide/core";
 import { AgentLogo, Mark, agentName } from "@aide/ui";
 import { local } from "../api";
@@ -31,6 +31,7 @@ import { ContentScope } from "./scope";
 import { desktopOutbox, useSessionOutbox } from "./outbox";
 import { useRowState } from "./useRowState";
 import { useVirtualRows, type VirtualRow } from "./useVirtualRows";
+import { rememberSent, sentPicture } from "./sentFiles";
 /**
  * The conversation, newest at the bottom, ending with the reply the agent is
  * still writing (draft); while a turn is live, the control area sits over
@@ -457,7 +458,7 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
           : it.from === "owner"
             ? t("chat.fromYou")
             : agentName(clients.find((c) => c.clientId === it.from)?.label || it.fromName || it.from);
-      return <UserBubble text={it.text} at={it.at} by={by} rollback={rollback} />;
+      return <UserBubble text={it.text} at={it.at} by={by} rollback={rollback} files={it.attachments} />;
     }
     case "agent":
       // A turn's reply is one, however many times it writes: when it is over, its last words say when and Copy.
@@ -482,7 +483,7 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
       const end = it.end;
       if (end.isError && isInterruption(end.failure)) return <InterruptNote failure={end.failure} clients={clients} grant={grant} />;
       // The session's current failure is told once, at the end (rowsOf leaves it out); an earlier one (a later turn went on) in one quiet line.
-      if (end.isError) return <FailLine id={rowKey} title={t("chat.turnFailed", { turn: end.turn, title: failureTitle(end.failure?.kind ?? 0) })} message={end.failure?.message ?? ""} />;
+      if (end.isError) return <FailLine id={rowKey} sessionId={sessionId} turn={end.turn} failure={end.failure} message={end.failure?.message ?? ""} />;
       // A turn that went well needs no line: the next message shows it went on.
       return null;
     }
@@ -519,20 +520,49 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
       const e = it.error;
       // Stopped before its turn began (queued or starting): an interruption, not a failure.
       if (isInterruption(e.failure)) return <InterruptNote failure={e.failure} clients={clients} grant={grant} />;
-      return <FailLine id={rowKey} title={e.failure ? t("chat.failedWith", { title: failureTitle(e.failure.kind) }) : t("chat.failed")} message={e.message} />;
+      return <FailLine id={rowKey} sessionId={sessionId} failure={e.failure} message={e.message} />;
     }
   }
 }
 
 /** What was sent to the agent, on the right; no name (the info card says who). On hover, when it was sent, and Copy. */
 /** by: who wrote it, when that isn't who the conversation belongs to. */
-export function UserBubble({ text, at, by, rollback }: { text: string; at?: Date; by?: string; rollback?: () => void }) {
+export function UserBubble({ text, at, by, rollback, files = [] }: { text: string; at?: Date; by?: string; rollback?: () => void; files?: AttachmentInfo[] }) {
   return (
     <div className="um">
       {by && <div className="um-by">{by}</div>}
-      <div className="bub sel-text">{text}</div>
+      {files.length > 0 && <SentFiles files={files} />}
+      {text !== "" && <div className="bub sel-text">{text}</div>}
       <Copy text={text} at={at} rollback={rollback} />
     </div>
+  );
+}
+
+/** The files that went with a message (工单 #143): a picture sent from here as its thumbnail, any other by name. */
+function SentFiles({ files }: { files: AttachmentInfo[] }) {
+  const { t } = useTranslation("common");
+  return (
+    <ul className="um-files" aria-label={t("composer.sentFiles")}>
+      {files.map((f) => {
+        const kind = attachmentKind({ name: f.name, type: f.mediaType });
+        const pic = kind === "image" ? sentPicture(f.sha256) : "";
+        return (
+          <li key={f.sha256 + f.name} className={`um-file ${pic ? "img" : ""}`} title={`${f.name}\n${t(`composer.attach.${kind}`)} · ${sizeText(Number(f.size))}`}>
+            {pic ? (
+              <img src={pic} alt={f.name} />
+            ) : (
+              <>
+                <Icon name={kind === "image" ? "image" : kind === "audio" ? "audio" : "doc"} />
+                <span className="um-file-t">
+                  <b>{f.name}</b>
+                  <span>{t(`composer.attach.${kind}`)} · {sizeText(Number(f.size))}</span>
+                </span>
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -760,15 +790,25 @@ export function FailCard({ headline, hints, message, actions }: { headline: stri
 }
 
 /** An earlier failure in the conversation: one red line, its words folded. */
-export function FailLine({ id, title, message }: { id: string; title: string; message: string }) {
+export function FailLine({ id, sessionId = "", turn, failure, title, message }: { id: string; sessionId?: string; turn?: number; failure?: Failure; title?: string; message: string }) {
+  const { t } = useTranslation("session");
+  const st = useStore();
   const [open, setOpen] = useRowState(`failure:${id}`, false);
+  // What happened, in a sentence of its own (工单 #139 P12: "第 1 轮出错：失败 ›", its reason only once opened); the
+  // agent's own words stay folded under Details.
+  const agent = codingAgentTitle(st.sessions.find((s) => s.sessionId === sessionId)?.agent ?? "");
+  const what = title ?? (failure ? failureHeadline(failure.kind, agent, failure.provider) : t("chat.failed"));
   return (
     <div className="qfail past">
-      <button className="qf-line" aria-expanded={message !== "" ? open : undefined} onClick={() => message !== "" && setOpen(!open)}>
+      <div className="qf-line">
         <Icon name="info" className="sm" />
-        <span>{title}</span>
-        {message !== "" && <Icon name="chevR" className={`sm chev ${open ? "open" : ""}`} />}
-      </button>
+        <span>{turn ? t("chat.turnFailed", { turn, title: what }) : what}</span>
+        {message !== "" && (
+          <button className="link" aria-expanded={open} onClick={() => setOpen(!open)}>
+            {t("chat.details")} <Icon name="chevR" className={`sm chev ${open ? "open" : ""}`} />
+          </button>
+        )}
+      </div>
       {open && <div className="qf-raw sel-text">{message}</div>}
     </div>
   );
@@ -854,6 +894,7 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
     setState({ kind: "sending" });
     try {
       const attachments = await attachmentsOf(attach.files);
+      await rememberSent(attachments);
       if (other) {
         const to = (await local.startSession({ machineId: s.machineId, session: { idempotencyKey: key, agent: s.agent, projectId: s.projectId, prompt: text, model, attachments } })).session;
         setKey(crypto.randomUUID());
@@ -952,7 +993,7 @@ function LostSpans({ s }: { s: Session }) {
   if (!last) return null;
   const hm = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const text = last.to ? coreT("link.lostSpan", { from: hm(last.from), to: hm(last.to) }) : coreT("link.lostSpanOpen", { from: hm(last.from) });
-  return <span className="ph lostspan" title={spans.map((x) => `${hm(x.from)}–${x.to ? hm(x.to) : ""}`).join(", ")}>{text}</span>;
+  return <span className="ph lostspan" title={spans.map((x) => `${hm(x.from)}–${x.to ? hm(x.to) : ""}`).join(coreT("conn.listSeparator"))}>{text}</span>;
 }
 
 /** When the turn in progress started: from its events, else when the session was created. */
@@ -1003,7 +1044,7 @@ function OutboxRows({ items }: { items: OutboxMessage[] }) {
               )}
               <div className="outbox-meta" style={{ fontSize: "12px", opacity: 0.85, marginTop: "4px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                 <span>#{item.clientSeq} · {statusLabel}</span>
-                {item.error && item.status !== "sent" && <span title={item.error}>({item.error})</span>}
+                {/* The transport's own error is the log's (工单 #139): the state above says what it means. */}
                 {unsent && (
                   <>
                     {!item.attachmentsLost && (

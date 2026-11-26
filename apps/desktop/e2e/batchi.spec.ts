@@ -131,6 +131,33 @@ test("the box to write in: + attaches images, files and audio (pasted, dropped o
   const files = composer.getByRole("list", { name: "已附上" });
   await expect(files.getByRole("listitem")).toHaveCount(4);
   await expect(files.getByRole("img", { name: "shot.png" })).toBeVisible();
+  // 工单 #143: words copied with a picture of them (a spreadsheet's cells) paste as the words, the picture left out;
+  // the same file pasted again goes once; files dropped anywhere over the window come to the box.
+  await box.evaluate((el, b64) => {
+    const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([data], "cells.png", { type: "image/png" }));
+    dt.setData("text/plain", "收入\t123");
+    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, png.toString("base64"));
+  await expect(files.getByRole("listitem")).toHaveCount(4);
+  await expect(files.getByRole("listitem").filter({ hasText: "cells.png" })).toHaveCount(0);
+  await composer.locator('input[data-attach="file"]').setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: notes });
+  await expect(composer.locator(".composer-state")).not.toContainText("没加上");
+  await expect(files.getByRole("listitem").filter({ hasText: "notes.txt" })).toHaveCount(1);
+  const dropped = await page.evaluateHandle(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(["dropped"], "dropped.txt", { type: "text/plain" }));
+    return dt;
+  });
+  const far = page.locator(".dmain, .bot-body, main").first();
+  await far.dispatchEvent("dragover", { dataTransfer: dropped });
+  await expect(composer.locator(".composer-drop")).toContainText("松手添加附件");
+  await far.dispatchEvent("drop", { dataTransfer: dropped });
+  await expect(composer.locator(".composer-drop")).toHaveCount(0);
+  await expect(files.getByRole("listitem")).toHaveCount(5);
+  await composer.getByRole("button", { name: "移除 dropped.txt" }).click();
+  await expect(files.getByRole("listitem")).toHaveCount(4);
   await expect(files.getByRole("listitem").filter({ hasText: "notes.txt" })).toContainText("文件 · 19 B");
   await expect(files.getByRole("listitem").filter({ hasText: "memo.wav" })).toContainText("音频");
   await composer.getByRole("button", { name: "移除 junk.bin" }).click();
@@ -148,6 +175,13 @@ test("the box to write in: + attaches images, files and audio (pasted, dropped o
   await expect(log).toContainText(`link shot.png image/png ${sha(png)}`);
   await expect(files).toHaveCount(0);
   await expect(box).toHaveValue("");
+  // In its bubble (工单 #143): the words as written, not the list the agent read; the files over them, the picture as
+  // its thumbnail.
+  const sent = page.locator(".um").filter({ has: page.getByRole("list", { name: "随消息发送的附件" }) }).last();
+  await expect(sent.getByRole("img", { name: "shot.png" })).toBeVisible({ timeout: 30_000 });
+  await expect(sent.locator(".um-file").filter({ hasText: "notes.txt" })).toContainText("文件 · 19 B");
+  await expect(sent.locator(".bub")).toHaveText("files");
+  await snap(page, "batchi-sent-files");
 
   // More than a message takes: the rest is refused by kind and name, said in the box, not dropped unsaid.
   await composer.locator('input[data-attach="file"]').setInputFiles(Array.from({ length: 21 }, (_, i) => ({ name: `f${i}.txt`, mimeType: "text/plain", buffer: Buffer.from("x") })));

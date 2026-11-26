@@ -73,6 +73,7 @@ import io.aide.android.api.AttachmentIn
 import io.aide.android.model.AppModel
 import io.aide.android.model.AttachKind
 import io.aide.android.model.PendingFile
+import io.aide.android.model.SentPictures
 import io.aide.android.model.admitAttachments
 import io.aide.android.model.attachKind
 import io.aide.android.model.attachmentNote
@@ -127,7 +128,10 @@ class Attachments {
     fun refuse(why: String) { refused = listOf(why) }
     fun remove(d: Draft) { files.remove(d); refused = emptyList() }
     fun clear() { files.clear(); refused = emptyList() }
-    fun wire(): List<AttachmentIn> = files.map { AttachmentIn(it.name, it.type, java.util.Base64.getEncoder().encodeToString(it.bytes)) }
+    fun wire(): List<AttachmentIn> = files.map {
+        it.thumb?.let { th -> SentPictures.keep(it.bytes, th) } // its bubble shows it (工单 #143)
+        AttachmentIn(it.name, it.type, java.util.Base64.getEncoder().encodeToString(it.bytes))
+    }
 }
 
 @Composable
