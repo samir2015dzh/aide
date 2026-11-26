@@ -148,11 +148,12 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
     var msgs by remember { mutableStateOf<List<RoomMessage>>(emptyList()) }
     var failed by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var unreached by remember { mutableStateOf(emptyList<String>()) }
     val scope = rememberCoroutineScope()
     suspend fun read() {
         val r = model.readRoom(machineId, roomId)
         failed = r == null
-        if (r != null) { room = r.room; msgs = r.messages }
+        if (r != null) { room = r.room; msgs = r.messages; unreached = r.unreachedMachineIds }
     }
     DisposableEffect(roomId) {
         model.roomOpen = roomId
@@ -261,6 +262,16 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                     Text(t("$waiting replies are on their way: they come in as soon as the machine keeping the room is back", "还有 $waiting 条回复在路上：负责房间的机器一上线就进房间"), style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
                 }
             }
+            if (r.shadow && unreached.isNotEmpty()) {
+                // 工单 #164: each machine keeps its own copy; one away may hold what the others missed.
+                val names = unreached.map { id -> world.machineName(id) }
+                Text(
+                    t("${names.joinToString(", ")} not reachable now: what only it took may be missing here until it is back.", "${names.joinToString("、")} 现在连不上：只有它收下的那部分，在它回来之前这里可能缺着。"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Warning,
+                    modifier = Modifier.fillMaxWidth().background(aide.inset).padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
             if (r.shadow) {
                 Text(
                     t("Read-only shadow conversation · View messages between your agents here", "只读影子对话 · 仅用于查看 agent 之间的往来消息，不能在此发言"),
@@ -306,6 +317,7 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo:
                 append(m.fromName)
                 if (r.shadow && m.toName.isNotEmpty()) append(" → ${m.toName}")
                 if (whenText != null) append(" · $whenText")
+                claimedText(m)?.let { append(" · $it") }
                 if (m.lightChat) append(t(" · Light", " · 轻聊"))
                 if (m.late) append(t(" · came after stop", " · 停止后到达"))
             }
@@ -583,4 +595,16 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
             }
         }
     }
+}
+
+/**
+ * A shadow letter's sender's own time, beside the post office's, when they are minutes apart (工单 #163): the
+ * conversation is in the order the post office took its letters, as a sender's clock may be off.
+ */
+internal fun claimedText(m: RoomMessage): String? {
+    if (m.claimedAt.isEmpty() || m.at.isEmpty()) return null
+    val claimed = runCatching { Instant.parse(m.claimedAt) }.getOrNull() ?: return null
+    val at = runCatching { Instant.parse(m.at) }.getOrNull() ?: return null
+    if (kotlin.math.abs(java.time.Duration.between(at, claimed).toMinutes()) < 5) return null
+    return t("its sender says ", "对方自报 ") + java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT).withZone(java.time.ZoneId.systemDefault()).format(claimed)
 }

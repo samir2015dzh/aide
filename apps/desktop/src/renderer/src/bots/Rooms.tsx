@@ -11,6 +11,7 @@ import { TimeLine } from "../session/Chat";
 import { Markdown } from "../session/Markdown";
 import { Check, Picker } from "../Picker";
 import { errorText, useNow, useStore, type Store } from "../store";
+import { machineName } from "../Sidebar";
 import { BotFace, deliveryWords, useRoster } from "./Bots";
 import { Composer, type ComposerState } from "./Composer";
 
@@ -185,6 +186,14 @@ function FinalCard({ m, room }: { m: RoomMessage; room: Room }) {
  * member's naming another as a suggestion the owner can hand on. For read-only shadow conversations (#124), renders
  * sender -> recipient, timestamp, optional subject, and reply reference.
  */
+/** Beside a shadow letter's time (the post office's): the time its sender says, when they are minutes apart (工单 #163). */
+function Claimed({ at, claimed }: { at: Date; claimed: Date | undefined }) {
+  const { t } = useTranslation("common");
+  const now = useNow(30_000);
+  if (!claimed || Math.abs(claimed.getTime() - at.getTime()) < 5 * 60_000) return null;
+  return <em title={t("rooms.shadowClaimedTip")}>· {t("rooms.shadowClaimed", { when: listTime(claimed, now) })}</em>;
+}
+
 export function RoomTimeline({ room, msgs, handOn, resend }: { room: Room; msgs: RoomMessage[]; handOn?: (to: string, m: RoomMessage) => void; resend?: (m: RoomMessage) => void }) {
   const st = useStore();
   const { t } = useTranslation("common");
@@ -230,6 +239,7 @@ export function RoomTimeline({ room, msgs, handOn, resend }: { room: Room; msgs:
                   <span className="chat-who">
                     {room.shadow && m.toName ? `${m.fromName} → ${m.toName}` : m.fromName}
                     {room.shadow && atDate && <em>· {agoText(atDate, now)}</em>}
+                    {room.shadow && atDate && <Claimed at={atDate} claimed={dateOf(m.claimedAt)} />}
                     {m.late && <em>{t("rooms.late")}</em>}
                     {light && <span className="room-ro-tag">{t("rooms.light")}</span>}
                   </span>
@@ -292,6 +302,8 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
   const bots = allBots(useRoster());
   const [room, setRoom] = useState<Room>();
   const [msgs, setMsgs] = useState<RoomMessage[]>([]);
+  // A shadow conversation's: the owner's machines that keep a copy and did not answer (工单 #164).
+  const [unreached, setUnreached] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
@@ -302,7 +314,7 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
   // What was read last stays shown while the host can't be read (工单 #74): the room is not gone, its host is away.
   const read = () =>
     local.listRoomMessages({ machineId, roomId, limit: 300 }).then(
-      (r) => (setRoom(r.room), setMsgs(r.messages), setError("")),
+      (r) => (setRoom(r.room), setMsgs(r.messages), setUnreached(r.unreachedMachineIds), setError("")),
       (e) => setError(errorText(e)),
     );
   useEffect(() => {
@@ -443,7 +455,10 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
           {waiting.count > 0 && <div className="room-sys" role="note">{t("rooms.waitingInline", { count: waiting.count })}</div>}
         </div>
         {shadow ? (
-          <div className="shadow-ro-foot" role="note">{t("rooms.shadowReadOnly")}</div>
+          <div className="shadow-ro-foot" role="note">
+            {unreached.length > 0 && <div className="shadow-partial">{t("rooms.shadowPartial", { names: unreached.map((id) => machineName(st, id)).join(t("rooms.namesSep")) })}</div>}
+            {t("rooms.shadowReadOnly")}
+          </div>
         ) : (
           <Composer
             value={text}

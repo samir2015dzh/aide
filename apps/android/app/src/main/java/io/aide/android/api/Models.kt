@@ -722,11 +722,14 @@ data class TalkToPersonaResponse(
     val deliveries: List<RoomDelivery> = emptyList(), val inReplyTo: String = "", val mentions: List<String> = emptyList(), val round: Int = 0,
     @SerialName("final") val isFinal: Boolean = false, val finalSha256: String = "", val late: Boolean = false, val asks: List<String> = emptyList(), val system: Boolean = false,
     val toName: String = "", val subject: String = "", val lightChat: Boolean = false,
+    /** A shadow letter's sender's own word of when it sent it (工单 #163); at is the post office's. */
+    val claimedAt: String = "",
 )
 @Serializable data class OpenDirectRoomRequest(val clientId: String)
 @Serializable data class OpenDirectRoomResponse(val room: Room? = null)
 @Serializable data class ListRoomMessagesRequest(val machineId: String, val roomId: String, val limit: Int = 200)
-@Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList())
+/** unreachedMachineIds: a shadow conversation's, the owner's machines that keep a copy and did not answer (工单 #164). */
+@Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList(), val unreachedMachineIds: List<String> = emptyList())
 @Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String, val mentions: List<String> = emptyList(), val lightChat: Boolean = false)
 @Serializable data class CreateRoomMember(val botKey: String, val projectId: String = "", val name: String = "")
 @Serializable data class CreateRoomRequest(val name: String, val members: List<CreateRoomMember>, val mode: String, val maxRounds: Int)

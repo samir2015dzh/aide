@@ -1279,17 +1279,28 @@ func shadowRoomID(a, b string) string {
 		a, b = b, a
 	}
 	sum := sha256.Sum256([]byte(a + "\x00" + b))
-	return "room_shadow_" + hex.EncodeToString(sum[:8])
+	return shadowRoomPrefix + hex.EncodeToString(sum[:8])
 }
 
-// shadowTime is when a shadow copy is put in its conversation: the time its
-// sender says it sent it, but never after now nor before the oldest a copy
-// at the post office can be (shadowMaxAge): the sender says it, so a
-// back-dated copy can't drop out of the owner's view at once (retention) or
-// go before all that is kept, and a forward-dated one can't stay last.
-func shadowTime(sent *timestamppb.Timestamp, now time.Time) *timestamppb.Timestamp {
+const shadowRoomPrefix = "room_shadow_"
+
+// IsShadowRoom: the id is a shadow conversation's, which every one of the
+// owner's machines keeps a copy of (工单 #164).
+func IsShadowRoom(id string) bool { return strings.HasPrefix(id, shadowRoomPrefix) }
+
+// shadowTime is when a shadow copy is put in its conversation (工单 #163):
+// when the post office took it (the relay's own time), never after now nor
+// before the oldest a copy at the post office can be (shadowMaxAge). The
+// sender's own word (its envelope's sent_at) is kept beside it only for
+// reference: a machine whose clock is wrong would put its letters out of
+// order. A copy without the relay's time (an older relay) goes by the
+// sender's, as before.
+func shadowTime(received, sent *timestamppb.Timestamp, now time.Time) *timestamppb.Timestamp {
 	at := now
-	if sent != nil && sent.IsValid() && !sent.AsTime().IsZero() {
+	switch {
+	case received != nil && received.IsValid() && !received.AsTime().IsZero():
+		at = received.AsTime()
+	case sent != nil && sent.IsValid() && !sent.AsTime().IsZero():
 		at = sent.AsTime()
 	}
 	if at.After(now) {
@@ -1306,7 +1317,7 @@ func shadowTime(sent *timestamppb.Timestamp, now time.Time) *timestamppb.Timesta
 // sealed copy — zero plaintext on the relay) into the pair's read-only shadow
 // conversation, keeping at least 90 days (>= 30 days) of history even after the
 // recipient agent acknowledges its own inbox copy (工单 #124).
-func (n *Machine) takeShadowLetter(m *inboxv1.Message, sender *identity.ContactInfo) string {
+func (n *Machine) takeShadowLetter(m *inboxv1.Message, sender *identity.ContactInfo, received *timestamppb.Timestamp) string {
 	fromID := m.GetFrom().GetInbox()
 	toID := m.GetTo().GetInbox()
 	if fromID == "" || toID == "" || fromID == toID {
@@ -1329,7 +1340,7 @@ func (n *Machine) takeShadowLetter(m *inboxv1.Message, sender *identity.ContactI
 		aName, bName = bName, aName
 	}
 	rid := shadowRoomID(aID, bID)
-	sentAt := shadowTime(m.SentAt, time.Now())
+	sentAt := shadowTime(received, m.SentAt, time.Now())
 
 	b := n.roomBook()
 	b.mu.Lock()
@@ -1368,9 +1379,10 @@ func (n *Machine) takeShadowLetter(m *inboxv1.Message, sender *identity.ContactI
 		Text:      m.Text,
 		InReplyTo: m.InReplyTo,
 		At:        sentAt,
+		ClaimedAt: m.SentAt,
 	}
 	st.msgs = append(st.msgs, rm)
-	// Chronological ordering by timestamp, breaking ties by message id.
+	// In the order the post office took them, breaking ties by message id.
 	slices.SortStableFunc(st.msgs, func(x, y *machinev1.RoomMessage) int {
 		if c := x.At.AsTime().Compare(y.At.AsTime()); c != 0 {
 			return c

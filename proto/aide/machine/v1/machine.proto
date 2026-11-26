@@ -1568,6 +1568,10 @@ message RoomMessage {
   string subject = 17;
   // Sent via lightweight chat mode (工单 #123).
   bool light_chat = 18;
+  // In a read-only shadow conversation: when its sender says it sent it
+  // (工单 #163). Only for reference: at is when the post office took it,
+  // the relay's own time, and the conversation is in that order.
+  google.protobuf.Timestamp claimed_at = 25;
 }
 
 message ListRoomsRequest {}
@@ -1590,6 +1594,11 @@ message ListRoomMessagesRequest {
 message ListRoomMessagesResponse {
   Room room = 1;
   repeated RoomMessage messages = 2;
+  // A shadow conversation (工单 #164): every one of the owner's machines
+  // keeps its own copy, and the owner's device shows them as one; these
+  // are the machines that keep one and did not answer now, so what only
+  // they took may be missing.
+  repeated string unreached_machine_ids = 10;
 }
 
 message PostRoomMessageRequest {

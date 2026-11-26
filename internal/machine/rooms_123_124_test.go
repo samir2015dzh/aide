@@ -154,12 +154,12 @@ func TestShadowConversationReadOnlyAndRetention124(t *testing.T) {
 		{&inboxv1.Message{MessageId: "msg_01rep000000000000000000000", From: &inboxv1.Address{Inbox: "c_hermes"}, To: &inboxv1.Address{Inbox: "c_muse"}, SentAt: timestamppb.New(now.Add(-1 * time.Minute)), InReplyTo: "msg_01req000000000000000000000", Subject: "Re: 两件套同步", Text: "收到，已配好定时巡检"}, hermesInfo},
 	}
 	for _, x := range msgs {
-		if got := n.takeShadowLetter(x.m, x.info); got != "handled" {
+		if got := n.takeShadowLetter(x.m, x.info, nil); got != "handled" {
 			t.Fatalf("takeShadowLetter %s: %q", x.m.MessageId, got)
 		}
 	}
 	// Duplicate delivery is idempotent.
-	if got := n.takeShadowLetter(msgs[2].m, museInfo); got != "handled" {
+	if got := n.takeShadowLetter(msgs[2].m, museInfo, nil); got != "handled" {
 		t.Fatalf("duplicate takeShadowLetter: %q", got)
 	}
 
@@ -194,7 +194,7 @@ func TestShadowConversationReadOnlyAndRetention124(t *testing.T) {
 	b.mu.Unlock()
 	// A forward-dated copy is put at now, not after everything to come.
 	future := &inboxv1.Message{MessageId: "msg_01future00000000000000000", From: &inboxv1.Address{Inbox: "c_hermes"}, To: &inboxv1.Address{Inbox: "c_muse"}, SentAt: timestamppb.New(now.Add(48 * time.Hour)), Text: "from the future"}
-	if got := n.takeShadowLetter(future, hermesInfo); got != "handled" {
+	if got := n.takeShadowLetter(future, hermesInfo, nil); got != "handled" {
 		t.Fatalf("takeShadowLetter future: %q", got)
 	}
 	res, _ = n.ListRoomMessages(&machinev1.ListRoomMessagesRequest{RoomId: shadow.RoomId})

@@ -1881,10 +1881,109 @@ func newestDirectRoom(rooms []*machinev1.Room, clientID string) *machinev1.Room 
 
 func (o *Owner) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
 	r := &machinev1.ListRoomMessagesRequest{RoomId: req.RoomId, Limit: req.Limit}
+	if machine.IsShadowRoom(req.RoomId) {
+		return o.shadowMessages(ctx, r)
+	}
 	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.ListRoomMessagesResponse, error) { return l.ListRoomMessages(r) },
 		func(n *peer.Machine) (*machinev1.ListRoomMessagesResponse, error) {
 			return n.Admin.ListRoomMessages(ctx, r)
 		})
+}
+
+// shadowMessages is a shadow conversation as one (工单 #164): each of the
+// owner's machines keeps its own copy, as the post office brought it each
+// one's sealed copy (a machine away takes its copies when it is back, for
+// as long as the post office keeps them); here they are put together by
+// message id, in the post office's order, with the machines that keep one
+// and did not answer now named, as what only they took may be missing.
+func (o *Owner) shadowMessages(ctx context.Context, r *machinev1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	machines, err := o.machines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	all := &machinev1.ListRoomMessagesRequest{RoomId: r.RoomId}
+	var parts []*machinev1.ListRoomMessagesResponse
+	var unreached []string
+	var first error
+	for _, m := range machines {
+		if !m.Online && !m.Local {
+			unreached = append(unreached, m.MachineId)
+			continue
+		}
+		res, err := onDSHMachine(ctx, o, m.MachineId, func(l *machine.Local) (*machinev1.ListRoomMessagesResponse, error) { return l.ListRoomMessages(all) },
+			func(n *peer.Machine) (*machinev1.ListRoomMessagesResponse, error) {
+				return n.Admin.ListRoomMessages(ctx, all)
+			})
+		switch {
+		case connect.CodeOf(err) == connect.CodeNotFound:
+			continue // it has taken none of it
+		case err != nil:
+			unreached = append(unreached, m.MachineId)
+			if first == nil {
+				first = err
+			}
+			continue
+		}
+		parts = append(parts, res)
+	}
+	if len(parts) == 0 {
+		if first != nil {
+			return nil, first
+		}
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no conversation %s", r.RoomId))
+	}
+	merged := mergeShadow(parts, r.Limit)
+	merged.UnreachedMachineIds = unreached
+	return merged, nil
+}
+
+// mergeShadow puts the copies of one shadow conversation together: each
+// message once, in the post office's order (ties by id), the newest limit
+// (0: all), with the latest copy's room.
+func mergeShadow(parts []*machinev1.ListRoomMessagesResponse, limit uint32) *machinev1.ListRoomMessagesResponse {
+	out := &machinev1.ListRoomMessagesResponse{}
+	seen := map[string]bool{}
+	for _, p := range parts {
+		if out.Room == nil || p.Room.GetUpdatedAt().AsTime().After(out.Room.GetUpdatedAt().AsTime()) {
+			out.Room = p.Room
+		}
+		for _, x := range p.Messages {
+			if !seen[x.MessageId] {
+				seen[x.MessageId] = true
+				out.Messages = append(out.Messages, x)
+			}
+		}
+	}
+	slices.SortStableFunc(out.Messages, func(x, y *machinev1.RoomMessage) int {
+		if c := x.At.AsTime().Compare(y.At.AsTime()); c != 0 {
+			return c
+		}
+		return strings.Compare(x.MessageId, y.MessageId)
+	})
+	if limit > 0 && len(out.Messages) > int(limit) {
+		out.Messages = out.Messages[len(out.Messages)-int(limit):]
+	}
+	return out
+}
+
+// oneShadowEach keeps one entry of each shadow conversation, the latest:
+// it is on each machine that took its copies (工单 #164).
+func oneShadowEach(rooms []*machinev1.Room) []*machinev1.Room {
+	kept := rooms[:0]
+	at := map[string]int{}
+	for _, r := range rooms {
+		if i, ok := at[r.RoomId]; ok && r.Shadow {
+			if r.GetUpdatedAt().AsTime().After(kept[i].GetUpdatedAt().AsTime()) {
+				kept[i] = r
+			}
+			continue
+		}
+		if r.Shadow {
+			at[r.RoomId] = len(kept)
+		}
+		kept = append(kept, r)
+	}
+	return kept
 }
 
 func (o *Owner) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
@@ -1950,6 +2049,7 @@ func (o *Owner) ListRooms(ctx context.Context) (*localv1.ListRoomsResponse, erro
 			res.Rooms = append(res.Rooms, rooms.Rooms...)
 		}
 	}
+	res.Rooms = oneShadowEach(res.Rooms)
 	return res, nil
 }
 
