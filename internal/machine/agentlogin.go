@@ -142,11 +142,12 @@ func (n *Machine) StartAgentLogin(name string, cancel bool, code ...string) (*ma
 	n.mu.Unlock()
 	n.audit.Log(AuditRecord{Kind: "agent.login", Subject: "owner", Decision: "allow", Detail: name})
 	noURL := false
+	urlWait := LoginURLWait // read here, not in the goroutine: a test may change it after
 	go func() {
 		select {
 		case <-found:
 		case <-ctx.Done():
-		case <-time.After(LoginURLWait):
+		case <-time.After(urlWait):
 			n.mu.Lock()
 			noURL = true
 			n.mu.Unlock()
