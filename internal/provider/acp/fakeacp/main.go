@@ -8,6 +8,9 @@
 //	write <path> <text> edit tool call, asks permission, then writes the file
 //	shell <command>     execute tool call, asks permission, then runs it
 //	read <path>         read tool call without a permission request
+//	unasked <command>   execute tool call reported running and completed
+//	                    without a permission request (nothing is run); a
+//	                    session/cancel within 5s ends the turn as cancelled
 //	sleep <duration>    pause (session/cancel ends the turn as cancelled)
 //	tool-sleep <dur>    execute tool call "sleep <dur>" that pauses in this
 //	                    process, no program run (a long command on any OS);
@@ -704,6 +707,18 @@ func prompt(id json.RawMessage, sid, text string, images, files []string) {
 			update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": id, "title": "Read " + arg, "locations": []any{map[string]any{"path": abs}}})
 			b, _ := os.ReadFile(abs)
 			update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": id, "status": "completed", "rawOutput": string(b)})
+		case "unasked":
+			callN++
+			id2 := fmt.Sprintf("call-%d", callN)
+			update(sid, map[string]any{"sessionUpdate": "tool_call", "toolCallId": id2, "title": arg, "kind": "execute", "status": "pending", "rawInput": map[string]any{"command": arg}})
+			update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": id2, "status": "in_progress"})
+			update(sid, map[string]any{"sessionUpdate": "tool_call_update", "toolCallId": id2, "status": "completed", "rawOutput": "ran"})
+			select {
+			case <-cancelled:
+				reply(id, map[string]any{"stopReason": "cancelled"})
+				return
+			case <-time.After(5 * time.Second):
+			}
 		case "shell":
 			tool(sid, "execute", arg, map[string]any{"command": arg}, "", func() (string, error) {
 				c := shellCommand(arg)

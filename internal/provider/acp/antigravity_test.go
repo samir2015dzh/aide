@@ -176,3 +176,98 @@ func TestAntigravityPermissionPresetsAndNaming(t *testing.T) {
 		t.Fatalf("#117 names: %+v", ms)
 	}
 }
+
+// 审计 C: a session started without a mode gets the advertised default
+// (workspace-write), not a pass-through; workspace-write denies shell
+// commands and network fetches, which Aide cannot confine.
+func TestAntigravityEmptyModeIsWorkspaceWrite(t *testing.T) {
+	f := newFixture(t, "FAKE_ACP_REQUIRE_MODE=1")
+	f.p.Agent = antigravityAgent("darwin")
+	s, err := f.start("shell echo should-not-run\nwrite inside.txt ok", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	evs, _ := collect(t, s)
+	calls := of(evs, provider.EventToolCall)
+	if len(calls) != 2 || calls[0].Decision.Allow || !strings.Contains(calls[0].Decision.Reason, "workspace-write") || !calls[1].Decision.Allow {
+		t.Fatalf("empty mode must enforce workspace-write: %+v", calls)
+	}
+	for _, r := range of(evs, provider.EventToolResult) {
+		if strings.Contains(r.Summary, "should-not-run") {
+			t.Fatalf("denied shell command ran: %+v", r)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(f.dir, "inside.txt")); err != nil {
+		t.Fatal("an in-workspace edit must be allowed:", err)
+	}
+}
+
+func TestAntigravityWorkspaceWriteGate(t *testing.T) {
+	ws, _ := filepath.EvalSymlinks(t.TempDir())
+	outside, _ := filepath.EvalSymlinks(t.TempDir())
+	allow := func(context.Context, provider.ToolAction) provider.Decision { return provider.Decision{Allow: true} }
+	for _, mode := range []string{"", "workspace-write"} {
+		g := antigravityPermissionGate(mode, ws, allow)
+		check := func(name string, a provider.ToolAction, want bool) {
+			t.Helper()
+			if d := g(context.Background(), a); d.Allow != want || (!want && d.Reason == "") {
+				t.Fatalf("mode %q, %s: %+v", mode, name, d)
+			}
+		}
+		check("shell", provider.ToolAction{Kind: provider.ToolShell, Command: "rm -rf ~"}, false)
+		check("network", provider.ToolAction{Kind: provider.ToolNetwork, Summary: "fetch https://example.com"}, false)
+		check("edit without paths", provider.ToolAction{Kind: provider.ToolEdit}, false)
+		check("edit named in input", provider.ToolAction{Kind: provider.ToolEdit, Raw: json.RawMessage(`{"TargetFile":"a.txt"}`)}, true)
+		check("edit outside in input", provider.ToolAction{Kind: provider.ToolEdit, Raw: json.RawMessage(`{"file_path":"` + filepath.ToSlash(filepath.Join(outside, "x")) + `"}`)}, false)
+		check("read", provider.ToolAction{Kind: provider.ToolRead, Paths: []string{outside}}, true)
+		check("new file in new folder", provider.ToolAction{Kind: provider.ToolEdit, Paths: []string{"new/dir/a.txt"}}, true)
+	}
+	g := antigravityPermissionGate("", ws, allow)
+	// A symlink in the workspace to a folder outside it: writes through it
+	// land outside.
+	if err := os.Symlink(outside, filepath.Join(ws, "link")); err != nil {
+		t.Skip("symlinks:", err)
+	}
+	if d := g(context.Background(), provider.ToolAction{Kind: provider.ToolEdit, Paths: []string{"link/new.txt"}}); d.Allow {
+		t.Fatalf("edit through a symlink out of the workspace: %+v", d)
+	}
+	// A dangling symlink pointing outside.
+	os.Symlink(filepath.Join(outside, "missing.txt"), filepath.Join(ws, "dangling"))
+	if d := g(context.Background(), provider.ToolAction{Kind: provider.ToolEdit, Paths: []string{filepath.Join(ws, "dangling")}}); d.Allow {
+		t.Fatalf("edit through a dangling symlink out of the workspace: %+v", d)
+	}
+	// The workspace itself reached through a symlink still counts as inside.
+	alias := filepath.Join(outside, "ws-alias")
+	os.Symlink(ws, alias)
+	g = antigravityPermissionGate("", alias, allow)
+	if d := g(context.Background(), provider.ToolAction{Kind: provider.ToolEdit, Paths: []string{filepath.Join(ws, "ok.txt")}}); !d.Allow {
+		t.Fatalf("workspace via symlink: %+v", d)
+	}
+	if d := antigravityPermissionGate("danger-full-access", ws, allow)(context.Background(), provider.ToolAction{Kind: provider.ToolShell}); !d.Allow {
+		t.Fatalf("danger-full-access: %+v", d)
+	}
+}
+
+// 审计 C: a denied call the agent runs without asking permission cannot be
+// blocked; it must be reported as such and its turn cancelled.
+func TestDeniedCallRunWithoutAsking(t *testing.T) {
+	f := newFixture(t)
+	f.gate.deny = true
+	s, err := f.start("unasked rm -rf scratch\nsay after", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	evs, done := collect(t, s)
+	errs := of(evs, provider.EventError)
+	if len(errs) != 1 || !strings.Contains(errs[0].Text, "without asking permission") || !strings.Contains(errs[0].Text, "denied by test") {
+		t.Fatalf("errors: %+v", errs)
+	}
+	if !done.IsError || done.Text != "interrupted" {
+		t.Fatalf("the turn must be cancelled: %+v", done)
+	}
+	for _, m := range of(evs, provider.EventAgentMessage) {
+		if strings.Contains(m.Text, "after") {
+			t.Fatalf("the turn went on: %+v", m)
+		}
+	}
+}

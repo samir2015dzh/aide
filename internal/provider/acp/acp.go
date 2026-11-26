@@ -3,7 +3,9 @@
 // Copilot, OpenCode, Qwen Code, Goose and others (see Agents).
 //
 // The gate sees (and audits) every tool call, and answers the agent's
-// permission requests.
+// permission requests. A denial can only stop a call the agent asks
+// permission for: one it reports running without asking is flagged as such
+// and its turn cancelled (session.unaskedDenied), not shown as blocked.
 package acp
 
 import (
@@ -936,6 +938,10 @@ type session struct {
 	known    map[string]*toolCall
 	calls    map[string]provider.Decision
 	finished map[string]bool
+	// asked: calls the agent asked permission for; overran: denied calls
+	// it ran anyway (reported once).
+	asked   map[string]bool
+	overran map[string]bool
 	// forms are elicitation requests waiting for an answer.
 	forms map[string]form
 }
@@ -1427,7 +1433,9 @@ func (s *session) handleUpdate(params json.RawMessage) {
 		// Decide once the call has its input, or at the latest when it runs.
 		done := u.Status == "completed" || u.Status == "failed"
 		if hasInput(tc.RawInput) || len(tc.Locations) > 0 || u.Status == "in_progress" || done {
-			s.decide(tc)
+			if d := s.decide(tc); !d.Allow && (u.Status == "in_progress" || u.Status == "completed") {
+				s.unaskedDenied(tc, d)
+			}
 		}
 		if done {
 			s.result(u.toolCall)
@@ -1495,6 +1503,31 @@ func (s *session) decide(tc toolCall) provider.Decision {
 	return d
 }
 
+// unaskedDenied handles a call the gate denied that the agent reports
+// running: unless it asked permission (and so was refused, which it then
+// ignored too), the denial could not stop it. Say so, rather than leave the
+// call shown as blocked, and cancel the turn so it goes no further.
+func (s *session) unaskedDenied(tc toolCall, d provider.Decision) {
+	s.mu.Lock()
+	if s.overran[tc.ToolCallID] {
+		s.mu.Unlock()
+		return
+	}
+	if s.overran == nil {
+		s.overran = map[string]bool{}
+	}
+	s.overran[tc.ToolCallID] = true
+	asked := s.asked[tc.ToolCallID]
+	s.mu.Unlock()
+	what := cmp.Or(tc.Title, tc.Kind, tc.ToolCallID)
+	text := fmt.Sprintf("Aide denied %q (%s), but the agent ran it without asking permission, so the denial could not stop it; Aide cancelled the turn", what, d.Reason)
+	if asked {
+		text = fmt.Sprintf("Aide denied %q (%s), but the agent ran it anyway; Aide cancelled the turn", what, d.Reason)
+	}
+	s.emit(provider.Event{Kind: provider.EventError, Text: text, Failure: &provider.Failure{Kind: sessionv1.FailureKind_FAILURE_KIND_UNKNOWN, Message: text}})
+	s.Interrupt(s.ctx)
+}
+
 func (s *session) result(tc toolCall) {
 	s.mu.Lock()
 	if s.finished[tc.ToolCallID] {
@@ -1555,6 +1588,12 @@ func (s *session) handleRequest(id json.RawMessage, method string, params json.R
 			} `json:"options"`
 		}
 		json.Unmarshal(params, &p)
+		s.mu.Lock()
+		if s.asked == nil {
+			s.asked = map[string]bool{}
+		}
+		s.asked[p.ToolCall.ToolCallID] = true
+		s.mu.Unlock()
 		d := s.decide(s.merge(p.ToolCall))
 		// Never pick allow_always/reject_always: the agent would remember
 		// the choice beyond this session.

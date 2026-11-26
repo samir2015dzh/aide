@@ -20,6 +20,7 @@ import (
 	"time"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/acpregistry"
 	"github.com/samir2015dzh/aide/internal/provider"
 )
@@ -317,4 +318,33 @@ func modelIDs(ms []*machinev1.AgentModel) []string {
 		out = append(out, m.Id)
 	}
 	return out
+}
+
+// modesRecorder is an agent that advertises permission modes and a default.
+type modesRecorder struct{ recorder }
+
+func (r *modesRecorder) Discover(ctx context.Context) provider.Info {
+	i := r.recorder.Discover(ctx)
+	i.Name = "antigravity"
+	i.Modes = []provider.Mode{{ID: "read-only"}, {ID: "workspace-write"}, {ID: "danger-full-access"}}
+	i.Own.Mode = "workspace-write"
+	return i
+}
+
+// 审计 C: an Antigravity session started without a mode runs with (and
+// records) the default it advertises, not an empty pass-through mode.
+func TestAntigravityStartWithoutModeTakesAdvertisedDefault(t *testing.T) {
+	r := &modesRecorder{}
+	h := newHarnessWith(t, DefaultLimits(), map[string]provider.Provider{"antigravity": r})
+	s, err := h.s.Start(context.Background(), h.p, &sessionv1.StartSessionRequest{ProjectId: "demo", Agent: "antigravity", Prompt: "say ok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "session idle", func() bool {
+		v, err := h.s.Get(h.p, s.SessionId)
+		return err == nil && v.Status == idle
+	})
+	if got := r.spec(0).Mode; got != "workspace-write" {
+		t.Fatalf("mode passed to the agent: %q", got)
+	}
 }
