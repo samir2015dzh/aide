@@ -533,6 +533,7 @@
     "timeline": "时间线",
     "emptyManual": "说点什么：@ 谁，谁就会动。",
     "emptyTable": "说点什么：被 @ 的（没 @ 时第一个成员）先动，bot 之间会接力。",
+    "emptyLight": "轻聊：@ 谁谁回；没 @ 时每个成员都简短回一句。",
     "mention": "点名",
     "placeholder": "在房间里说…",
     "wakes": "将叫醒：{{names}}",

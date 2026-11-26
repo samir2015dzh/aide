@@ -454,7 +454,8 @@ func TestRoomAcrossMachines(t *testing.T) {
 }
 
 // TestRoomDirectReplySettlesUnkeyed verifies #135 P02: a direct-room reply without
-// InReplyTo settles the latest awaiting owner delivery as REPLIED and clears Reason.
+// InReplyTo settles the one owner delivery awaiting it as REPLIED and clears
+// Reason (with several waiting: TestRoomDirectUnkeyedReplyWithTwoWaiting).
 func TestRoomDirectReplySettlesUnkeyed(t *testing.T) {
 	h := newHarness(t, Limits{})
 	n := h.n
@@ -484,5 +485,9 @@ func TestRoomDirectReplySettlesUnkeyed(t *testing.T) {
 	msgs := roomMsgs(t, n, r.RoomId)
 	if d := msgs[0].Deliveries[0]; d.State != machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REPLIED || d.Reason != "" {
 		t.Fatalf("expected REPLIED with empty reason, got state=%v reason=%q", d.State, d.Reason)
+	}
+	// Settled because it alone waited, not because the reply said so: not written down as what it answers (审计 B).
+	if msgs[1].InReplyTo != "" {
+		t.Fatalf("a guessed InReplyTo written down: %q", msgs[1].InReplyTo)
 	}
 }

@@ -1842,10 +1842,8 @@ func (o *Owner) OpenDirectRoom(ctx context.Context, req *localv1.OpenDirectRoomR
 		if err != nil {
 			continue // an older machine, or out of reach now
 		}
-		for _, r := range rooms.Rooms {
-			if r.Direct && len(r.Members) == 1 && r.Members[0].Address == req.ClientId {
-				return &localv1.OpenDirectRoomResponse{Room: r}, nil
-			}
+		if r := newestDirectRoom(rooms.Rooms, req.ClientId); r != nil {
+			return &localv1.OpenDirectRoomResponse{Room: r}, nil
 		}
 		if host == nil {
 			host = m
@@ -1862,6 +1860,23 @@ func (o *Owner) OpenDirectRoom(ctx context.Context, req *localv1.OpenDirectRoomR
 		return nil, err
 	}
 	return &localv1.OpenDirectRoomResponse{Room: r}, nil
+}
+
+// newestDirectRoom is the direct room with a personal agent its host has had
+// news in last, as the machine's own OpenDirectRoom picks it (工单 #123: a bot
+// has several conversations; the newest is the one it opens on), nil when
+// there is none. A host's rooms come in no order.
+func newestDirectRoom(rooms []*machinev1.Room, clientID string) *machinev1.Room {
+	var best *machinev1.Room
+	for _, r := range rooms {
+		if !r.Direct || r.Shadow || len(r.Members) != 1 || r.Members[0].Address != clientID {
+			continue
+		}
+		if best == nil || r.UpdatedAt.AsTime().After(best.UpdatedAt.AsTime()) {
+			best = r
+		}
+	}
+	return best
 }
 
 func (o *Owner) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
