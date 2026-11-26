@@ -1,7 +1,7 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { AgentModel } from "@aide/proto/machine";
-import type { Session } from "@aide/proto/session";
+import { SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentTitle, listedModel, modelChoices, modelMetadataSummary, modelTitle } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
 import { local } from "../api";
@@ -9,10 +9,11 @@ import { GrantAvatar, PopMenu, type MenuEntry } from "../components";
 import { Icon } from "../icons";
 import { copy } from "../settings/common";
 import { grantLabel, machineName } from "../Sidebar";
-import { useStore } from "../store";
+import { errorText, useStore } from "../store";
 import { push } from "./actions";
 import { Insights } from "./Insights";
 import { Checkpoints } from "./Checkpoints";
+import { claudeResumeURL } from "../../../shared/claudeDesktop";
 
 type Menu = { of: "project" | "branch"; anchor: HTMLElement; keyboard: boolean };
 
@@ -41,6 +42,19 @@ export function Inspector({ s }: { s: Session }) {
   const toggle = (of: Menu["of"]) => (e: MouseEvent<HTMLElement>) =>
     setMenu(menu?.of === of ? undefined : { of, anchor: e.currentTarget, keyboard: e.detail === 0 });
   const open = (to: "files" | "terminal") => window.aide?.openFolder(path, to);
+  // A Claude Code session on this computer goes on in the Claude desktop app, once Aide is done with it (工单 #131). Its
+  // Claude Code session id is not in what lists show (machine.BasicSession): read from the full session when asked.
+  const inClaude = s.agent === "claude" && here;
+  const busy = [SessionStatus.QUEUED, SessionStatus.PREPARING, SessionStatus.RUNNING, SessionStatus.WAITING_INPUT].includes(s.status);
+  const openInClaude = () =>
+    local.listSessions({ machineId: s.machineId }).then(
+      (r) => {
+        const url = claudeResumeURL(r.sessions.find((x) => x.sessionId === s.sessionId)?.providerSessionRef ?? "");
+        if (url) window.aide?.openExternal(url);
+        else st.show(t("inspector.openInClaudeNone"));
+      },
+      (e) => st.show(errorText(e)),
+    );
   const items: MenuEntry[] =
     menu?.of === "project"
       ? [
@@ -67,6 +81,11 @@ export function Inspector({ s }: { s: Session }) {
           <li>
             <AgentLogo agent={s.agent} size={16} />
             <span className="dim"><Trans t={t} i18nKey="inspector.runBy" values={{ agent: codingAgentTitle(s.agent) }} components={{ b: <b /> }} /></span>
+            {inClaude && (
+              <button className="btn sm insp-claude" disabled={busy} title={t(busy ? "inspector.openInClaudeBusy" : "inspector.openInClaudeHint")} onClick={openInClaude}>
+                {t("inspector.openInClaude")}
+              </button>
+            )}
           </li>
           <li>
             <Icon name="laptop" />

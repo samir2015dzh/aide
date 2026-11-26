@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainEvent, ty
 import path from "node:path";
 import type { Command, MenuItem, MenuState, Preferences, TerminalCommand } from "../shared/bridge";
 import { i18n } from "../shared/i18n";
+import { openableOutside } from "../shared/claudeDesktop";
 import { preferences, setPreferences, setRoomOpen, world } from "./notify";
 import { openDaemonLogs, restartDaemonWithProbe } from "./daemonRestart";
 import { platform } from "./platform";
@@ -69,8 +70,9 @@ export function registerIPC() {
   });
   ipcMain.on("window-mode", (e, m) => trusted(e) && (m === "onboarding" || m === "main") && setMode(m));
   ipcMain.on("open-external", (e, url: string) => {
-    // A web page, or the Claude desktop app itself (claude://, 工单 #118: it signs in only in its own window).
-    if (trusted(e) && typeof url === "string" && (url.startsWith("https://") || url === "claude://")) shell.openExternal(url);
+    // A web page, the Claude desktop app itself (claude://, 工单 #118: it signs in only in its own window), or one of
+    // Aide's Claude Code sessions in it (工单 #131).
+    if (trusted(e) && openableOutside(url)) shell.openExternal(url);
   });
   ipcMain.on("menu-state", (e, s: MenuState) => {
     if (!trusted(e) || BrowserWindow.fromWebContents(e.sender) !== mainWindow()) return;
