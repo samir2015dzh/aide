@@ -92,6 +92,8 @@ type Provider struct {
 	catalogs     map[string]cachedCatalog
 	lastCaps     *provider.Capabilities
 	lastProtoVer uint32
+	// probe: what DSH's sessions here offer, found before any (工单 #166).
+	probe dshProbe
 }
 
 // ObservedCapabilities returns the latest negotiated ACP capabilities and protocol
@@ -356,8 +358,16 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 		p.discoverModels(ctx, bin, pre, env)
 	}
 	if p.DSHPresets { // known before any session
-		if ps, _ := readDSHPresets(ctx, env, append([]string{bin}, append(pre, p.Args...)...)); ps != nil {
-			info.Modes, info.Own.Mode = ps.modes, ps.own
+		dump, err := dumpDSH(ctx, env, append([]string{bin}, append(pre, p.Args...)...))
+		if err == nil {
+			if ps, _ := parseDSHPresets(dump); ps != nil {
+				info.Modes, info.Own.Mode = ps.modes, ps.own
+			}
+		}
+		// Its models too, before its first session here (工单 #166).
+		if o := p.dshOffers(ctx, bin, pre, env, dump); o != nil {
+			info.Models, info.Own.Model, info.Own.Effort = o.Models, o.Own.Model, o.Own.Effort
+			info.SomeEfforts = slices.ContainsFunc(o.Models, func(m provider.Model) bool { return len(m.Efforts) > 0 })
 		}
 	}
 	return info

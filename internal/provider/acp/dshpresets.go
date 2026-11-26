@@ -42,17 +42,6 @@ type dshPresets struct {
 	config *yaml.Node // nil: none (the plugin's defaults)
 }
 
-// readDSHPresets reads the presets of the profile cmd starts (cmd is the
-// dsh command and its arguments, ending in `--profile <name>`); nil when
-// it has none.
-func readDSHPresets(ctx context.Context, env []string, cmd []string) (*dshPresets, error) {
-	out, err := dumpDSH(ctx, env, cmd)
-	if err != nil {
-		return nil, err
-	}
-	return parseDSHPresets(out)
-}
-
 // dumpDSH is the configuration of the profile cmd starts, as dsh composes it.
 func dumpDSH(ctx context.Context, env []string, cmd []string) ([]byte, error) {
 	out, problem, detail := provider.Probe(ctx, env, cmd[0], append(slices.Clone(cmd[1:]), "--dump-config")...)

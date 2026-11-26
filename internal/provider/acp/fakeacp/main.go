@@ -197,7 +197,9 @@ func dumpConfig() {
 		"      danger-full-access:\n        sandbox: danger-full-access\n        approval: never\n")
 }
 
-// patched reads the defaultPreset of --patch overlays.
+// patched reads the defaultPreset of --patch overlays. Rows of other
+// plugins (a model probe's scratch roots, 工单 #166) are taken as dsh
+// takes them, and change nothing here.
 func patched(args []string) {
 	for i, a := range args {
 		if a != "--patch" || i+1 == len(args) {
@@ -215,11 +217,20 @@ func patched(args []string) {
 				Presets       map[string]any
 			}
 		}
-		if err := yaml.Unmarshal(b, &rows); err != nil || len(rows) != 1 || rows[0].ID != "permission" || len(rows[0].Config.Presets) != 3 {
+		if err := yaml.Unmarshal(b, &rows); err != nil || len(rows) == 0 {
 			fmt.Fprintf(os.Stderr, "patch: %v\n%s", err, b)
 			os.Exit(1)
 		}
-		preset = rows[0].Config.DefaultPreset
+		for _, r := range rows {
+			if r.ID != "permission" {
+				continue
+			}
+			if len(r.Config.Presets) != 3 {
+				fmt.Fprintf(os.Stderr, "patch: a permission row without the presets\n%s", b)
+				os.Exit(1)
+			}
+			preset = r.Config.DefaultPreset
+		}
 	}
 }
 

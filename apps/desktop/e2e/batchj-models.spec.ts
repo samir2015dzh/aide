@@ -4,8 +4,9 @@ import { launch, pick, snap } from "./app";
 // 批 J, the models a conversation runs on, as the owner meets them on a bot's page. Claude Code (工单 #99): its list
 // names each model's specific one, as Claude Code itself listed them on this machine ("Opus 5.5", claude-opus-5-5
 // below it), the default too; one chosen runs, and the conversation reads back the model it runs. DSH (工单 #98): the
-// box has a model choice as Claude's has; DSH names its models only in a session, so before its first here the list
-// says so, and after it lists DSH's own; one chosen starts a new conversation (工单 #67 rule 4, said so) that runs it.
+// box has a model choice as Claude's has; DSH names its models only in a session, so the machine asks one it closes at
+// once (工单 #166): they are listed before the first session here, as that session then lists them; one chosen starts
+// a new conversation (工单 #67 rule 4, said so) that runs it.
 
 /** The bot's model list, opened: each entry's text (its title, and below it the specific model in full). */
 async function modelList(page: Page, chip: Locator): Promise<string[]> {
@@ -69,9 +70,16 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   await open();
   const bot = page.getByRole("region", { name: /^DSH/ });
   const chip = bot.getByRole("button", { name: "模型", exact: true });
-  // Before its first session here: the choice is there, and says when DSH's models show.
-  await expect(chip.locator(".picker-v")).toHaveText("默认模型", { timeout: 30_000 });
-  expect(await modelList(page, chip)).toEqual(["默认模型", "DSH 只在会话里告诉可用的模型：先用默认模型发出第一条，之后这里列出它在这台机器上的实际模型"]);
+  // Before its first session here (工单 #166): its models are listed already, as a session here would offer them —
+  // the machine found them with a session it closed at once, kept out of the owner's DSH — never "send a first message".
+  const models = [
+    "默认 · DeepSeek · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "DeepSeek · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
+    "DeepSeek · deepseek-v4-pro deepseek/deepseek-v4-pro · DeepSeek",
+    "magpie · group/deepseek-v4.1 magpie/group/deepseek-v4.1 · magpie",
+  ];
+  await expect(chip.locator(".picker-v")).toHaveText("默认 · DeepSeek · deepseek-v4-flash", { timeout: 30_000 });
+  expect(await modelList(page, chip)).toEqual(models);
   await snap(page, "batchj-dsh-models-before");
   await page.keyboard.press("Escape");
   const box = bot.getByRole("textbox", { name: /^给 DSH/ });
@@ -84,12 +92,7 @@ test("DSH: a model choice as Claude's, its models as DSH names them here, each o
   // provider's (magpie, in a model option of its own) listed too. The conversation runs its default, read back.
   await expect(chip.locator(".picker-v")).toHaveText("DeepSeek · deepseek-v4-flash", { timeout: 30_000 });
   const listed = await modelList(page, chip);
-  expect(listed).toEqual([
-    "默认 · DeepSeek · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
-    "DeepSeek · deepseek-v4-flash deepseek/deepseek-v4-flash · DeepSeek · DeepSeek Account",
-    "DeepSeek · deepseek-v4-pro deepseek/deepseek-v4-pro · DeepSeek",
-    "magpie · group/deepseek-v4.1 magpie/group/deepseek-v4.1 · magpie",
-  ]);
+  expect(listed).toEqual(models);
   expect(new Set(listed.slice(1)).size).toBe(listed.length - 1);
   await snap(page, "batchj-dsh-models");
   await page.getByRole("menuitemradio", { name: /^magpie · group\/deepseek-v4\.1/ }).click();
