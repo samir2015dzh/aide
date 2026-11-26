@@ -69,7 +69,6 @@ func (n *Machine) setHer(on, erase bool) (string, error) {
 	n.mu.Lock()
 	n.herData = false
 	n.mu.Unlock()
-	n.kickStatus()
 	return HerErased, nil
 }
 

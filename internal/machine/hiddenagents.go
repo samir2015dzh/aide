@@ -88,9 +88,6 @@ func (n *Machine) rescanHidden() {
 		}
 	}
 	n.mu.Unlock()
-	if changed {
-		n.kickStatus()
-	}
 }
 
 // RescanAgents is the owner's rescan of this device's own machine: its coding

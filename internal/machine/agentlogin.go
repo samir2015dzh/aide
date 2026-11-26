@@ -86,7 +86,6 @@ func (n *Machine) StartAgentLogin(name string, cancel bool, code ...string) (*ma
 			st := cloneLogin(cur.st)
 			st.CodeSent = true
 			cur.st = st
-			go n.kickStatus()
 		}
 		return cur.st, nil
 	}
@@ -127,7 +126,6 @@ func (n *Machine) StartAgentLogin(name string, cancel bool, code ...string) (*ma
 			}
 			n.mu.Unlock()
 			close(found)
-			n.kickStatus()
 		})
 	}}
 	// The address may come on either; the reason it failed is its last line.
@@ -143,7 +141,6 @@ func (n *Machine) StartAgentLogin(name string, cancel bool, code ...string) (*ma
 	n.logins[name] = l
 	n.mu.Unlock()
 	n.audit.Log(AuditRecord{Kind: "agent.login", Subject: "owner", Decision: "allow", Detail: name})
-	n.kickStatus()
 	noURL := false
 	go func() {
 		select {
@@ -189,7 +186,6 @@ func (n *Machine) StartAgentLogin(name string, cancel bool, code ...string) (*ma
 		}
 		l.st = st
 		n.mu.Unlock()
-		n.kickStatus()
 	}()
 	return l.st, nil
 }

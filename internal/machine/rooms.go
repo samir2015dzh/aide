@@ -1349,7 +1349,6 @@ func (n *Machine) takeShadowLetter(m *inboxv1.Message, sender *identity.ContactI
 		return ""
 	}
 	n.audit.Log(AuditRecord{Kind: "shadow.record", Subject: fromID, Session: rid, Decision: "allow", Detail: "to=" + toID + " msg=" + m.MessageId})
-	n.kickStatus()
 	return "handled"
 }
 

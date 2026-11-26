@@ -375,7 +375,6 @@ func (n *Machine) recheck(name string, p provider.Provider) {
 	}
 	n.pending[name] = true
 	n.mu.Unlock()
-	n.kickStatus()
 	go func() {
 		info := n.discover(name, p, false)
 		n.mu.Lock()
@@ -384,7 +383,6 @@ func (n *Machine) recheck(name string, p provider.Provider) {
 		}
 		delete(n.pending, name)
 		n.mu.Unlock()
-		n.kickStatus()
 	}()
 }
 
@@ -422,7 +420,6 @@ func (n *Machine) RemoveCustomAgent(name string) error {
 	n.mu.Unlock()
 	n.audit.Log(AuditRecord{Kind: "agent", Subject: name, Action: "remove"})
 	n.log.Info("custom agent removed", "agent", name)
-	n.kickStatus()
 	return nil
 }
 

@@ -277,7 +277,6 @@ func Open(cfg Config) (*Machine, error) {
 			CachePath:  filepath.Join(cfg.DataDir, "model-catalog.json"),
 			HTTPClient: cfg.HTTPClient,
 			Logger:     n.log,
-			OnUpdate:   n.kickStatus,
 		})
 	}
 	n.loadCustomAgents()
@@ -478,7 +477,8 @@ func (n *Machine) providerInfo(name string) provider.Info {
 
 // agentSignedIn is what a session of the agent just showed of its sign-in
 // (工单 #108): one that failed "Not logged in" is signed out now, one that
-// ran a turn is signed in; its status says so at once, not at its next check.
+// ran a turn is signed in; its status says so at once, not at its next check
+// (MachineService.Watch sends it within statusEvery; no ReportStatus, 工单 #143).
 // What it showed is kept (passive.go) for an agent whose check cannot tell
 // (工单 #112: an ACP agent's).
 func (n *Machine) agentSignedIn(name string, in bool) {
@@ -491,11 +491,14 @@ func (n *Machine) agentSignedIn(name string, in bool) {
 		n.infos[name] = i
 	}
 	n.mu.Unlock()
-	if changed {
-		n.kickStatus()
-	}
 }
 
+// kickStatus has ReportStatus sent again (link.go). It carries only the
+// name and the version, so only a rename kicks it (工单 #143): a change to
+// sessions, agents, sign-ins, health or settings is not the relay's to know,
+// and owners see it in MachineService.Watch, which compares the state every
+// statusEvery (feed.go). Each needless kick was a call to the relay and a
+// wake of every owner's WatchOwner for lists that had not changed.
 func (n *Machine) kickStatus() {
 	select {
 	case n.statusKick <- struct{}{}:

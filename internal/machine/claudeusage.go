@@ -106,7 +106,6 @@ func (n *Machine) refreshUsage() {
 		}
 	}
 	n.logUsage(pb, prev)
-	n.kickStatus()
 }
 
 // readUsage reads the usage once, from the first source that has it. When

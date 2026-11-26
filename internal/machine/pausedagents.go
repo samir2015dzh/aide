@@ -120,7 +120,6 @@ func (n *Machine) resumeByItself(name string, at time.Time) {
 		n.log.Warn("keeping the paused coding agents", "err", err)
 	}
 	n.log.Info("coding agent resumed by itself", "agent", name, "paused_until", at)
-	n.kickStatus()
 }
 
 // stopResumeTimers stops the resumes by themselves: the machine closes.
