@@ -496,3 +496,21 @@ func TestSecureDownload(t *testing.T) {
 		}
 	}
 }
+
+// Installing the same version again (an upgrade by the same registry id)
+// leaves the earlier files alone and goes beside them: on Windows the
+// earlier agent may still be running from them (#147).
+func TestReinstallGoesBeside(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "1.2.3")
+	if got := freshDir(dir); got != dir {
+		t.Fatalf("free: %s", got)
+	}
+	for _, d := range []string{dir, dir + "-2"} {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := freshDir(dir); got != dir+"-3" {
+		t.Fatalf("taken: %s", got)
+	}
+}

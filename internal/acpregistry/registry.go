@@ -737,7 +737,7 @@ func (r *Registry) installBinary(ctx context.Context, entry Entry, target Binary
 		if verDir == "" {
 			verDir = "latest"
 		}
-		finalDir = filepath.Join(r.installedRoot(), sanitizeSegment(name), verDir)
+		finalDir = freshDir(filepath.Join(r.installedRoot(), sanitizeSegment(name), verDir))
 	}
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
 		return InstallResult{}, err
@@ -767,6 +767,22 @@ func (r *Registry) installBinary(ctx context.Context, entry Entry, target Binary
 		InstallDir:      finalDir,
 		SHA256:          sum,
 	}, nil
+}
+
+// freshDir is dir, or when something is already there (the same version
+// installed before, its agent maybe still running) the first free dir-2,
+// dir-3, …: what is there is left alone, since Windows removes neither a
+// running program's file nor its folder; Uninstall removes them all.
+func freshDir(dir string) string {
+	if _, err := os.Lstat(dir); os.IsNotExist(err) {
+		return dir
+	}
+	for i := 2; ; i++ {
+		d := fmt.Sprintf("%s-%d", dir, i)
+		if _, err := os.Lstat(d); os.IsNotExist(err) {
+			return d
+		}
+	}
 }
 
 // Uninstall removes any machine-isolated binary installation for name.

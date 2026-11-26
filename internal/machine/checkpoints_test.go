@@ -317,6 +317,9 @@ func TestCheckpointsACPWorktreeRollback(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Its agent process stopped before the directories it runs in are removed (registered after them, so run
+		// first): Windows removes neither a running program's file nor a directory a process works in.
+		t.Cleanup(func() { _, _ = h.s.Archive(context.Background(), h.p, s.SessionId) })
 		return s.SessionId
 	}
 	id := start("demo", "write a.txt one\nsay 1")
