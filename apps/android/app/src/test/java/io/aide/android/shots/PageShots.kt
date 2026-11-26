@@ -29,6 +29,8 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import io.aide.android.api.DSHSession
 import io.aide.android.api.DSHSessionEntry
 import io.aide.android.api.QuestionItem
@@ -226,6 +228,17 @@ class PageShots {
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun settingsLight() = model().let { m -> shot("29-settings-light") { SettingsTab(m) } }
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun sessionLight() = model().let { m -> shot("30-session-light", waitFor = "重组") { SessionPage(m, "s2", back = {}) } }
     @Test @Config(qualifiers = "zh-rCN-w392dp-h850dp-port-notnight-xxhdpi") fun devicesLight() = model().let { m -> shot("36-machines-light") { DevicesTab(m) {} } }
+
+    // 工单 #167: each main tab's title scrolled, on a screen short enough for its list to scroll: what stays over the list once its large title is gone.
+    private fun scrolled(name: String, waitFor: String? = null, content: @Composable () -> Unit) =
+        shot(name, waitFor, act = { rule.onAllNodes(hasScrollAction()).onFirst().performTouchInput { swipeUp() } }, content = content)
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h560dp-port-night-xxhdpi") fun titleHome() = model().let { m -> scrolled("40-title-home-scrolled") { SessionsTab(m) {} } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h560dp-port-night-xxhdpi") fun titleNeedsYou() = model().let { m -> scrolled("41-title-needs-you-scrolled") { NeedsYouTab(m) {} } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h560dp-port-night-xxhdpi") fun titleBots() = model().let { m -> scrolled("42-title-bots-scrolled", waitFor = "发版评审") { BotsTab(m) {} } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h560dp-port-night-xxhdpi") fun titleDevices() = model().let { m -> scrolled("43-title-machines-scrolled") { DevicesTab(m) {} } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h560dp-port-night-xxhdpi") fun titleSettings() = model().let { m -> scrolled("44-title-settings-scrolled") { SettingsTab(m) } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h560dp-port-notnight-xxhdpi") fun titleBotsLight() = model().let { m -> scrolled("45-title-bots-scrolled-light", waitFor = "发版评审") { BotsTab(m) {} } }
+    @Test @Config(qualifiers = "zh-rCN-w392dp-h560dp-port-notnight-xxhdpi") fun titleSettingsLight() = model().let { m -> scrolled("46-title-settings-scrolled-light") { SettingsTab(m) } }
 
     // The bot pages at full length (工单 #97): a screen tall enough for the whole list, the list's height written down.
     @Test @Config(qualifiers = "zh-rCN-w392dp-h2600dp-port-night-xxhdpi") fun botPageFull() = model().let { m ->

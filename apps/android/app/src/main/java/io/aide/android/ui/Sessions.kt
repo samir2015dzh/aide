@@ -284,8 +284,10 @@ fun LazyListState.collapsed(): Boolean {
 }
 
 /**
- * A tab's title as iOS's large title (HIG Navigation bars, "large titles"): Large Title 34 bold over one quiet line of
- * what is on it now; scrolled, it collapses into a 44 bar with the title centred in Headline and a hairline under it.
+ * A tab's title: the large title over one quiet line of what is on it now; scrolled, the same title smaller, where
+ * the large one began (工单 #167). It stays on the page's own background, left-aligned like everything under it, in
+ * the large title's weight: no bar of its own, no centred second title, no line under it — the list scrolls under
+ * nothing but the page. Every main tab has this one title, so they all change together.
  */
 @Composable
 fun PageTitle(text: String, summary: String? = null, collapsed: Boolean = false) {
@@ -294,10 +296,10 @@ fun PageTitle(text: String, summary: String? = null, collapsed: Boolean = false)
         transitionSpec = { (fadeIn(tween(Motion.Short)) togetherWith fadeOut(tween(Motion.Short))) using SizeTransform(clip = false) { _, _ -> Motion.snappy() } },
         label = "title",
     ) { small ->
-        if (small) Column(Modifier.fillMaxWidth().background(aide.bar)) {
-            Text(text, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp))
-            Hairline()
-        } else Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 6.dp)) {
+        if (small) Text(
+            text, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 6.dp),
+        ) else Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 6.dp)) {
             Text(text, style = MaterialTheme.typography.headlineLarge)
             summary?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
