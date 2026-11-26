@@ -55,7 +55,7 @@ test("the sidebar is bots alone; every session is a page of its own, its list be
   await navTo(page, /^概览/);
   await expect(page.getByRole("heading", { name: "概览", level: 1 })).toBeVisible();
   await expect(rail).toBeVisible();
-  await rail.getByRole("button", { name: "展开边栏" }).click();
+  await page.getByRole("button", { name: "展开边栏" }).click();
   await expect(sidebar).toBeVisible();
   await app.close();
 });

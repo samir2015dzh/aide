@@ -279,55 +279,67 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo:
         }
         return
     }
-    val mine = m.from == "owner"
+    val mine = !r.shadow && m.from == "owner"
     val member = r.members.firstOrNull { it.botKey == m.from }
+    val now = Instant.now()
+    val whenText = m.at.takeIf { it.isNotEmpty() }?.let { io.aide.android.model.agoText(io.aide.android.model.instant(it), now) }
     val bubbleShape = RoundedCornerShape(
         topStart = Radius.Bubble, topEnd = Radius.Bubble,
-        bottomStart = if (mine) Radius.Bubble else Radius.BubbleTail,
-        bottomEnd = if (mine) Radius.BubbleTail else Radius.Bubble,
+        bottomStart = Radius.Bubble, bottomEnd = Radius.BubbleTail,
     )
-    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalAlignment = if (mine) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (!mine) {
             val head = buildString {
                 append(m.fromName)
                 if (r.shadow && m.toName.isNotEmpty()) append(" → ${m.toName}")
-                if (r.shadow && m.at.isNotEmpty()) append(" · ${io.aide.android.model.agoText(io.aide.android.model.instant(m.at), Instant.now())}")
+                if (whenText != null) append(" · $whenText")
                 if (m.lightChat) append(t(" · Light", " · 轻聊"))
                 if (m.late) append(t(" · came after stop", " · 停止后到达"))
             }
             Text(head, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (mine && (m.mentions.isNotEmpty() || m.lightChat)) {
+        if (mine) {
             val meta = listOfNotNull(
                 if (m.lightChat) t("Light chat", "轻聊") else null,
                 m.mentions.takeIf { it.isNotEmpty() }?.joinToString(" ") { "@" + nameOf(it) },
+                whenText,
             ).joinToString(" · ")
-            Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Box(Modifier.fillMaxWidth(0.82f).wrapContentWidth(if (mine) Alignment.End else Alignment.Start)
-            .background(if (mine) aide.bubble else aide.card, bubbleShape)
-            .then(if (mine) Modifier else Modifier.border(1.dp, aide.cardEdge, bubbleShape))
-            .padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (m.subject.isNotEmpty()) {
-                    Text(m.subject, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = if (mine) aide.onBubble else MaterialTheme.colorScheme.onSurface)
-                }
-                if (m.inReplyTo.isNotEmpty()) {
-                    val snippet = repliedTo?.let { "${it.fromName}: ${it.text.replace('\n', ' ').take(48)}" } ?: m.inReplyTo.take(12)
-                    Text(
-                        t("Reply to $snippet", "回复 $snippet"),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (mine) aide.onBubble.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (mine) {
-                    Text(m.text, style = MaterialTheme.typography.bodyLarge, color = aide.onBubble)
-                } else {
+        if (mine) {
+            Box(
+                Modifier.fillMaxWidth(0.82f).wrapContentWidth(Alignment.End)
+                    .background(aide.bubble, bubbleShape)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Text(m.text, style = MaterialTheme.typography.bodyLarge, color = aide.onBubble)
+            }
+        } else if (r.shadow) {
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(aide.card, RoundedCornerShape(Radius.Lg))
+                    .border(1.dp, aide.cardEdge, RoundedCornerShape(Radius.Lg))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (m.subject.isNotEmpty()) {
+                        Text(m.subject, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    if (m.inReplyTo.isNotEmpty()) {
+                        val snippet = repliedTo?.let { "${it.fromName}: ${it.text.replace('\n', ' ').take(48)}" } ?: m.inReplyTo.take(12)
+                        Text(
+                            t("Reply to $snippet", "回复 $snippet"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     MarkdownText(m.text, color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
                 }
             }
+        } else {
+            MarkdownText(m.text, Modifier.fillMaxWidth().padding(vertical = 2.dp), color = if (m.late) aide.faint else MaterialTheme.colorScheme.onSurface)
         }
         if (mine) m.deliveries.forEach { d ->
             val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)

@@ -5,7 +5,7 @@ import { botLook } from "@aide/core/avatar";
 import type { Machine } from "@aide/proto/local";
 import { AgentPage, PauseSection, projectsFor, usageText } from "../AgentList";
 import { local } from "../api";
-import { ClaudeLogin, claudeLoginWaiting, connDot } from "../Connections";
+import { ClaudeLogin, claudeLoginWaiting, botDot } from "../Connections";
 import { Icon } from "../icons";
 import { Picker } from "../Picker";
 import { GrantDetail } from "../settings/Grants";
@@ -49,7 +49,7 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
             <div className="fgroup">
               <div className="frow bot-state-row">
                 <span className="conn-state" data-state={b.state.state}>
-                  <i className={`dotc ${connDot(b.state.state)}`} />
+                  <i className={`dotc ${botDot(b)}`} />
                   {b.state.word}
                 </span>
                 <span className="muted">{b.state.line}</span>

@@ -72,23 +72,35 @@ export function Account({ ask }: { ask: (a: Ask) => void }) {
       <div>
         <div className="fhead">{t("account.devices")}</div>
         <div className="fgroup" role="list" aria-label={t("account.devices")}>
-          {st.devices.map((d) => (
-            <div className="frow" role="listitem" key={d.keyId}>
-              <DeviceFace kind={deviceKind(d.platform)} size={36} />
-              <div className="ft">
-                <div className="fn">
-                  {d.label}
-                  {d.thisDevice && <span className="faint"> {t("thisMac")}</span>}
+          {st.devices.map((d) => {
+            // 与概览 / 机器页同源读取机器在线状态（#135 P08），避免设备页与机器页状态打架
+            const linked = d.machineId ? st.machines.find((m) => m.machineId === d.machineId) : undefined;
+            const online = linked ? (linked.online || linked.local) : d.machineOnline;
+            return (
+              <div className="frow" role="listitem" key={d.keyId}>
+                <DeviceFace kind={deviceKind(d.platform)} size={36} />
+                <div className="ft">
+                  <div className="fn">
+                    {d.label}
+                    {d.thisDevice && <span className="faint"> {t("thisMac")}</span>}
+                  </div>
+                  <div className="fdesc">
+                    {platformTitle(d.platform)}
+                    {d.machineId && (
+                      <>
+                        {" · "}
+                        <i className={`dotc ${online ? "on" : ""}`} aria-hidden="true" />{" "}
+                        {t("account.alsoMachine", { status: t(online ? "online" : "offline") })}
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="fdesc">
-                  {[platformTitle(d.platform), d.machineId ? t("account.alsoMachine", { status: t(d.machineOnline ? "online" : "offline") }) : ""].filter(Boolean).join(" · ")}
-                </div>
+                {!d.thisDevice && (
+                  <button className="btn sm danger" onClick={() => removeDevice(d)}>{t("account.signOutDevice")}</button>
+                )}
               </div>
-              {!d.thisDevice && (
-                <button className="btn sm danger" onClick={() => removeDevice(d)}>{t("account.signOutDevice")}</button>
-              )}
-            </div>
-          ))}
+            );
+          })}
           <div className="frow">
             <button className="link" onClick={() => st.set({ sheet: { kind: "addDevice" } })}>{t("account.addDevice")}</button>
           </div>

@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { agoText, allBots, dateOf, displayTitle, projectTitle, type Bot } from "@aide/core";
-import { RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
+import { agoText, allBots, dateOf, displayTitle, listTime, projectTitle, type Bot } from "@aide/core";
+import { RoomDeliveryState, RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { StateText } from "../components";
 import { Icon } from "../icons";
+import { TimeLine } from "../session/Chat";
 import { Markdown } from "../session/Markdown";
 import { Check, Picker } from "../Picker";
 import { errorText, useNow, useStore, type Store } from "../store";
@@ -189,58 +190,80 @@ export function RoomTimeline({ room, msgs, handOn }: { room: Room; msgs: RoomMes
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
   }, [msgs.length]);
+  let prevAt: Date | undefined;
   return (
-    <>
+    <div className="chat-col">
       {msgs.map((m) => {
+        const atDate = dateOf(m.at);
         if (m.system) return <div key={m.messageId} className="room-sys" role="note">{m.text}</div>;
-        if (m.final) return <FinalCard key={m.messageId} m={m} room={room} />;
+        const previous = prevAt;
+        if (atDate) prevAt = atDate;
+        if (m.final) {
+          return (
+            <Fragment key={m.messageId}>
+              <TimeLine at={atDate} previous={previous} />
+              <FinalCard m={m} room={room} />
+            </Fragment>
+          );
+        }
         const mine = !room.shadow && m.from === "owner";
+        const failed = mine && m.deliveries.length > 0 && m.deliveries.every((d) => d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED);
         const member = room.members.find((x) => x.botKey === m.from);
         const session = member?.sessionId ? st.sessions.find((s) => s.sessionId === member.sessionId) : undefined;
         const replyTarget = m.inReplyTo ? byId.get(m.inReplyTo) : undefined;
-        const atDate = dateOf(m.at);
         return (
-          <div key={m.messageId} className={`chat-msg ${mine ? "mine" : ""} ${m.late ? "late" : ""}`}>
-            {!mine && (
-              <span className="chat-who">
-                {room.shadow && m.toName ? `${m.fromName} → ${m.toName}` : m.fromName}
-                {room.shadow && atDate && <em>· {agoText(atDate, now)}</em>}
-                {m.late && <em>{t("rooms.late")}</em>}
-              </span>
-            )}
-            {mine && (m.mentions.length > 0 || m.lightChat) && (
-              <span className="chat-who">
-                {m.lightChat && <span className="room-ro-tag">{t("rooms.light")}</span>}
-                {m.mentions.map((k) => "@" + nameOf(k)).join(" ")}
-              </span>
-            )}
-            <div className="chat-bubble">
-              {room.shadow && m.subject && <div className="shadow-subj">{m.subject}</div>}
-              {room.shadow && m.inReplyTo && (
-                <div className="shadow-reply">
-                  {t("rooms.shadowReplyTo")} {replyTarget ? `${replyTarget.fromName}：${replyTarget.text.slice(0, 48)}` : m.inReplyTo}
+          <Fragment key={m.messageId}>
+            <TimeLine at={atDate} previous={previous} />
+            <div className={`chat-msg ${mine ? "mine" : ""} ${failed ? "failed" : ""} ${room.shadow ? "shadow" : ""} ${m.late ? "late" : ""}`}>
+              {!mine && (
+                <div className="chat-meta">
+                  <span className="chat-who">
+                    {room.shadow && m.toName ? `${m.fromName} → ${m.toName}` : m.fromName}
+                    {room.shadow && atDate && <em>· {agoText(atDate, now)}</em>}
+                    {m.late && <em>{t("rooms.late")}</em>}
+                  </span>
+                  {!room.shadow && atDate && <span className="chat-time">{listTime(atDate, now)}</span>}
                 </div>
               )}
-              <Markdown text={m.text} />
+              {mine && (m.mentions.length > 0 || m.lightChat || atDate) && (
+                <div className="chat-meta">
+                  {(m.mentions.length > 0 || m.lightChat) && (
+                    <span className="chat-who">
+                      {m.lightChat && <span className="room-ro-tag">{t("rooms.light")}</span>}
+                      {m.mentions.map((k) => "@" + nameOf(k)).join(" ")}
+                    </span>
+                  )}
+                  {atDate && <span className="chat-time">{listTime(atDate, now)}</span>}
+                </div>
+              )}
+              <div className="chat-bubble">
+                {room.shadow && m.subject && <div className="shadow-subj">{m.subject}</div>}
+                {room.shadow && m.inReplyTo && (
+                  <div className="shadow-reply">
+                    {t("rooms.shadowReplyTo")} {replyTarget ? `${replyTarget.fromName}：${replyTarget.text.slice(0, 48)}` : m.inReplyTo}
+                  </div>
+                )}
+                <Markdown text={m.text} />
+              </div>
+              {mine && m.deliveries.map((d) => <DeliveryLine key={d.botKey} d={d} name={nameOf(d.botKey)} />)}
+              {!mine && m.deliveries.length > 0 && <span className="chat-state">{t("rooms.handedOn", { names: m.deliveries.map((d) => nameOf(d.botKey)).join("、") })}</span>}
+              {!mine && session && (
+                <button className="link chat-state" onClick={() => st.select(session.sessionId)}>
+                  {t("rooms.itsSession")}{displayTitle(session)} · <StateText s={session} />
+                </button>
+              )}
+              {m.asks.map((k) => (
+                <span key={k} className="room-ask">
+                  {t("rooms.asks", { from: m.fromName, to: nameOf(k) })}
+                  {handOn && <button className="btn sm" onClick={() => handOn(k, m)}>{t("rooms.handOn", { to: nameOf(k) })}</button>}
+                </span>
+              ))}
             </div>
-            {mine && m.deliveries.map((d) => <DeliveryLine key={d.botKey} d={d} name={nameOf(d.botKey)} />)}
-            {!mine && m.deliveries.length > 0 && <span className="chat-state">{t("rooms.handedOn", { names: m.deliveries.map((d) => nameOf(d.botKey)).join("、") })}</span>}
-            {!mine && session && (
-              <button className="link chat-state" onClick={() => st.select(session.sessionId)}>
-                {t("rooms.itsSession")}{displayTitle(session)} · <StateText s={session} />
-              </button>
-            )}
-            {m.asks.map((k) => (
-              <span key={k} className="room-ask">
-                {t("rooms.asks", { from: m.fromName, to: nameOf(k) })}
-                {handOn && <button className="btn sm" onClick={() => handOn(k, m)}>{t("rooms.handOn", { to: nameOf(k) })}</button>}
-              </span>
-            ))}
-          </div>
+          </Fragment>
         );
       })}
       <div ref={end} />
-    </>
+    </div>
   );
 }
 

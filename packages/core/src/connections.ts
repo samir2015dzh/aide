@@ -224,9 +224,23 @@ function dshRows(a: AgentStatus): ConnRow[] {
       lacks: a.problem === AgentProblem.NOT_FOUND ? undefined : a.detail }];
   }
   const models = [...new Set(a.models.map((x) => x.name || x.id).filter(Boolean))];
-  const rows: ConnRow[] = [{ id: "deepseek", agent: "deepseek", title, state: "ok", checkedAt,
-    text: a.version ? t("conn.detectedVersion", { version: a.version }) : t("conn.detected"),
-    note: models.length ? t("conn.dshModels", { models: models.slice(0, 3).join(" · ") }) : undefined }];
+  // 工单 #135 P17：DSH 的登录确认口径与连接页同源——未确认登录时不标成绿点「已检测到」，已登录标「已登录」
+  const dshUnconfirmed = !a.loggedIn && a.loginUnconfirmed;
+  const dshText = a.loggedIn
+    ? (a.version ? t("conn.signedInVersion", { version: a.version }) : t("conn.signedIn"))
+    : dshUnconfirmed
+      ? (a.version ? t("conn.unconfirmedVersion", { version: a.version }) : t("conn.unconfirmed"))
+      : (a.version ? t("conn.detectedVersion", { version: a.version }) : t("conn.detected"));
+  const rows: ConnRow[] = [{
+    id: "deepseek",
+    agent: "deepseek",
+    title,
+    state: dshUnconfirmed ? "partial" : "ok",
+    checkedAt,
+    text: dshText,
+    lacks: dshUnconfirmed ? t("conn.agentUnconfirmed", { agent: title }) : undefined,
+    note: models.length ? t("conn.dshModels", { models: models.slice(0, 3).join(" · ") }) : undefined,
+  }];
   const b = a.dshBridge;
   const v = bridgeView(b);
   const bridge: ConnRow = { id: "deepseek-bridge", agent: "deepseek", title: t("conn.bridge"), state: "partial", text: t(`conn.bridgeState.${v}`, { version: b?.version ?? "", latest: b?.latestVersion ?? "" }), checkedAt };

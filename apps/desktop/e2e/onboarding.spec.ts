@@ -747,7 +747,7 @@ test("another device's machine is marked in 设置 › 机器 and signed out wit
   await settings.locator(".set-note").getByRole("button", { name: "账号与设备" }).click();
   const devices = settings.getByRole("list", { name: "你的设备" });
   const pcRow = devices.getByRole("listitem").filter({ hasText: "work-pc" });
-  await expect(pcRow).toContainText("也在执行任务");
+  await expect(pcRow).toContainText("工作机器");
   await pcRow.getByRole("button", { name: "登出" }).click();
   const dialog = settings.getByRole("dialog", { name: "登出设备「work-pc」？" });
   await expect(dialog).toContainText("它会马上被登出：服务器断开它，你的机器也不再接受它的连接；它自己的执行机器也一并移除。");

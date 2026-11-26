@@ -347,7 +347,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         </div>
       )}
       <button className="side-foot" ref={foot} aria-label={t("sidebar.account")} title={compact ? t("sidebar.account") : undefined} aria-haspopup="menu" aria-expanded={!!open} onClick={(e) => setOpen(open ? false : e.detail ? "mouse" : "key")}>
-        <DeviceFace kind="person" size={compact ? 28 : 32} />
+        <DeviceFace kind="person" size={32} />
         {/* Something waits for the owner in a page the menu opens: a dot on the avatar. */}
         {due > 0 && <i className="acct-due" aria-label={t("sidebar.attention", { count: due })} role="img" />}
         {/* The rail has room for the avatar alone; a dot on it when not connected. */}

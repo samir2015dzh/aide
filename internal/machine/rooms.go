@@ -1108,11 +1108,27 @@ func (n *Machine) roomMemberSaid(roomID, botKey, id, text, answers, failure stri
 	for _, x := range st.msgs {
 		for _, d := range x.Deliveries {
 			if d.BotKey == botKey && d.CopyId != "" && d.CopyId == answers {
-				d.State = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REPLIED
+				d.State, d.Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REPLIED, ""
 				if failure != "" {
 					d.State, d.Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_FAILED, mem.Name+" 这一轮没完成："+failure
 				}
 				answered = x.MessageId
+			}
+		}
+	}
+	// Direct room reply without an explicit InReplyTo: settle the latest awaiting owner delivery for this bot (#135 P02).
+	if answered == "" && r.Direct && failure == "" {
+		for i := len(st.msgs) - 1; i >= 0 && answered == ""; i-- {
+			x := st.msgs[i]
+			if x.From != "owner" {
+				continue
+			}
+			for _, d := range x.Deliveries {
+				if d.BotKey == botKey && (d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_QUEUED) {
+					d.State, d.Reason = machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_REPLIED, ""
+					answered = x.MessageId
+					break
+				}
 			}
 		}
 	}

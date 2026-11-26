@@ -21,12 +21,8 @@ export function Overview() {
   const [pick, setPick] = useState("");
   const usage = useUsage(now);
   return (
-    <>
-      <div className="ctool drag">
-        <div className="ctitle" />
-      </div>
-      <div className="cscroll">
-        <div className="ov">
+    <div className="cscroll">
+      <div className="ov">
           <div className="ov-h">
             <div className="ov-t">
               <h1>{t("title")}</h1>
@@ -44,7 +40,6 @@ export function Overview() {
           <Usage now={now} res={usage} />
         </div>
       </div>
-    </>
   );
 }
 

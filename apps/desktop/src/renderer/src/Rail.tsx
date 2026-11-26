@@ -5,9 +5,6 @@ import { SessionStatus, type Session } from "@aide/proto/session";
 import { codingAgentTitle, displayTitle, isActive, isFailed, liveByAgent, teamState } from "@aide/core";
 import { AgentLogo } from "@aide/ui";
 import { Icon } from "./icons";
-import { setSidebar } from "./layout";
-import { AppMenuButton } from "./MainWindow";
-import { keys, ownKeys } from "./platform";
 import { AccountMenu, overviewMarks, RowMark } from "./Sidebar";
 import { useNow, useStore } from "./store";
 import { allBots } from "@aide/core";
@@ -15,7 +12,7 @@ import { BotFace, usePins, useRoster } from "./bots/Bots";
 import { useRooms } from "./bots/Rooms";
 import { useTaskLook } from "./TasksPage";
 
-// The sidebar's rail (docs/her-team.md §16), 74 px wide: as the sidebar, the overview and the task feed first (工单
+// The sidebar's rail (docs/her-team.md §16), 72 px wide: as the sidebar, the overview and the task feed first (工单
 // #102), then bots alone (工单 #63) — each bot's face, the pinned first, with its state on it, then the rooms. A machine
 // only (no roster) has the overview and one logo for each coding agent with sessions at hand. Each button says on hover
 // (or focus) what it is and how it stands.
@@ -74,11 +71,8 @@ export function Rail() {
   const open = menu && groups.find((g) => g.agent === menu.agent);
   return (
     <aside className="rail" aria-label={t("rail.label")}>
-      <div className="rail-top drag">
-        <AppMenuButton />
-      </div>
       <nav className="rail-nav" onScroll={() => (setTip(null), setMenu(null))}>
-        {/* The overview and the task feed first, as in the sidebar (工单 #102). */}
+        {/* The overview and the task feed first, at the exact same vertical anchors as in the expanded sidebar (#102 / #134). */}
         {button({
           label: overviewLabel,
           current: sel.kind === "overview",
@@ -155,12 +149,6 @@ export function Rail() {
         ))}
       </nav>
       <div className="rail-foot">
-        <button className="rb" aria-label={t("sidebar.search")} onClick={() => st.set({ searching: true })} {...show(`${t("sidebar.search")} ${keys("CmdOrCtrl+K")}`)}>
-          <Icon name="search" />
-        </button>
-        <button className="rb" aria-label={t("rail.expand")} onClick={() => setSidebar(st, true)} {...show(`${t("rail.expand")} ${keys(ownKeys.toggleSidebar)}`)}>
-          <Icon name="sidebar" />
-        </button>
         <AccountMenu compact />
       </div>
       {tip && (

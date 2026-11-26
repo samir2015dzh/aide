@@ -42,6 +42,25 @@ export function aidedGone(detail: string | undefined): boolean {
 }
 
 /**
+ * Merges duplicate observations of the same link break/recovery recorded by both the main
+ * process (`from: "app"`) and a window (`from: "window"`) within `windowMs` (#138 P15).
+ * Accepts entries in any order and preserves the input order of the retained representatives.
+ */
+export function dedupeLinkEntries(entries: readonly LinkEntry[], windowMs = 5_000): LinkEntry[] {
+  const out: LinkEntry[] = [];
+  const score = (e: LinkEntry) => (e.why === "hung" ? 4 : 0) + (e.detail ? 2 : 0) + (e.downFor ? 1 : 0) + (e.from === "app" ? 0.5 : 0);
+  for (const e of entries) {
+    const idx = out.findIndex((x) => x.link === e.link && x.kind === e.kind && Math.abs(x.at - e.at) <= windowMs);
+    if (idx === -1) {
+      out.push(e);
+    } else if (score(e) > score(out[idx])) {
+      out[idx] = e;
+    }
+  }
+  return out;
+}
+
+/**
  * Keeps a watch up until signal aborts: open() each time, every message to message(); down() once when it fails, ends
  * or hangs, up() with the first message after; watched again retry ms after it went down.
  */

@@ -118,7 +118,8 @@ fun SettingsTab(model: AppModel) {
 
             item { SectionHeader(t("Devices", "设备"), count = world.devices.size) }
             itemsIndexed(world.devices, key = { _, d -> d.keyId }) { i, d ->
-                Box(Modifier.groupRow(i, world.devices.size, inset = 64.dp)) { DeviceRow(d, signOut = { signingOut = d }) }
+                val online = d.machineId.takeIf { it.isNotEmpty() }?.let { id -> world.machines.firstOrNull { it.machineId == id }?.let { it.online || it.local } } ?: d.machineOnline
+                Box(Modifier.groupRow(i, world.devices.size, inset = 64.dp)) { DeviceRow(d, online, signOut = { signingOut = d }) }
             }
 
             item {
@@ -171,9 +172,9 @@ fun Footnote(text: String) {
 }
 
 @Composable
-private fun DeviceRow(d: Device, signOut: () -> Unit) {
+private fun DeviceRow(d: Device, online: Boolean, signOut: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        DeviceFace(deviceKind(d.platform), 40, d.thisDevice || d.machineOnline)
+        DeviceFace(deviceKind(d.platform), 40, d.thisDevice || online)
         HSpace(12)
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -183,7 +184,7 @@ private fun DeviceRow(d: Device, signOut: () -> Unit) {
             Text(
                 listOfNotNull(
                     d.platform.takeIf { it.isNotEmpty() },
-                    if (d.machineId.isNotEmpty()) (if (d.machineOnline) t("its machine online", "它的机器在线") else t("its machine offline", "它的机器离线")) else null,
+                    if (d.machineId.isNotEmpty()) (if (online) t("its machine online", "它的机器在线") else t("its machine offline", "它的机器离线")) else null,
                     if (d.legacy) t("set up before accounts", "账号功能之前设置") else null,
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,

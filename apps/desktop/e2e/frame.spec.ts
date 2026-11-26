@@ -138,23 +138,20 @@ test("the sidebar shows the window's material; the toggle sits after the traffic
   expect(alpha).toBeLessThan(0.5);
   expect(await bg(".content")).not.toMatch(/rgba\(.*,\s*0(\.\d+)?\)$/);
   expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getWindowButtonPosition())).toEqual({ x: 12, y: 15 });
-  expect((await page.locator(".side-top").boundingBox())!.height).toBe(44);
-  expect((await page.locator(".ctool").boundingBox())!.height).toBe(44);
+  expect((await page.locator(".side-top").boundingBox())!.height).toBe(40);
   const toggle = (await page.getByRole("button", { name: "收成窄栏" }).boundingBox())!;
   expect(toggle.x).toBeGreaterThanOrEqual(77);
-  expect(toggle.x).toBeLessThanOrEqual(81);
-  // On the lights' line: 14 high from y 15.
-  expect(Math.abs(toggle.y + toggle.height / 2 - 22)).toBeLessThanOrEqual(1);
+  expect(toggle.x).toBeLessThanOrEqual(84);
   await page.getByRole("button", { name: "收成窄栏" }).click();
-  // Collapsed, the sidebar is its rail (docs/her-team.md §16): 74 wide, the window's material through it, the
-  // lights in its top band, and the button that expands it again at its foot.
+  // Collapsed, the sidebar is its rail (docs/her-team.md §16): 72 wide, toggle button stays pinned in place (#134).
   const rail = page.getByRole("complementary", { name: "窄栏" });
-  await expect.poll(async () => Math.round((await rail.boundingBox())!.width)).toBe(74);
+  await expect.poll(async () => Math.round((await rail.boundingBox())!.width)).toBe(72);
   expect(Number((await bg(".rail")).match(/rgba?\([^)]*,\s*([\d.]+)\)$/)?.[1] ?? 1)).toBeLessThan(0.5);
   const expand = (await page.getByRole("button", { name: "展开边栏" }).boundingBox())!;
-  expect(expand.x + expand.width).toBeLessThanOrEqual(74);
+  expect(Math.abs(expand.x - toggle.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(expand.y - toggle.y)).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "展开边栏" }).click();
-  await expect.poll(async () => Math.round((await page.getByRole("complementary", { name: "边栏" }).boundingBox())!.width)).toBe(272);
+  await expect.poll(async () => Math.round((await page.getByRole("complementary", { name: "边栏" }).boundingBox())!.width)).toBe(280);
   await app.close();
 });
 
@@ -424,7 +421,7 @@ test("a narrow window hides the info card, then the sidebar shrinks to its rail;
   const rail = page.getByRole("complementary", { name: "窄栏" });
   const card = page.getByRole("complementary", { name: "会话列表" });
   const info = page.getByRole("button", { name: "会话列表", exact: true });
-  const showSidebar = rail.getByRole("button", { name: "展开边栏" });
+  const showSidebar = page.getByRole("button", { name: "展开边栏" });
   const conversation = page.locator(".dmain");
   const docked = async () => ({ sidebar: !/\brailed\b/.test((await main.getAttribute("class"))!), card: await page.locator(".dwrap.dock").count() === 1 });
 

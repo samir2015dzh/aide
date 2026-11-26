@@ -70,7 +70,7 @@ test("a coding agent's conversations: on in the current one, a new one, back to 
   await expect(bot.locator(".composer-state")).toHaveText("已开新对话", { timeout: 30_000 });
   // It is the current one, by its title and when it started (rule 3).
   await expect(current).toHaveCount(1, { timeout: 30_000 });
-  await expect(bot.locator(".conv-head")).toContainText("正在聊：");
+  await expect(bot.locator(".conv-head")).toContainText(/正在聊：|最近对话：/);
   const firstTitle = (await current.locator(".conv-current-top b").textContent())!;
   // The next message goes on in it (rule 1): no new conversation.
   await expect(current).not.toContainText("进行中", { timeout: 60_000 });

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Session } from "@aide/proto/session";
-import { displayTitle, openedNews } from "@aide/core";
+import { codingAgentShort, displayTitle, openedNews } from "@aide/core";
+import { AgentLogo } from "@aide/ui";
 import { local } from "./api";
 import { Icon } from "./icons";
 import { MachineTag } from "./MachineTag";
@@ -29,12 +30,17 @@ export function SessionPage({ s }: { s: Session }) {
   useMarkSeen(s);
   return (
     <>
-      <div className="ctool drag">
-        {/* The title line is the session's name alone; its machine (several machines only) sits right after it, in the bar. */}
+      <div className="ctool">
+        {/* 会话顶栏（#134 补充二）：承载 agent 标识、会话标题、项目与机器上下文，右侧按钮贴齐右缘 */}
         <div className="ctitle-wrap">
+          <AgentLogo agent={s.agent} size={18} />
           <div className="ctitle">
             <h2>{displayTitle(s)}</h2>
           </div>
+          <span className="ctool-meta">
+            {codingAgentShort(s.agent)}
+            {s.projectId ? ` · ${s.projectId}` : ""}
+          </span>
           <MachineTag machineId={s.machineId} />
         </div>
         {/* The session's settings, in a menu (工单 #90): open only when asked for. */}

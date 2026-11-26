@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { ListExecLogResponse } from "@aide/proto/local";
-import { agoText, dateOf, opsMillis, opsResult } from "@aide/core";
+import { agoText, dateOf, opsCommandSummary, opsMillis, opsResult, type OpsCommandSummary, type OpsResult } from "@aide/core";
 import { agentName } from "@aide/ui";
 import { i18n } from "../../../shared/i18n";
-import { aidedGone, type LinkEntry } from "../../../shared/watchLink";
+import { aidedGone, dedupeLinkEntries, type LinkEntry } from "../../../shared/watchLink";
 import { local } from "../api";
 import { errorText, useNow, useStore } from "../store";
 
@@ -20,9 +20,11 @@ export function OpsLog() {
   const now = useNow(60_000);
   const [log, setLog] = useState<ListExecLogResponse>();
   const [error, setError] = useState("");
+  const [open, setOpen] = useState<Record<number, boolean>>({});
+  const [copied, setCopied] = useState<number | null>(null);
   const load = useCallback(() => {
     local.listExecLog({}).then(
-      (r) => (setLog(r), setError("")),
+      (r) => (setLog(r), setError(""), setOpen({})),
       (e) => setError(errorText(e)),
     );
   }, []);
@@ -31,16 +33,22 @@ export function OpsLog() {
   useEffect(() => {
     if (up) load();
   }, [load, up]);
-  // The links' own record (工单 #87), kept by the app: read with the rest.
+  // The links' own record (工单 #87), kept by the app: deduplicated across app/window watchers (#138 P15).
   const [links, setLinks] = useState<LinkEntry[]>([]);
-  const loadLinks = useCallback(() => void window.aide?.linkLog().then((l) => setLinks([...l].reverse()), () => {}), []);
+  const loadLinks = useCallback(
+    () => void window.aide?.linkLog().then((l) => setLinks(dedupeLinkEntries([...l].reverse())), () => {}),
+    [],
+  );
   useEffect(() => loadLinks(), [loadLinks, st.reconnecting]);
-  const result = (r: Parameters<typeof opsResult>[0]) => {
-    const o = opsResult(r);
-    if (o.kind === "ok") return <span className="fv-side">{t("ops.exit", { code: 0 })}</span>;
-    if (o.kind === "exit") return <span className="fv-side warn">{t("ops.exit", { code: o.code })}</span>;
-    return <span className="fv-side warn">{t(`ops.${o.kind}`)}</span>;
+
+  const toggle = (i: number) => setOpen((prev) => ({ ...prev, [i]: !prev[i] }));
+  const copy = (i: number, text: string) => {
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(i);
+      setTimeout(() => setCopied((cur) => (cur === i ? null : cur)), 1600);
+    }, () => {});
   };
+
   return (
     <div className="form">
       {error && <p className="set-note warn">{error}</p>}
@@ -50,21 +58,63 @@ export function OpsLog() {
             const r = e.record!;
             const at = dateOf(r.startedAt);
             const secs = opsMillis(r) / 1000;
+            const res = opsResult(r);
+            const sum = opsCommandSummary(r.command);
+            const isOpen = !!open[i];
+            const hasDetail = sum.collapsible || !!r.workdir || !!r.reason;
             const sub = [
               agentName(r.clientLabel || r.clientId),
               e.machineName || e.machineId,
-              at ? `${agoText(at, now)} (${at.toLocaleString(i18n.language)})` : "",
+              at ? agoText(at, now) : "",
               secs ? t("ops.took", { seconds: secs < 10 ? secs.toFixed(1) : Math.round(secs) }) : "",
-              r.workdir,
-            ].filter((s) => s);
+            ].filter(Boolean);
+            const detailMeta = [
+              at ? at.toLocaleString(i18n.language) : "",
+              r.workdir ? t("ops.workdir", { dir: r.workdir }) : "",
+              r.reason,
+            ].filter(Boolean);
+            const dotClass = res.kind === "ok" ? "on" : res.kind === "exit" || res.kind === "failed" ? "bad" : "warn";
+            const outcomeClass = res.kind === "ok" ? "ok" : res.kind === "exit" || res.kind === "failed" ? "bad" : "warn";
+            const scriptLabel = sum.collapsible && sum.shell !== "plain" ? shellLabel(sum.shell, sum.lineCount, t) : "";
             return (
-              <div key={i} className="frow" role="listitem">
-                <div className="ft">
-                  <div className="mono sel-text">{r.command}</div>
-                  <div className="fdesc">{sub.join(" · ")}</div>
-                  {r.reason && <div className="fdesc">{r.reason}</div>}
+              <div key={i} className="frow ops-row" role="listitem">
+                <div className="ops-head">
+                  <div className="ft">
+                    <div className="ops-title">
+                      <i className={`dotc ${dotClass}`} aria-hidden="true" />
+                      {scriptLabel ? (
+                        <span className="ops-summary">{scriptLabel}</span>
+                      ) : (
+                        <span className="mono ops-preview">{sum.preview}</span>
+                      )}
+                      <span className={`ops-outcome ${outcomeClass}`}>{outcomeText(res, t)}</span>
+                    </div>
+                    {scriptLabel && <div className="mono ops-preview-sub">{sum.preview}</div>}
+                    <div className="fdesc">{sub.join(" · ")}</div>
+                    {!isOpen && !sum.collapsible && r.reason && <div className="fdesc">{r.reason}</div>}
+                  </div>
+                  {hasDetail && (
+                    <button
+                      type="button"
+                      className="ops-toggle"
+                      aria-expanded={isOpen}
+                      onClick={() => toggle(i)}
+                    >
+                      {t(isOpen ? "ops.hideDetail" : "ops.showDetail")}
+                    </button>
+                  )}
                 </div>
-                {result(r)}
+                {isOpen && (
+                  <div className="ops-detail">
+                    <pre className="ops-script sel-text">{r.command}</pre>
+                    <div className="ops-detail-foot">
+                      {detailMeta.length > 0 && <div className="fdesc ops-detail-meta">{detailMeta.join(" · ")}</div>}
+                      <button type="button" className="btn sm" onClick={() => copy(i, r.command)}>
+                        {t(copied === i ? "ops.copied" : "ops.copyCommand")}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -83,12 +133,14 @@ export function OpsLog() {
         {links.slice(0, 50).map((e, i) => {
           const at = new Date(e.at);
           return (
-            <div key={i} className="frow" role="listitem">
+            <div key={i} className="frow ops-link-row" role="listitem">
               <div className="ft">
-                <div>{linkText(e, t)}</div>
-                <div className="fdesc">{[`${agoText(at, now)} (${at.toLocaleString(i18n.language)})`, t(e.from === "window" ? "ops.link.byWindow" : "ops.link.byApp")].join(" · ")}</div>
+                <div className="ops-title">
+                  <i className={`dotc ${e.kind === "back" ? "on" : "warn"}`} aria-hidden="true" />
+                  <span>{linkText(e, t)}</span>
+                </div>
+                <div className="fdesc">{`${agoText(at, now)} (${at.toLocaleString(i18n.language)})`}</div>
               </div>
-              <span className={`fv-side ${e.kind === "down" ? "warn" : ""}`}>{t(e.kind === "down" ? "ops.link.down" : "ops.link.back")}</span>
             </div>
           );
         })}
@@ -99,6 +151,19 @@ export function OpsLog() {
       <p className="set-note">{t("ops.note")}</p>
     </div>
   );
+}
+
+function outcomeText(o: OpsResult, t: TFunction<"settings">): string {
+  if (o.kind === "ok") return t("ops.okExit");
+  if (o.kind === "exit") return t("ops.failExit", { code: o.code });
+  return t(`ops.${o.kind}`);
+}
+
+function shellLabel(shell: OpsCommandSummary["shell"], lines: number, t: TFunction<"settings">): string {
+  if (shell === "powershell") return t("ops.psScript", { lines });
+  if (shell === "shell") return t("ops.shellScript", { lines });
+  if (shell === "cmd") return t("ops.cmdScript", { lines });
+  return t("ops.lines", { lines });
 }
 
 /** What an entry of the links' record says, with the suspected cause of a break and how long it lasted (工单 #87). */
