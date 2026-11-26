@@ -28,14 +28,17 @@ import (
 // once the agent is found there. A download that is not the one the
 // registry names is refused, and nothing is left for the agent to find.
 func TestInstallAntigravityProgram(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("USERPROFILE", home)
+	// Built before HOME moves: go build would otherwise put its module
+	// cache (read-only files) in the temporary home, which then cannot be
+	// removed.
 	bin := buildFakeACPBinary(t)
 	payload, err := os.ReadFile(bin)
 	if err != nil {
 		t.Fatal(err)
 	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	cmd := "agy_acp_server.par"
 	if runtime.GOOS == "windows" {
 		cmd = "agy_acp_server.exe"
