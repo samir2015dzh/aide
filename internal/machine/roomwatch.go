@@ -73,7 +73,9 @@ func (b *roomBook) busy() int {
 	for _, st := range b.rooms {
 		for _, m := range st.msgs {
 			for _, d := range m.Deliveries {
-				if d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN {
+				// One at the post office a day and not taken (工单 #160) is no bot at work: it holds no
+				// place, or letters to agents that can't be reached would keep every room here waiting (工单 #168).
+				if d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_SENT && !d.Untaken || d.State == machinev1.RoomDeliveryState_ROOM_DELIVERY_STATE_TAKEN {
 					n++
 				}
 			}
