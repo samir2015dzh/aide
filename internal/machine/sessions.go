@@ -52,6 +52,9 @@ type Limits struct {
 	ToolTimeout        time.Duration
 	TurnTimeout        time.Duration
 	IdleProcessTTL     time.Duration
+	// BackgroundProcessTTL is how long an idle agent process with work
+	// running in the background (provider.Backgrounder) is kept, at least.
+	BackgroundProcessTTL time.Duration
 	// RetryDelay is how long a turn that failed on a rate limit (or a
 	// model at capacity) waits before it goes on by itself in the same
 	// conversation; the next waits are retryFactors times as long, then
@@ -61,7 +64,7 @@ type Limits struct {
 
 func DefaultLimits() Limits {
 	return Limits{StartTimeout: 10 * time.Minute, FirstOutputTimeout: 3 * time.Minute, IdleTimeout: 15 * time.Minute, ToolTimeout: 2 * time.Hour,
-		IdleProcessTTL: 10 * time.Minute, RetryDelay: 30 * time.Second}
+		IdleProcessTTL: 10 * time.Minute, BackgroundProcessTTL: 2 * time.Hour, RetryDelay: 30 * time.Second}
 }
 
 type PrincipalKind int
@@ -2253,7 +2256,9 @@ func (s *Sessions) onEvent(l *live, ps provider.Session, e provider.Event) {
 		mFirstEvent.Since(l.turnStarted)
 	}
 	l.mu.Unlock()
-	if stale {
+	// What became of a call left running in the background is so even from
+	// a process the session has let go (its end, as that process went).
+	if stale && !(e.Kind == provider.EventToolResult && e.Background) {
 		return
 	}
 	switch e.Kind {
@@ -3019,8 +3024,14 @@ func (s *Sessions) Janitor(ctx context.Context) {
 				}
 			case sessionv1.SessionStatus_SESSION_STATUS_IDLE, sessionv1.SessionStatus_SESSION_STATUS_CRASHED:
 				// The session never ends by itself; only its idle agent
-				// process goes, and the next message resumes it.
-				if ps != nil && now.Sub(idleSince) > s.limits.IdleProcessTTL {
+				// process goes, and the next message resumes it. One with
+				// work running in the background is kept longer: the work
+				// would stop with it.
+				ttl := s.limits.IdleProcessTTL
+				if b, ok := ps.(provider.Backgrounder); ok && b.Background() {
+					ttl = max(ttl, s.limits.BackgroundProcessTTL)
+				}
+				if ps != nil && now.Sub(idleSince) > ttl {
 					l.mu.Lock()
 					if l.sess == ps {
 						l.sess = nil
