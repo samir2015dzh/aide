@@ -436,8 +436,11 @@ test("a narrow window hides the info card, then the sidebar; asked for, they sho
   // The session's toolbar is its own 44 px row right under the 40 px title bar, and moves the window as the title bar
   // does (审计 B: it had lost its drag area).
   const ctool = page.locator(".ctool");
-  const toolBox = (await ctool.boundingBox())!;
-  expect([toolBox.y, toolBox.height]).toEqual([40, 44]);
+  // Once the page has settled (it comes in with a short slide): whole pixels.
+  await expect.poll(async () => {
+    const b = (await ctool.boundingBox())!;
+    return [Math.round(b.y), Math.round(b.height)];
+  }).toEqual([40, 44]);
   await expect(ctool).toHaveClass(/\bdrag\b/);
   await expect(page.locator(".slist")).toHaveCount(0);
 
