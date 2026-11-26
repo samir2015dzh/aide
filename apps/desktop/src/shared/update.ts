@@ -73,6 +73,22 @@ export function nextUpdate(u: Update, e: UpdateEvent): Update {
 }
 
 /**
+ * How long the owner has been away — no window of the app's shown, or nothing typed or moved on this computer —
+ * before a downloaded version starts by itself (Windows, 工单 #128).
+ */
+export const awayBeforeUpdate = 10 * 60_000;
+
+/**
+ * Whether the downloaded version starts now, in place of this one (工单 #128: downloaded and installed beside it,
+ * it ran only from the app's next start, and the app stays in the notification area for days): only while the
+ * owner is away from it — no window shown, or the computer idle, since awayBeforeUpdate (lastShown) — and nothing runs on this computer that the
+ * restart of aided after it would stop. Otherwise Restart to Update, as before.
+ */
+export function updateWhileAway(u: Update, lastShown: number, busy: boolean, now: number, away = awayBeforeUpdate): boolean {
+  return u.state === "ready" && !busy && now - lastShown >= away;
+}
+
+/**
  * Is version a newer than b? Dot-separated parts compare as numbers
  * ("0.10.0" > "0.9.1"); other parts ("1.0.0-beta.2") as text. Squirrel.Mac
  * agrees: it downloads a feed's release only when the running app is older.

@@ -2,8 +2,9 @@
 # installs an older build from its Setup.exe, serves a newer build's
 # release files (its package and signed feed) on 127.0.0.1:8765, where
 # both test builds look, opens the app, which downloads the newer version
-# and has Squirrel install it beside itself; opened again, the app is the
-# newer version, places its programs and restarts aided on them. Then
+# and has Squirrel install it beside itself; then it starts the newer
+# version by itself (工单 #128: a test build does not wait for the owner to
+# go away), which places its programs and restarts aided on them. Then
 # it uninstalls. Both builds come from package-win.mjs with
 # AIDE_UPDATE_FEED=http://127.0.0.1:8765, the same
 # AIDE_RELEASE_URL, and a key of the test's (AIDE_RELEASE_PUBKEY_FILE,
@@ -21,6 +22,7 @@ function Fail($what) {
   Get-ChildItem $root | Format-Table Name, LastWriteTime
   Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(Aide|aidedw|Update)\.exe$' } | Format-Table ProcessId, ExecutablePath, CommandLine -Wrap
   Get-Content (Join-Path $env:LOCALAPPDATA "Aide\logs\setup.log") -Tail 20 -ErrorAction SilentlyContinue
+  Get-Content (Join-Path $env:LOCALAPPDATA "Aide\logs\app-daemon.log") -Tail 20 -ErrorAction SilentlyContinue
   Get-Content (Join-Path $root "Squirrel-Update.log") -Tail 40 -ErrorAction SilentlyContinue
   throw "check-windows-update: $what"
 }
@@ -47,15 +49,13 @@ try {
 
   if (-not (Test-Path $link)) { Fail "the update removed Aide.lnk" }
 
-  Write-Host "> opening it again"
-  Stop-Process -Name Aide -Force
-  Start-Sleep 2
-  Start-Process $link
-  Wait "the app at $Version" 60 { Get-CimInstance Win32_Process -Filter "Name='Aide.exe'" | Where-Object { $_.ExecutablePath -like "*\app-$Version\*" } }
+  Write-Host "> waiting for the app to start $Version by itself"
+  Wait "the app at $Version" 180 { Get-CimInstance Win32_Process -Filter "Name='Aide.exe'" | Where-Object { $_.ExecutablePath -like "*\app-$Version\*" } }
   Wait "its programs" 60 { (& (Join-Path $bin "aide.exe") version) -eq $Version -and (& (Join-Path $bin "aide.exe") version) -eq $Version }
   # Not busy, the app restarts aided 30 s after seeing its older version.
   Wait "aided restarted" 120 { $now = Daemons; $now.Count -gt 0 -and -not ($now | Where-Object { $before -contains $_ }) }
   Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(Aide|aidedw)\.exe$' } | Format-Table ProcessId, ExecutablePath -Wrap
+  if (@(Get-CimInstance Win32_Process -Filter "Name='Aide.exe'" | Where-Object { $_.ExecutablePath -notlike "*\app-$Version\*" }).Count) { Fail "the older version still runs" }
 
   Write-Host "> uninstalling"
   $p = Start-Process -FilePath (Join-Path $root "Update.exe") -ArgumentList "--uninstall", "-s" -Wait -PassThru

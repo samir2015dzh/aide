@@ -179,7 +179,15 @@ A computer that runs no coding agents can approve instead: aided device.`}
 						args = append(args, a)
 					}
 				}
-				return service.Supervise(dataDir, exe, args)
+				// Its own end is in the daemon's log too: nothing else would tell of it (工单 #128).
+				err = service.Supervise(dataDir, exe, args)
+				openLogFile(dataDir)
+				if err != nil {
+					logger(verbose).Warn("supervisor stopped", "err", err)
+				} else {
+					logger(verbose).Info("supervisor stopped: the daemon stopped cleanly")
+				}
+				return err
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
@@ -631,7 +639,11 @@ in), a LaunchAgent on macOS, a Task Scheduler logon task on Windows.
 			fmt.Printf("service      running, but NOT %s → run: aided service install · log: %s\n", startsWhen, logHint(logFile, true))
 			return false
 		case service.Installed():
-			fmt.Printf("service      installed, NOT RUNNING → run: aided service restart · log: %s\n", logHint(logFile, false))
+			why := service.NotRunningWhy()
+			if why != "" {
+				why = " (" + why + ")"
+			}
+			fmt.Printf("service      installed, NOT RUNNING%s → run: aided service restart · log: %s\n", why, logHint(logFile, false))
 			return false
 		case byHand:
 			fmt.Printf("service      not installed; aided runs by hand → to start it %s: aided service install\n", startsWhen)

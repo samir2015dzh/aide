@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Command, Preferences } from "../shared/bridge";
 import { i18n, languages, type Language } from "../shared/i18n";
-import { keepWatching } from "../shared/watchLink";
+import { healDelay, keepWatching } from "../shared/watchLink";
 import { command } from "./ipc";
 import { linkBack, linkDown } from "./linklog";
 import { platform } from "./platform";
@@ -227,9 +227,16 @@ export function watch() {
         world.status = null;
         changed();
       }
-      // Not back within half a minute: aided is started again, as the app does when it opens (platform.ensureDaemon).
+      // Not back within half a minute: aided is started again, as the app does when it opens (platform.ensureDaemon),
+      // and again while it stays down (healDelay).
       clearTimeout(gone);
-      gone = setTimeout(() => platform.ensureDaemon(), 30_000);
+      const heal = (attempt: number) => {
+        gone = setTimeout(() => {
+          platform.ensureDaemon(attempt);
+          heal(attempt + 1);
+        }, healDelay(attempt));
+      };
+      heal(0);
     },
     up: () => {
       clearTimeout(gone);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkEvery, feedNotes, newer, nextCheckDelay, nextUpdate, releaseBody, releaseCatalog, releaseFeed, releaseNotesProblem, squirrelFailure, type Update, type UpdateEvent } from "./update.ts";
+import { checkEvery, feedNotes, newer, nextCheckDelay, nextUpdate, releaseBody, releaseCatalog, releaseFeed, releaseNotesProblem, squirrelFailure, awayBeforeUpdate, updateWhileAway, type Update, type UpdateEvent } from "./update.ts";
 
 test("newer compares versions as numbers, releases after their pre-releases", () => {
   const cases: [string, string, boolean][] = [
@@ -136,4 +136,14 @@ test("the catalogs' install guides are whole", async () => {
   const zhUpdates = (await import("../locales/zh-CN/updates.json", { with: { type: "json" } })).default;
   const notes = { "0.0.1": { improvements: ["x"], fixes: [] } };
   assert.equal(releaseNotesProblem(notes, notes, "0.0.1", { en: enUpdates, "zh-CN": zhUpdates }), "");
+});
+
+test("updateWhileAway: a downloaded version starts by itself only while the owner is away and nothing runs here (工单 #128)", () => {
+  const ready: Update = { state: "ready", version: "0.2.12" };
+  const now = 1_000_000_000;
+  const away = now - awayBeforeUpdate;
+  assert.equal(updateWhileAway(ready, away, false, now), true);
+  assert.equal(updateWhileAway(ready, away + 1, false, now), false, "a window shown less than awayBeforeUpdate ago");
+  assert.equal(updateWhileAway(ready, away, true, now), false, "a session runs here");
+  assert.equal(updateWhileAway({ state: "downloading", version: "0.2.12" }, away, false, now), false, "not downloaded yet");
 });

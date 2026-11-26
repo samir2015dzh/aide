@@ -143,18 +143,90 @@ func Restart() error {
 	return schtasks("/Run", "/TN", taskName())
 }
 
-// Running reports whether the installed task is running now (its state,
-// which schtasks would print in the system's language).
-func Running() bool {
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", "(Get-ScheduledTask -TaskName '"+strings.ReplaceAll(taskName(), "'", "''")+"' -ErrorAction Stop).State")
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NO_WINDOW}
-	out, err := cmd.Output()
-	return err == nil && strings.TrimSpace(string(out)) == "Running"
+// taskState is the installed task as Task Scheduler has it: its state
+// (Ready, Running, Disabled…: the enum's names, not the system's language),
+// the program it starts, and how its last run ended.
+type taskState struct {
+	state, program string
+	lastResult     uint32
+	lastRun        string
 }
 
-// AtBoot is whether the service starts by itself: at logon, as a
-// LaunchAgent does.
-func AtBoot() bool { return Installed() }
+func queryTask() (taskState, error) {
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
+		"$t = Get-ScheduledTask -TaskName '"+strings.ReplaceAll(taskName(), "'", "''")+"' -ErrorAction Stop; $i = $t | Get-ScheduledTaskInfo; "+
+			"$t.State.ToString(); $t.Actions[0].Execute; $i.LastTaskResult; if ($i.LastRunTime) { $i.LastRunTime.ToString('yyyy-MM-dd HH:mm:ss') }")
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NO_WINDOW}
+	out, err := cmd.Output()
+	if err != nil {
+		return taskState{}, err
+	}
+	return parseTaskState(string(out)), nil
+}
+
+func parseTaskState(out string) taskState {
+	lines := strings.Split(strings.ReplaceAll(out, "\r", ""), "\n")
+	line := func(i int) string {
+		if i < len(lines) {
+			return strings.TrimSpace(lines[i])
+		}
+		return ""
+	}
+	var r int64
+	fmt.Sscan(line(2), &r)
+	return taskState{state: line(0), program: line(1), lastResult: uint32(r), lastRun: line(3)}
+}
+
+// Running reports whether the installed task is running now.
+func Running() bool {
+	t, err := queryTask()
+	return err == nil && t.state == "Running"
+}
+
+// AtBoot is whether the service starts by itself at logon, as a
+// LaunchAgent does: its task is there, not disabled, and the program it
+// starts is there (工单 #128: a task that is only there said "starts at
+// login" while it could not).
+func AtBoot() bool {
+	t, err := queryTask()
+	return err == nil && t.willStart() == ""
+}
+
+// willStart is why the task cannot start the daemon at logon, or "".
+func (t taskState) willStart() string {
+	if t.state == "Disabled" {
+		return "its logon task is disabled"
+	}
+	if _, err := os.Stat(t.program); err != nil {
+		return "its logon task's program is missing: " + t.program
+	}
+	return ""
+}
+
+// NotRunningWhy says why the installed service is not running, as far as
+// Task Scheduler knows: the task cannot start, or how its last run ended.
+func NotRunningWhy() string {
+	t, err := queryTask()
+	if err != nil {
+		return ""
+	}
+	if why := t.willStart(); why != "" {
+		return why
+	}
+	return t.lastRunText()
+}
+
+func (t taskState) lastRunText() string {
+	switch t.lastResult {
+	case 0x41303: // SCHED_S_TASK_HAS_NOT_RUN
+		return "its logon task has not run since it was registered"
+	case 0x41306: // SCHED_S_TASK_TERMINATED
+		return "its logon task was ended (" + t.lastRun + ")"
+	case 0:
+		return "its supervisor stopped cleanly (" + t.lastRun + ")"
+	}
+	return fmt.Sprintf("its logon task's last run (%s) ended with %#x", t.lastRun, t.lastResult)
+}
 
 func Installed() bool { return schtasks("/Query", "/TN", taskName()) == nil }
 

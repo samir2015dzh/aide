@@ -23,8 +23,17 @@ export interface Platform {
   registerLinks(): void;
   /** Makes aided start by itself, and start now if it does not run. */
   registerDaemon(): void;
-  /** aided stopped answering (工单 #87): started again if it does not run, as when the app opens; nothing if it runs. */
-  ensureDaemon(): void;
+  /**
+   * aided stopped answering (工单 #87): started again if it does not run, as when the app opens; nothing if it runs.
+   * attempt counts the tries since it went down (工单 #128: tried again while it stays down).
+   */
+  ensureDaemon(attempt?: number): void;
+  /**
+   * Starts the downloaded version in place of this one, with its main window when shown, else in the notification
+   * area only, as at login, and returns true; false where the system has no such restart (the Mac installs its
+   * update on quit). The caller quits.
+   */
+  restartToUpdateQuietly(shown: boolean): boolean;
   /** Restarts aided (after an update brought another version). */
   restartDaemon(why: string): void;
   /** Restarts aided on demand (工单 #120) and rejects with the real reason if starting/restarting it fails. */

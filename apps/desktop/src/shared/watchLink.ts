@@ -27,6 +27,15 @@ export type LinkEntry = {
   from: "app" | "window";
 };
 
+/**
+ * While aided does not answer, the app starts it again (platform.ensureDaemon) this long after the link went down,
+ * then after each attempt that did not bring it back: often at first, then every five minutes for as long as it is
+ * down (工单 #128: one attempt that failed left the app waiting on a service nobody started again).
+ */
+export function healDelay(attempt: number): number {
+  return [30_000, 60_000, 120_000][attempt] ?? 300_000;
+}
+
 /** Whether a lost link's error says aided isn't there at all (stopped, restarting) rather than the link breaking. */
 export function aidedGone(detail: string | undefined): boolean {
   return /ENOENT|ECONNREFUSED|EPIPE|ECONNRESET|connect E|socket hang up/i.test(detail ?? "");

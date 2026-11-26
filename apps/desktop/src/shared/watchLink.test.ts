@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aidedGone, keepWatching } from "./watchLink.ts";
+import { aidedGone, healDelay, keepWatching } from "./watchLink.ts";
 
 /** A watch that yields msgs, then fails with fail, or (hang) waits until aborted, as a stuck stream does. */
 function watch(msgs: string[], end: { fail?: string; hang?: boolean }) {
@@ -53,4 +53,8 @@ test("aidedGone: aided not there at all, told from a link that broke", () => {
   assert.equal(aidedGone("[unavailable] aided: connect ENOENT /run/aide.sock"), true);
   assert.equal(aidedGone("[internal] protocol error"), false);
   assert.equal(aidedGone(undefined), false);
+});
+
+test("healDelay: aided started again soon after it went down, then every five minutes while it stays down (工单 #128)", () => {
+  assert.deepEqual([0, 1, 2, 3, 10].map(healDelay), [30_000, 60_000, 120_000, 300_000, 300_000]);
 });
