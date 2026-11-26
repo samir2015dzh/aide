@@ -261,6 +261,9 @@
     "earlier": "更早",
     "empty": "还没有内容。",
     "turnFailed": "这一轮失败了。",
+    "turnStopped": "这一轮已停止。",
+    "turnCut": "DSH 进程在这一轮完成前退出，这一轮已中止；没做完的工具调用结果未知。",
+    "turnCutResumed": "DSH 重新启动后接着做，下面是新的一轮。",
     "takeover": "接管",
     "takeoverAsk": "开启接管？",
     "takeoverNote1": "开启后可以从 Aide 给这个会话发消息、打断它；消息经 DSH Desktop 里的 Aide 插件交给 DSH，DSH Desktop 里同步可见。",
@@ -277,7 +280,7 @@
     "queued": "已排队：这一轮结束后 DSH 接着处理。",
     "interrupt": "打断",
     "interrupted": "已打断这一轮。",
-    "notRunningHere": "DSH Desktop 里这个会话没有在运行的一轮。",
+    "notRunningHere": "这一轮已经结束，不用再打断：DSH Desktop 里这个会话现在没有在运行的一轮。",
     "bridge": {
       "running": "Aide 插件在运行。",
       "notInstalled": "DSH Desktop 里还没有 Aide 插件，发不了消息。",

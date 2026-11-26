@@ -29,6 +29,7 @@ type fakeBridge struct {
 	mu       sync.Mutex
 	ln       net.Listener
 	live     map[string]bool
+	status   map[string]string // DSH's word for a live Agent ("running", "idle"); "" as an older DSH says
 	prompts  []map[string]any
 	cancels  []string
 	hang     bool   // never answers a prompt; set under mu
@@ -54,7 +55,7 @@ func startFakeBridge(t *testing.T, home string) *fakeBridge {
 		b, _ := os.ReadFile(at)
 		endpoint = strings.TrimSpace(string(b))
 	}
-	f := &fakeBridge{ln: ln, live: map[string]bool{}, protocol: 1, features: []string{"options", "selections"}}
+	f := &fakeBridge{ln: ln, live: map[string]bool{}, status: map[string]string{}, protocol: 1, features: []string{"options", "selections"}}
 	t.Cleanup(func() { ln.Close() })
 	rv, _ := json.Marshal(map[string]any{"protocol": 1, "endpoint": endpoint, "token": "tok", "pid": 1, "version": "0.1.0"})
 	if err := os.WriteFile(filepath.Join(dir, "bridge.json"), rv, 0o600); err != nil {
@@ -101,7 +102,7 @@ func (f *fakeBridge) serve(c net.Conn) {
 		case "hello":
 			reply(map[string]any{"result": map[string]any{"protocol": f.protocol, "version": "0.1.0", "services": map[string]bool{"sessionController": true, "agents": true}, "features": f.features}})
 		case "state":
-			reply(map[string]any{"result": map[string]any{"live": f.live[req.Params["sessionId"].(string)], "status": ""}})
+			reply(map[string]any{"result": map[string]any{"live": f.live[req.Params["sessionId"].(string)], "status": f.status[req.Params["sessionId"].(string)]}})
 		case "options":
 			reply(map[string]any{"result": map[string]any{
 				"models":      []any{map[string]any{"provider": "deepseek", "providerName": "DeepSeek", "model": "v4", "modelName": "V4", "efforts": []string{"high"}}},
@@ -227,6 +228,19 @@ func TestDSHTakeover(t *testing.T) {
 	b.mu.Unlock()
 	if ir, err := h.n.InterruptDSHSession(ctx, &machinev1.InterruptDSHSessionRequest{SessionId: "owners"}); err != nil || !ir.Interrupted || len(b.cancels) != 1 {
 		t.Fatalf("interrupting: %v %v %v", ir, err, b.cancels)
+	}
+	// Its turn already ended (stopped in DSH, 工单 #171): not stopped again, and said so.
+	b.mu.Lock()
+	b.status["owners"] = "idle"
+	b.mu.Unlock()
+	if ir, err := h.n.InterruptDSHSession(ctx, &machinev1.InterruptDSHSessionRequest{SessionId: "owners"}); err != nil || ir.Interrupted || len(b.cancels) != 1 {
+		t.Fatalf("interrupting a turn that ended: %v %v %v", ir, err, b.cancels)
+	}
+	b.mu.Lock()
+	b.status["owners"] = "running"
+	b.mu.Unlock()
+	if ir, err := h.n.InterruptDSHSession(ctx, &machinev1.InterruptDSHSessionRequest{SessionId: "owners"}); err != nil || !ir.Interrupted || len(b.cancels) != 2 {
+		t.Fatalf("interrupting a running turn: %v %v %v", ir, err, b.cancels)
 	}
 
 	// Off again: refused, the bridge untouched.

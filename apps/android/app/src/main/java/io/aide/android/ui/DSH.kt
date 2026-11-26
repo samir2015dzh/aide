@@ -250,7 +250,7 @@ private fun DSHComposer(model: AppModel, entry: DSHSessionEntry, bridge: DSHBrid
                         error = null
                         try {
                             val r = model.api?.interruptDSHSession(entry.machineId, s.sessionId)
-                            note = if (r?.interrupted == true) t("Stopped this turn.", "已打断这一轮。") else t("No turn of this session runs in DSH Desktop.", "DSH Desktop 里这个会话没有在运行的一轮。")
+                            note = if (r?.interrupted == true) t("Stopped this turn.", "已打断这一轮。") else t("This turn has already ended, so there is nothing to stop: no turn of this session runs in DSH Desktop now.", "这一轮已经结束，不用再打断：DSH Desktop 里这个会话现在没有在运行的一轮。")
                             sent()
                         } catch (e: ApiError) {
                             error = e.message.ifEmpty { e.code }
