@@ -305,7 +305,8 @@ func TestCheckpointsRetentionAndManualClear(t *testing.T) {
 // do (worktree reset, the next turn a fresh conversation told what was
 // discarded); only an in-place session refuses, and says so first.
 func TestCheckpointsACPWorktreeRollback(t *testing.T) {
-	bin := buildFakeACPBinary(t)
+	// The shared build outside t.TempDir(): Windows will not remove the binary of an agent process still running.
+	bin := fakeACP(t)
 	t.Setenv("FAKE_ACP_STATE", t.TempDir())
 	prov := &acp.Provider{Agent: acp.Agent{Name: "gem", Command: "fakeacp", Args: []string{"acp"}}, Binary: bin}
 	h := newHarnessWith(t, DefaultLimits(), map[string]provider.Provider{"gem": prov})
