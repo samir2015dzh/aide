@@ -1,5 +1,6 @@
 package io.aide.android.model
 
+import io.aide.android.api.AttachmentInfo
 import io.aide.android.api.Question
 import io.aide.android.api.SessionEvent
 import io.aide.android.api.WorkspaceRequest
@@ -9,7 +10,8 @@ sealed interface Item {
     val key: String
 
     /** from: who wrote it ("owner", an agent's client id, or "" when not known); fromName: an agent's name. */
-    data class User(override val key: String, val text: String, val from: String = "", val fromName: String = "") : Item
+    /** files: what went with it (工单 #143); text the words alone, without the list of them the machine adds for the agent. */
+    data class User(override val key: String, val text: String, val from: String = "", val fromName: String = "", val files: List<AttachmentInfo> = emptyList()) : Item
     data class Agent(override val key: String, val text: String) : Item
     /** The reply the agent is writing now; gone once a stored event follows. */
     data class Draft(override val key: String, val text: String) : Item
@@ -64,7 +66,7 @@ class Transcript {
         draft = null
         val key = "e${e.seq}"
         when {
-            e.userMessage != null -> items += Item.User(key, e.userMessage.text, e.userMessage.from, e.userMessage.fromName)
+            e.userMessage != null -> items += Item.User(key, userWords(e.userMessage.text, e.userMessage.attachments.size), e.userMessage.from, e.userMessage.fromName, e.userMessage.attachments)
             e.agentMessage != null -> if (e.agentMessage.text.isNotBlank()) items += Item.Agent(key, e.agentMessage.text)
             e.toolCall != null -> {
                 val t = Tool(e.toolCall.callId, e.toolCall.name.ifEmpty { e.toolCall.kind }, e.toolCall.summary, title = e.toolCall.title)
@@ -99,4 +101,15 @@ class Transcript {
 
     /** What to show now: the stored items, then the draft. */
     fun items(): List<Item> = draft?.takeIf { it.isNotBlank() }?.let { items + Item.Draft("draft", it) } ?: items.toList()
+}
+
+// What the machine adds after a message's words, for its agent, listing the files that went with it
+// (internal/machine/attach.go newMessage; packages/core transcript.ts userWords).
+private const val ATTACHED_LIST = "[Aide] Attached files, saved on this machine outside the worktree:"
+
+/** A message's words as its writer wrote them: without the list of its files the machine added for the agent (工单 #143). */
+fun userWords(text: String, attachments: Int): String {
+    if (attachments == 0) return text
+    val i = text.lastIndexOf(ATTACHED_LIST)
+    return if (i < 0) text else text.substring(0, i).trimEnd()
 }

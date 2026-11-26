@@ -438,6 +438,30 @@ All Sessions link: the sidebar's list is all sessions.
   (places, marks, hiding the sidebar), `sessionlist.spec.ts`,
   `overview.spec.ts`, `onboarding.spec.ts` (the empty states).
 
+### 13.7 A message's files and diagrams (工单 #143)
+
+Taken from upstream after a diff-level review (the handover's delivery
+record has the assessment of each):
+
+- **Paste and drop.** The box (`bots/Composer.tsx`) attaches a pasted
+  screenshot, picture or files copied in the file manager; words copied
+  with a picture of them (a spreadsheet's cells, a slide's text) paste as
+  the words (`pasteAttaches`). Files dragged anywhere over the window come
+  to the box, which says "松手添加附件 · 文件或图片" while they are over
+  it. The same file (name, type and size) picked, pasted or dropped twice
+  goes once (`freshFiles`).
+- **In the bubble.** A message's bubble shows its words as written, not
+  the list of files the machine adds for the agent (`userWords`), and its
+  files above them by name, kind and size; a picture this window (or this
+  phone) sent shows as its thumbnail, found by SHA-256
+  (`session/sentFiles.ts`; Android `SentPictures`). One sent elsewhere
+  shows by name: the machine has no way to give a file back yet.
+- **Mermaid.** Angle-bracket placeholders (`profiles/<id>`, `Map<K, V>`),
+  `<br/>` and `<<interface>>` no longer make a diagram be refused: they are
+  escaped as Mermaid's `#lt;`/`#gt;` before it is drawn
+  (`prepareDiagram`), in one linear pass; the source view and Copy keep
+  the original. The rules against configuration, links and clicks stand.
+
 ## Appendix: sources
 
 **Frameworks and tooling**

@@ -653,7 +653,10 @@
       "open": "打开完整对话"
     },
     "agentsOwn": "跟随 {{agent}}",
-    "notChosen": "{{agent}} 不让在 Aide 里选这一项：按它自己的设置"
+    "notChosen": "{{agent}} 不让在 Aide 里选这一项：按它自己的设置",
+    "dropTitle": "松手添加附件",
+    "dropHint": "文件或图片",
+    "sentFiles": "随消息发送的附件"
   },
   "conv": {
     "list": "对话",

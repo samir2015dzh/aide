@@ -7,6 +7,8 @@
 .composer-box:focus-within{background:var(--surface-card-hover);box-shadow:var(--rim-top),inset 0 -1.5px 0 var(--color-fluent-blue),0 0 0 1px var(--color-fluent-blue),0 0 0 3.5px var(--color-accent-tint),var(--shadow-card)}
 .composer-box.off{opacity:.6}
 .composer-box.over{box-shadow:0 0 0 2px var(--color-fluent-blue),0 0 0 5px var(--color-accent-tint),var(--shadow-card)}
+.composer-drop{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:inherit;background:var(--surface-card);color:var(--l1);pointer-events:none}
+.composer-drop span{color:var(--l3);font-size:12px}
 .composer-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 4px 2px}
 .composer-in{resize:none;border:0;outline:none;background:transparent;font:inherit;font-size:var(--fs-text-l);line-height:22px;padding:4px 6px;color:var(--l1);min-height:48px;max-height:200px}
 .composer-in::placeholder{color:var(--l2)}

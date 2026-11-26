@@ -127,7 +127,10 @@ class Attachments {
     fun refuse(why: String) { refused = listOf(why) }
     fun remove(d: Draft) { files.remove(d); refused = emptyList() }
     fun clear() { files.clear(); refused = emptyList() }
-    fun wire(): List<AttachmentIn> = files.map { AttachmentIn(it.name, it.type, java.util.Base64.getEncoder().encodeToString(it.bytes)) }
+    fun wire(): List<AttachmentIn> = files.map {
+        it.thumb?.let { th -> SentPictures.keep(it.bytes, th) } // its bubble shows it (工单 #143)
+        AttachmentIn(it.name, it.type, java.util.Base64.getEncoder().encodeToString(it.bytes))
+    }
 }
 
 @Composable

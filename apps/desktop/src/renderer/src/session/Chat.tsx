@@ -2,11 +2,11 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { useTranslation } from "react-i18next";
 import type { Client, Machine } from "@aide/proto/local";
 import { Workspace } from "@aide/proto/identity";
-import { FailureKind, SessionLink, SessionStatus, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
+import { FailureKind, SessionLink, SessionStatus, type AttachmentInfo, type Failure, type Session, type SessionEvent, type ToolCall, type ToolResult } from "@aide/proto/session";
 import {
   agoText, checkpoints, clockText, codingBotState, dateOf, displayTitle, elapsedSeconds, codingAgentTitle, createdDate, currentTurn, failureAdvice, failureHeadline, groupSteps, isActive, isArchivable, isFailed,
   interrupter, isInterruption, isInterruptible, pendingQuestion, phaseText, replyEnds, resolutionTitle, statusTitle, stepSummary, toolObject, toolSummary, toolVerb, transcript,
-  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, type OutboxMessage, type Step,
+  turnStartedAt, turnTimeLine, durationText, lostDuring, stateLine, t as coreT, listedModel, attachmentKind, sizeText, type OutboxMessage, type Step,
 } from "@aide/core";
 import { AgentLogo, Mark, agentName } from "@aide/ui";
 import { local } from "../api";
@@ -31,6 +31,7 @@ import { ContentScope } from "./scope";
 import { desktopOutbox, useSessionOutbox } from "./outbox";
 import { useRowState } from "./useRowState";
 import { useVirtualRows, type VirtualRow } from "./useVirtualRows";
+import { rememberSent, sentPicture } from "./sentFiles";
 /**
  * The conversation, newest at the bottom, ending with the reply the agent is
  * still writing (draft); while a turn is live, the control area sits over
@@ -457,7 +458,7 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
           : it.from === "owner"
             ? t("chat.fromYou")
             : agentName(clients.find((c) => c.clientId === it.from)?.label || it.fromName || it.from);
-      return <UserBubble text={it.text} at={it.at} by={by} rollback={rollback} />;
+      return <UserBubble text={it.text} at={it.at} by={by} rollback={rollback} files={it.attachments} />;
     }
     case "agent":
       // A turn's reply is one, however many times it writes: when it is over, its last words say when and Copy.
@@ -526,13 +527,42 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
 
 /** What was sent to the agent, on the right; no name (the info card says who). On hover, when it was sent, and Copy. */
 /** by: who wrote it, when that isn't who the conversation belongs to. */
-export function UserBubble({ text, at, by, rollback }: { text: string; at?: Date; by?: string; rollback?: () => void }) {
+export function UserBubble({ text, at, by, rollback, files = [] }: { text: string; at?: Date; by?: string; rollback?: () => void; files?: AttachmentInfo[] }) {
   return (
     <div className="um">
       {by && <div className="um-by">{by}</div>}
-      <div className="bub sel-text">{text}</div>
+      {files.length > 0 && <SentFiles files={files} />}
+      {text !== "" && <div className="bub sel-text">{text}</div>}
       <Copy text={text} at={at} rollback={rollback} />
     </div>
+  );
+}
+
+/** The files that went with a message (工单 #143): a picture sent from here as its thumbnail, any other by name. */
+function SentFiles({ files }: { files: AttachmentInfo[] }) {
+  const { t } = useTranslation("common");
+  return (
+    <ul className="um-files" aria-label={t("composer.sentFiles")}>
+      {files.map((f) => {
+        const kind = attachmentKind({ name: f.name, type: f.mediaType });
+        const pic = kind === "image" ? sentPicture(f.sha256) : "";
+        return (
+          <li key={f.sha256 + f.name} className={`um-file ${pic ? "img" : ""}`} title={`${f.name}\n${t(`composer.attach.${kind}`)} · ${sizeText(Number(f.size))}`}>
+            {pic ? (
+              <img src={pic} alt={f.name} />
+            ) : (
+              <>
+                <Icon name={kind === "image" ? "image" : kind === "audio" ? "audio" : "doc"} />
+                <span className="um-file-t">
+                  <b>{f.name}</b>
+                  <span>{t(`composer.attach.${kind}`)} · {sizeText(Number(f.size))}</span>
+                </span>
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -864,6 +894,7 @@ function MessageBox({ s, onHeight }: { s: Session; onHeight: (h: number) => void
     setState({ kind: "sending" });
     try {
       const attachments = await attachmentsOf(attach.files);
+      await rememberSent(attachments);
       if (other) {
         const to = (await local.startSession({ machineId: s.machineId, session: { idempotencyKey: key, agent: s.agent, projectId: s.projectId, prompt: text, model, attachments } })).session;
         setKey(crypto.randomUUID());

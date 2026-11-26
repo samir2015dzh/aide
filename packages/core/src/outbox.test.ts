@@ -109,6 +109,18 @@ describe("outbox (工单 #115)", () => {
     expect(outboxForSession(st, "s1")).toEqual([]);
   });
 
+  it("reconciles a message sent with files: its event has the machine's list of them after its words (工单 #143)", () => {
+    let st = emptyOutboxState();
+    st = enqueueOutbox(st, { id: "m1", sessionId: "s1", text: "files" }).state;
+    st = markOutboxSent(st, "m1");
+    const ev = create(SessionEventSchema, {
+      seq: 1n,
+      kind: { case: "userMessage", value: { text: "files\n\n[Aide] Attached files, saved on this machine outside the worktree:\n- /m/a/notes.txt (text/plain, 19 bytes)", attachments: [{ name: "notes.txt" }] } },
+    });
+    st = reconcileOutboxWithEvents(st, "s1", [ev]);
+    expect(outboxForSession(st, "s1")).toEqual([]);
+  });
+
   it("classifies transient vs permanent send errors", () => {
     expect(isTransientSendError(new Error("Failed to fetch"))).toBe(true);
     expect(isTransientSendError({ code: "unavailable", message: "offline" })).toBe(true);

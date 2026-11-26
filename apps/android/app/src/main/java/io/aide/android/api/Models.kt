@@ -405,7 +405,14 @@ data class WatchResponse(
 
 @Serializable data class StatusChanged(val status: String = "", val reason: String = "")
 @Serializable data class TurnStarted(val asker: String = "")
-@Serializable data class AttachmentInfo(val name: String = "", val mediaType: String = "", val path: String = "", val image: Boolean = false)
+@Serializable data class AttachmentInfo(
+    val name: String = "",
+    val mediaType: String = "",
+    @Serializable(with = Int64::class) val size: Long = 0,
+    val path: String = "",
+    val sha256: String = "",
+    val image: Boolean = false,
+)
 @Serializable data class UserMessage(val text: String = "", val attachments: List<AttachmentInfo> = emptyList(), val from: String = "", val fromName: String = "")
 @Serializable data class AgentMessage(val text: String = "")
 @Serializable data class AgentDraft(val text: String = "", val whole: Boolean = false)

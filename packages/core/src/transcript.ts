@@ -1,6 +1,7 @@
 import {
   FailureKind,
   QuestionResolution,
+  type AttachmentInfo,
   type ErrorEvent,
   type Failure,
   type Question,
@@ -21,7 +22,8 @@ export type TranscriptItem =
   /** asker: who asked for the turn (a client id; "" from before messages). */
   | { kind: "turn"; seq: bigint; turn: number; at: Date | undefined; asker: string }
   /** from: who wrote it ("owner", an agent's client id, or "" when not known); fromName: an agent's name. */
-  | { kind: "user"; seq: bigint; text: string; at: Date | undefined; from: string; fromName: string }
+  /** attachments: the files that went with it (工单 #143), its text the words alone, without the list the agent reads. */
+  | { kind: "user"; seq: bigint; text: string; at: Date | undefined; from: string; fromName: string; attachments?: AttachmentInfo[] }
   | { kind: "agent"; seq: bigint; text: string; at: Date | undefined }
   /** A tool call with its result, once there is one; running: the agent is still in it. */
   /** resultSeq: its result's event, when it has one. */
@@ -70,7 +72,7 @@ export function transcript(events: SessionEvent[], running: boolean): Transcript
         items.push({ kind: "turn", seq, turn: e.kind.value.turn, at, asker: e.kind.value.asker });
         break;
       case "userMessage":
-        items.push({ kind: "user", seq, text: e.kind.value.text, at, from: e.kind.value.from, fromName: e.kind.value.fromName });
+        items.push({ kind: "user", seq, text: userWords(e.kind.value.text, e.kind.value.attachments.length), at, from: e.kind.value.from, fromName: e.kind.value.fromName, attachments: e.kind.value.attachments });
         break;
       case "agentMessage":
         items.push({ kind: "agent", seq, text: e.kind.value.text, at });
@@ -172,4 +174,15 @@ export function resolutionTitle(r: QuestionResolved, name: (by: string) => strin
     default:
       return t("resolution.withdrawn");
   }
+}
+
+// What the machine adds after a message's words, for its agent, listing the files that went with it
+// (internal/machine/attach.go newMessage).
+const attachedList = "[Aide] Attached files, saved on this machine outside the worktree:";
+
+/** A message's words as its writer wrote them: without the list of its files the machine added for the agent (工单 #143). */
+export function userWords(text: string, attachments: number): string {
+  if (attachments === 0) return text;
+  const i = text.lastIndexOf(attachedList);
+  return i < 0 ? text : text.slice(0, i).trimEnd();
 }

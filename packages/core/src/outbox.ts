@@ -1,4 +1,5 @@
 import type { SessionEvent } from "@aide/proto/session";
+import { userWords } from "./transcript";
 
 /**
  * Weak-network outbound queue & inbound stream catch-up primitives (工单 #115).
@@ -223,7 +224,8 @@ export function reconcileOutboxWithEvents(state: OutboxState, sessionId: string,
 
   const userTexts = events
     .filter((e) => e.kind.case === "userMessage")
-    .map((e) => (e.kind.case === "userMessage" ? e.kind.value.text.trim() : ""));
+    // The words as written: a message with files has the machine's list of them after its words (工单 #143).
+    .map((e) => (e.kind.case === "userMessage" ? userWords(e.kind.value.text, e.kind.value.attachments.length).trim() : ""));
 
   const toDrop = new Set<string>();
   let searchFrom = 0;

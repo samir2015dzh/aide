@@ -670,7 +670,10 @@
       "open": "Open the whole conversation"
     },
     "agentsOwn": "{{agent}}’s own",
-    "notChosen": "{{agent}} doesn’t let Aide choose this: its own setting applies"
+    "notChosen": "{{agent}} doesn’t let Aide choose this: its own setting applies",
+    "dropTitle": "Drop to attach",
+    "dropHint": "Files or pictures",
+    "sentFiles": "Files sent with it"
   },
   "conv": {
     "list": "Conversations",
