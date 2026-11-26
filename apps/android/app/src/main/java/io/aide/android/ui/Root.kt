@@ -1,5 +1,6 @@
 package io.aide.android.ui
 
+import kotlinx.coroutines.launch
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -92,7 +93,7 @@ private data class PageAt(val route: Route?, val depth: Int)
 fun Root(model: AppModel) {
     val phase by model.phase.collectAsState()
     val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(Unit) { model.messages.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(Unit) { model.messages.collect { launch { snackbar.showNotice(it) } } }
     Box(Modifier.fillMaxSize()) {
         when (phase) {
             AppModel.Phase.Starting -> Centered { ActivityIndicator(size = 28.dp) }

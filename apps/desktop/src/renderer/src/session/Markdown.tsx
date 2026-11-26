@@ -1,6 +1,6 @@
 import { Component, createContext, lazy, memo, Suspense, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform, type Components, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remend from "remend";
 import remarkMath from "remark-math";
@@ -12,14 +12,18 @@ import { texMath } from "./markdown/tex";
 import { MarkdownTable } from "./markdown/Table";
 import { CodeBlock, InlineCode, Link } from "./content";
 import { DraftContext } from "./scope";
+import { ReplyContext, ReplyPicture, firstPictures, isLocal } from "./Picture";
 import "./markdown/markdown.css";
 
 const MermaidBlock = lazy(() => import("./markdown/Mermaid"));
 const SourceContext = createContext("");
+// Where the block being drawn starts in the reply.
+const OffsetContext = createContext(0);
 
 /**
  * An agent's reply as GitHub Markdown with formulas, diagrams, callouts and footnotes, rendered as
- * React elements (raw HTML stays text, images show their alt text, so a reply never loads anything).
+ * React elements (raw HTML stays text; an image of a file on the machine is drawn (工单 #158), any other shows its
+ * alt text, so a reply never loads anything from the web).
  * One component tree throughout streaming and completion: AST-aware slices keep settled blocks
  * memoized, and the block still being written is closed (remend) so nothing shows as raw Markdown
  * on its way (docs/reply-streaming.md); document-scoped references take the whole-document path.
@@ -28,12 +32,16 @@ export function Markdown({ text, streaming = false, mode = "chat" }: { text: str
   const prefix = useId();
   const split = useRef(createMarkdownSlices());
   const blocks = useMemo(() => split.current(text, streaming), [text, streaming]);
+  const { kept } = useContext(ReplyContext);
+  const reply = useMemo(() => ({ kept, first: firstPictures(text, kept) }), [text, kept]);
   return (
-    <div className="md sel-text">
-      {blocks.map((block) => (
-        <Block key={block.id} text={block.text} pending={block.pending} prefix={prefix} offset={block.id} mode={mode} />
-      ))}
-    </div>
+    <ReplyContext.Provider value={reply}>
+      <div className="md sel-text">
+        {blocks.map((block) => (
+          <Block key={block.id} text={block.text} pending={block.pending} prefix={prefix} offset={block.id} mode={mode} />
+        ))}
+      </div>
+    </ReplyContext.Provider>
   );
 }
 
@@ -57,18 +65,21 @@ const Block = memo(function Block({ text, pending, prefix, offset, mode }: { tex
   const shown = pending ? remend(pendingText(text), { linkMode: "text-only", katex: true }) : text;
   return (
     <DraftContext.Provider value={pending}>
-      <SourceContext.Provider value={text}>
-        <RenderBoundary source={text}>
-          <ReactMarkdown
-            remarkPlugins={mode === "document" ? documentPlugins : plugins}
-            rehypePlugins={rehypePlugins}
-            components={components}
-            remarkRehypeOptions={{ footnoteLabel: t("markdown.footnotes"), footnoteBackLabel: t("markdown.backToReference") }}
-          >
-            {shown}
-          </ReactMarkdown>
-        </RenderBoundary>
-      </SourceContext.Provider>
+      <OffsetContext.Provider value={offset}>
+        <SourceContext.Provider value={text}>
+          <RenderBoundary source={text}>
+            <ReactMarkdown
+              remarkPlugins={mode === "document" ? documentPlugins : plugins}
+              rehypePlugins={rehypePlugins}
+              components={components}
+              urlTransform={keepLocalPictures}
+              remarkRehypeOptions={{ footnoteLabel: t("markdown.footnotes"), footnoteBackLabel: t("markdown.backToReference") }}
+            >
+              {shown}
+            </ReactMarkdown>
+          </RenderBoundary>
+        </SourceContext.Provider>
+      </OffsetContext.Provider>
     </DraftContext.Provider>
   );
 });
@@ -106,7 +117,7 @@ const components: Components = {
     if (href?.startsWith("#")) return <Anchor href={href} {...props}>{children}</Anchor>;
     return <Link href={href}>{children}</Link>;
   },
-  img: ({ alt }) => <span>{alt}</span>,
+  img: ({ src, alt, node }) => <PictureAt src={typeof src === "string" ? src : ""} alt={alt ?? ""} at={node?.position?.start.offset} />,
   // Inline code only: a block's is drawn by its `pre`, coloured when it names its language.
   code: ({ children }) => <InlineCode>{children}</InlineCode>,
   pre: ({ node, children }) => {
@@ -117,6 +128,15 @@ const components: Components = {
   table: ({ children, node }) => <Table sourceStart={node?.position?.start.offset} sourceEnd={node?.position?.end.offset}>{children}</Table>,
   details: ({ children, node }) => <Disclosure title={String(node?.properties?.dataTitle ?? node?.properties?.["data-title"] ?? "")}>{children}</Disclosure>,
 };
+
+/** An image's path is kept when it names a file on the machine (it is never loaded as a URL: the machine gives it back). */
+const keepLocalPictures: UrlTransform = (url, key) => (key === "src" && isLocal(url) ? url : defaultUrlTransform(url));
+
+/** A reply's image, told where in the reply it is. */
+function PictureAt({ src, alt, at }: { src: string; alt: string; at: number | undefined }) {
+  const offset = useContext(OffsetContext);
+  return <ReplyPicture src={src} alt={alt} at={at === undefined ? undefined : offset + at} />;
+}
 
 type Node = { type: string; value?: string; url?: string; children?: Node[] };
 

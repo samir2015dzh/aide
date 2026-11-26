@@ -172,6 +172,8 @@ service LocalService {
   rpc ListSessionEvents(ListSessionEventsRequest) returns (ListSessionEventsResponse);
   // A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
   rpc ReadToolOutput(ReadToolOutputRequest) returns (stream aide.session.v1.ToolOutputChunk);
+  // A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
+  rpc ReadAttachment(aide.session.v1.ReadAttachmentRequest) returns (aide.session.v1.ReadAttachmentResponse);
   // StartSession starts a session on one of the owner's machines as the
   // owner (created_by "owner"): any project or GitHub repository and coding
   // agent there, as aide.session.v1.SessionService.StartSession checks
@@ -231,6 +233,11 @@ service LocalService {
   rpc StopRoom(RoomRef) returns (aide.machine.v1.Room);
   rpc MarkRoomSeen(RoomRef) returns (aide.machine.v1.Room);
   rpc DeleteRoom(RoomRef) returns (aide.machine.v1.DeleteRoomResponse);
+  // Whether the members picked for a room can be reached now, asked for
+  // real (工单 #159): the coding agents on their own machines, the personal
+  // agents on the machine CreateRoom would pick as host. A machine that
+  // doesn't answer has its members marked so.
+  rpc CheckRoomMembers(aide.machine.v1.CheckRoomMembersRequest) returns (aide.machine.v1.CheckRoomMembersResponse);
   // What waits at the post office for a machine that hosts rooms, by room:
   // every member's reply (personal agents' too) while it is away (工单 #74).
   rpc ListRoomWaiting(ListRoomWaitingRequest) returns (ListRoomWaitingResponse);
@@ -931,6 +938,10 @@ message Client {
   // Online by what it did lately, with no connection now
   // (relay.v1.ClientEntry.recent, 工单 #94): last_seen is when.
   bool recent = 17;
+  // Whether a message can go to it: its inbox is registered at the post
+  // office (relay.v1.ClientEntry.mailable, 工单 #161). False: online or not,
+  // what is sent to it does not arrive. Unset from relays before.
+  optional bool mailable = 18;
 }
 
 message ListClientsRequest {}

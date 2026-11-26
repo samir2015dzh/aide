@@ -52,6 +52,9 @@ type Limits struct {
 	ToolTimeout        time.Duration
 	TurnTimeout        time.Duration
 	IdleProcessTTL     time.Duration
+	// BackgroundProcessTTL is how long an idle agent process with work
+	// running in the background (provider.Backgrounder) is kept, at least.
+	BackgroundProcessTTL time.Duration
 	// RetryDelay is how long a turn that failed on a rate limit (or a
 	// model at capacity) waits before it goes on by itself in the same
 	// conversation; the next waits are retryFactors times as long, then
@@ -61,7 +64,7 @@ type Limits struct {
 
 func DefaultLimits() Limits {
 	return Limits{StartTimeout: 10 * time.Minute, FirstOutputTimeout: 3 * time.Minute, IdleTimeout: 15 * time.Minute, ToolTimeout: 2 * time.Hour,
-		IdleProcessTTL: 10 * time.Minute, RetryDelay: 30 * time.Second}
+		IdleProcessTTL: 10 * time.Minute, BackgroundProcessTTL: 2 * time.Hour, RetryDelay: 30 * time.Second}
 }
 
 type PrincipalKind int
@@ -277,6 +280,9 @@ type live struct {
 	draftQueued int
 	draftTimer  *time.Timer
 	draftShown  string
+	// shown: the paths of the pictures this turn's replies showed, kept
+	// when it ends (TurnCompleted.shown).
+	shown []string
 }
 
 // continuityNotice tells an agent starting a fresh provider session in an
@@ -1166,7 +1172,9 @@ func (s *Sessions) InterruptByClient(clientID, reason string) {
 
 // Archive makes an idle session read-only and frees its worktree; the
 // session's branch keeps every turn's work, and its events and diff stay
-// readable.
+// readable. A worktree holding work the last turn's snapshot does not
+// have (Workspace.Unsaved) is kept instead, and archived with it: the
+// session says so (Session.workspace_kept), and Unarchive goes on in it.
 func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessionv1.Session, error) {
 	l, r, err := s.find(p, id, p.Kind != PrincipalOwner)
 	if err != nil {
@@ -1199,18 +1207,21 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	if err := s.st.ReleasePorts(id); err != nil {
 		s.log.Warn("archive: ports not released", "session", id, "err", err)
 	}
+	kept := ""
 	if !inPlace && s.ws.Exists(id) {
-		if proj, _ := s.st.Project(row.ProjectID); proj != nil {
-			if err := s.ws.Remove(ctx, proj.Path, id); err != nil {
-				s.log.Warn("archive: worktree not removed", "session", id, "err", err)
-			}
+		if kept = s.unsavedWork(ctx, row.ProjectID, id); kept != "" {
+			s.log.Info("archive: worktree kept", "session", id, "why", kept)
 		} else {
-			os.RemoveAll(s.ws.Path(id))
+			s.freeWorktree(ctx, row.ProjectID, id)
 		}
 	}
 	s.archiveInAgent(ctx, row, true)
 	if changed {
-		s.statusChanged(l, sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED, "archived by "+p.ID())
+		why := "archived by " + p.ID()
+		if kept != "" {
+			why += "; worktree kept: " + kept
+		}
+		s.statusChanged(l, sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED, why)
 	}
 	// Retire it now, and wait until the archive is stored, so an unarchive
 	// that follows at once sees an archived session and numbers its events
@@ -1226,7 +1237,7 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	if err := s.w.sync(writeOp{}); err != nil {
 		return nil, err
 	}
-	s.audit.Log(AuditRecord{Kind: "session.archive", Subject: p.ID(), Session: id, Decision: "allow"})
+	s.audit.Log(AuditRecord{Kind: "session.archive", Subject: p.ID(), Session: id, Decision: "allow", Detail: kept})
 	// Its review, made now and kept (docs/session-insights.md), off the
 	// archive's own path.
 	go func() {
@@ -1237,8 +1248,44 @@ func (s *Sessions) Archive(ctx context.Context, p *Principal, id string) (*sessi
 	return s.toProto(row), nil
 }
 
+// unsavedWork says why the session's worktree must be kept, "" when it
+// holds nothing the last turn's snapshot lacks and may go.
+func (s *Sessions) unsavedWork(ctx context.Context, projectID, id string) string {
+	if s.ws.none {
+		return "" // no git, no snapshots: nothing it could keep apart
+	}
+	repo := s.ws.Path(id) // its project gone: the worktree shares the refs
+	if proj, _ := s.st.Project(projectID); proj != nil {
+		repo = proj.Path
+	}
+	paths, err := s.ws.Unsaved(ctx, repo, id)
+	switch {
+	case err != nil:
+		return "its changes could not be checked: " + err.Error()
+	case len(paths) == 0:
+		return ""
+	case len(paths) == 1:
+		return "1 path not in the last turn's snapshot (" + paths[0] + ")"
+	default:
+		return fmt.Sprintf("%d paths not in the last turn's snapshot (%s, …)", len(paths), paths[0])
+	}
+}
+
+// freeWorktree removes the session's worktree; its branch stays.
+func (s *Sessions) freeWorktree(ctx context.Context, projectID, id string) {
+	if proj, _ := s.st.Project(projectID); proj != nil {
+		if err := s.ws.Remove(ctx, proj.Path, id); err != nil {
+			s.log.Warn("worktree not removed", "session", id, "err", err)
+		}
+	} else {
+		os.RemoveAll(s.ws.Path(id))
+	}
+}
+
 // Unarchive checks the session's branch out again in its worktree and
-// makes the session idle; the next message resumes its conversation.
+// makes the session idle; the next message resumes its conversation. A
+// worktree that archiving kept is still there, its changes too: the
+// session goes on in it.
 func (s *Sessions) Unarchive(ctx context.Context, p *Principal, id string) (*sessionv1.Session, error) {
 	l, r, err := s.find(p, id, p.Kind != PrincipalOwner)
 	if err != nil {
@@ -1479,6 +1526,10 @@ func (s *Sessions) Delete(ctx context.Context, p *Principal, id string) error {
 	r, err := s.st.Session(id)
 	if err != nil || r == nil {
 		return err
+	}
+	// Deleting is for good: a worktree that archiving kept goes too.
+	if r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE && s.ws.Exists(id) {
+		s.freeWorktree(ctx, r.ProjectID, id)
 	}
 	if r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE && !s.ws.none {
 		if proj, _ := s.st.Project(r.ProjectID); proj != nil {
@@ -2205,7 +2256,9 @@ func (s *Sessions) onEvent(l *live, ps provider.Session, e provider.Event) {
 		mFirstEvent.Since(l.turnStarted)
 	}
 	l.mu.Unlock()
-	if stale {
+	// What became of a call left running in the background is so even from
+	// a process the session has let go (its end, as that process went).
+	if stale && !(e.Kind == provider.EventToolResult && e.Background) {
 		return
 	}
 	switch e.Kind {
@@ -2479,6 +2532,8 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 		l.retryTimer = nil
 	}
 	id, turn, repo := l.row.ID, l.turn, l.repo
+	shown, workDir := l.shown, l.row.Worktree
+	l.shown = nil
 	// In place: no snapshots, the directory and its git are the owner's.
 	inPlace := l.row.Workspace == identityv1.Workspace_WORKSPACE_IN_PLACE
 	edits := l.mayHaveEdits && !s.ws.none && !inPlace
@@ -2495,7 +2550,8 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 		}
 	}
 	tc := &sessionv1.TurnCompleted{Turn: turn, Result: e.Text, IsError: e.IsError,
-		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: costUSD, CostEstimated: costEstimated}}
+		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: costUSD, CostEstimated: costEstimated},
+		Shown: s.keepShown(id, workDir, shown)}
 	if e.IsError {
 		f := e.Failure
 		if f == nil {
@@ -2793,6 +2849,7 @@ func (s *Sessions) emitOutput(l *live, e *sessionv1.SessionEvent, output string)
 		p.LastMessageExcerpt = "" // what the agent said last turn is not this turn's progress
 	case *sessionv1.SessionEvent_AgentMessage:
 		p.LastMessageExcerpt, _ = provider.Truncate(k.AgentMessage.Text, 280)
+		l.shown = append(l.shown, shownPictures(k.AgentMessage.Text)...)
 	case *sessionv1.SessionEvent_ToolCall:
 		p.CurrentTool = k.ToolCall.Name + ": " + k.ToolCall.Summary
 		switch k.ToolCall.Kind {
@@ -2901,7 +2958,15 @@ func (s *Sessions) toProto(r *sessionRow) *sessionv1.Session {
 		ProviderSessionRef: r.ProviderRef, CreatedAt: timestamppb.New(r.CreatedAt), UpdatedAt: timestamppb.New(r.UpdatedAt),
 		Error: r.Error, Branch: r.Branch, Workspace: r.Workspace, Result: r.Result, Title: r.Title, CreatedAs: r.Conversation,
 		Model: cmp.Or(r.AgentModel, r.Model), Effort: cmp.Or(r.Effort, r.AgentEffort), Repo: r.Repo, RepoBranch: r.RepoBranch,
-		Seen: proto.Clone(cmpOrEmpty(r.Seen)).(*sessionv1.SessionSeen)}
+		Seen: proto.Clone(cmpOrEmpty(r.Seen)).(*sessionv1.SessionSeen), WorkspaceKept: s.workspaceKept(r)}
+}
+
+// workspaceKept: an archived session whose worktree is still on disk, as
+// Archive keeps one holding unsaved work. The directory itself says so;
+// nothing else records it.
+func (s *Sessions) workspaceKept(r *sessionRow) bool {
+	return r.Status == sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED && r.Workspace != identityv1.Workspace_WORKSPACE_IN_PLACE &&
+		!s.ws.none && s.ws.Exists(r.ID)
 }
 
 // Janitor enforces timeouts and stops idle agent processes (their sessions
@@ -2959,8 +3024,14 @@ func (s *Sessions) Janitor(ctx context.Context) {
 				}
 			case sessionv1.SessionStatus_SESSION_STATUS_IDLE, sessionv1.SessionStatus_SESSION_STATUS_CRASHED:
 				// The session never ends by itself; only its idle agent
-				// process goes, and the next message resumes it.
-				if ps != nil && now.Sub(idleSince) > s.limits.IdleProcessTTL {
+				// process goes, and the next message resumes it. One with
+				// work running in the background is kept longer: the work
+				// would stop with it.
+				ttl := s.limits.IdleProcessTTL
+				if b, ok := ps.(provider.Backgrounder); ok && b.Background() {
+					ttl = max(ttl, s.limits.BackgroundProcessTTL)
+				}
+				if ps != nil && now.Sub(idleSince) > ttl {
 					l.mu.Lock()
 					if l.sess == ps {
 						l.sess = nil

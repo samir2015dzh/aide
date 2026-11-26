@@ -12,7 +12,8 @@ sealed interface Item {
     /** from: who wrote it ("owner", an agent's client id, or "" when not known); fromName: an agent's name. */
     /** files: what went with it (工单 #143); text the words alone, without the list of them the machine adds for the agent. */
     data class User(override val key: String, val text: String, val from: String = "", val fromName: String = "", val files: List<AttachmentInfo> = emptyList()) : Item
-    data class Agent(override val key: String, val text: String) : Item
+    /** turnId: its turn's; kept: the pictures the turn kept of what its replies showed, by path (工单 #158), once the turn ends. */
+    data class Agent(override val key: String, val text: String, val turnId: String = "", val kept: Map<String, AttachmentInfo> = emptyMap()) : Item
     /** The reply the agent is writing now; gone once a stored event follows. */
     data class Draft(override val key: String, val text: String) : Item
     /** A run of tool calls, one line until opened. */
@@ -67,7 +68,7 @@ class Transcript {
         val key = "e${e.seq}"
         when {
             e.userMessage != null -> items += Item.User(key, userWords(e.userMessage.text, e.userMessage.attachments.size), e.userMessage.from, e.userMessage.fromName, e.userMessage.attachments)
-            e.agentMessage != null -> if (e.agentMessage.text.isNotBlank()) items += Item.Agent(key, e.agentMessage.text)
+            e.agentMessage != null -> if (e.agentMessage.text.isNotBlank()) items += Item.Agent(key, e.agentMessage.text, e.turnId)
             e.toolCall != null -> {
                 val t = Tool(e.toolCall.callId, e.toolCall.name.ifEmpty { e.toolCall.kind }, e.toolCall.summary, title = e.toolCall.title)
                 val last = items.lastOrNull()
@@ -93,6 +94,10 @@ class Transcript {
             e.rolledBack != null -> items += Item.Rollback(key, e.rolledBack.turn, e.rolledBack.lastTurn)
             e.error != null -> items += Item.Error(key, e.error.message.ifEmpty { e.error.failure?.message.orEmpty() }, e.error.failure?.kind.orEmpty(), e.error.failure?.provider.orEmpty())
             e.turnCompleted != null -> {
+                if (e.turnCompleted.shown.isNotEmpty()) {
+                    val kept = e.turnCompleted.shown.associateBy { it.path }
+                    items.replaceAll { if (it is Item.Agent && it.turnId == e.turnId) it.copy(kept = kept) else it }
+                }
                 val f = e.turnCompleted.failure
                 if (e.turnCompleted.isError || f != null) items += Item.TurnEnd(key, true, f?.message?.ifEmpty { null } ?: e.turnCompleted.result, f?.kind.orEmpty(), f?.provider.orEmpty())
             }

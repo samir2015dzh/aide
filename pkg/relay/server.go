@@ -1045,6 +1045,10 @@ func (s *Server) clientEntries(t *tenant) ([]*relayv1.ClientEntry, error) {
 	s.mu.Unlock()
 	removed := setOf(rev.RevokedMachineIds)
 	cards, _ := s.messageStore().Cards(t.ownerID)
+	regs, err := s.messageStore().Registrations(t.ownerID)
+	if err != nil {
+		return nil, err
+	}
 	var out []*relayv1.ClientEntry
 	for _, sg := range grants {
 		g := &identityv1.Grant{}
@@ -1056,7 +1060,7 @@ func (s *Server) clientEntries(t *tenant) ([]*relayv1.ClientEntry, error) {
 			continue
 		}
 		e := &relayv1.ClientEntry{Grant: sg, Online: online[g.ClientId], MachineIds: liveMachines(g.MachineIds, removed),
-			Card: cards[g.ClientId].Card, CardDeviceCert: cards[g.ClientId].DeviceCert}
+			Card: cards[g.ClientId].Card, CardDeviceCert: cards[g.ClientId].DeviceCert, Mailable: proto.Bool(regs[g.ClientId] != nil)}
 		// Away: when it was last connected, or last called (an MCP connection, online by that within the window, 工单 #94).
 		if l, ok := last[g.ClientId]; ok {
 			e.LastSeen, e.Online, e.Recent = timestamppb.New(l.at), l.recent, l.recent

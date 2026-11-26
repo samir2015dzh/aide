@@ -63,7 +63,9 @@ func Run(ctx context.Context, in io.Reader, out io.Writer, dataDir string, check
 	if err != nil {
 		return err
 	}
-	Edit(dataDir, func(s *State) { s.From, s.To, s.Updated, s.Available = current, r.Version, time.Now(), "" })
+	Edit(dataDir, func(s *State) {
+		s.From, s.To, s.Updated, s.Available, s.Pending = current, r.Version, time.Now(), "", false
+	})
 	fmt.Fprintf(out, "✓ verified %s\n", and(names))
 	fmt.Fprintf(out, "✓ installed in %s\n", tilde(dir))
 	switch {
@@ -118,6 +120,9 @@ func Line(dataDir string) string {
 		line += " · " + s.Available + " is available"
 	} else if !s.Checked.IsZero() {
 		line += " · checked " + ago(time.Since(s.Checked))
+	}
+	if s.Failed != "" {
+		line += " · went back from " + s.Failed + ", which did not connect"
 	}
 	return line
 }

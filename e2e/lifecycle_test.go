@@ -152,3 +152,45 @@ func TestSessionLifecycle(t *testing.T) {
 		return err == nil && len(res.Sessions) == 1 && res.Sessions[0].Status == sessionv1.SessionStatus_SESSION_STATUS_IDLE
 	})
 }
+
+// TestArchiveKeepsUnsavedWorktree: archiving a session whose worktree
+// holds changes no turn's snapshot has keeps the worktree, and the app
+// sees the session say so, in what archiving returns and in its list;
+// unarchiving goes on in it, changes and all.
+func TestArchiveKeepsUnsavedWorktree(t *testing.T) {
+	if testing.Short() {
+		t.Skip("e2e")
+	}
+	w := newOwnerMac(t, []string{"AIDE_FAKE_PROVIDERS=1"}, &localv1.GrantSpec{})
+	ctx := context.Background()
+	s, r := w.startSession(time.Minute, "--wait", "--prompt", "write one.txt first\nsay one")
+	if r.code != 0 {
+		t.Fatalf("start: %+v", r)
+	}
+	id, wt := s.SessionID, w.worktree(s.SessionID)
+	if err := os.WriteFile(filepath.Join(wt, "by-hand.txt"), []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := w.app.client.ArchiveSession(ctx, &localv1.ArchiveSessionRequest{SessionId: id})
+	if err != nil || res.Session.GetStatus() != sessionv1.SessionStatus_SESSION_STATUS_ARCHIVED || !res.Session.GetWorkspaceKept() {
+		t.Fatalf("archive: %v %v", res, err)
+	}
+	if b, err := os.ReadFile(filepath.Join(wt, "by-hand.txt")); err != nil || string(b) != "mine\n" {
+		t.Fatalf("the kept change after archive: %q %v", b, err)
+	}
+	eventually(t, 30*time.Second, "the app's list says the worktree is kept", func() bool {
+		res, err := w.app.client.ListSessions(ctx, &localv1.ListSessionsRequest{View: sessionv1.SessionView_SESSION_VIEW_BASIC})
+		return err == nil && len(res.Sessions) == 1 && res.Sessions[0].WorkspaceKept
+	})
+
+	res, err = w.app.client.UnarchiveSession(ctx, &localv1.UnarchiveSessionRequest{SessionId: id})
+	if err != nil || res.Session.GetStatus() != sessionv1.SessionStatus_SESSION_STATUS_IDLE || res.Session.GetWorkspaceKept() {
+		t.Fatalf("unarchive: %v %v", res, err)
+	}
+	if r := w.cli(time.Minute, "session", "send", id, "--wait", "--message", "write two.txt second\nsay two"); r.code != 0 {
+		t.Fatalf("send after unarchive: %+v", r)
+	}
+	if d := w.cli(time.Minute, "session", "diff", id); !strings.Contains(d.stdout, "+mine") || !strings.Contains(d.stdout, "+second") {
+		t.Fatalf("the kept change is not in the next turn's snapshot: %+v", d)
+	}
+}

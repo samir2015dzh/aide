@@ -4,7 +4,6 @@
 package update
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
@@ -227,9 +226,10 @@ func verify(sums, sig, version []byte) (*Release, error) {
 }
 
 // Newer reports whether r is a higher version than current.
-func (r *Release) Newer(current string) bool {
-	return semver.Compare("v"+r.Version, "v"+current) > 0
-}
+func (r *Release) Newer(current string) bool { return newer(r.Version, current) }
+
+// newer reports whether version a is higher than b.
+func newer(a, b string) bool { return semver.Compare("v"+a, "v"+b) > 0 }
 
 func fetch(ctx context.Context, url string, limit int64) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -349,13 +349,18 @@ func download(ctx context.Context, dir, name string, r *Release) error {
 	if err := os.WriteFile(tmp, body, 0o755); err != nil {
 		return fmt.Errorf("cannot write %s: %w", dir, err)
 	}
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, tmp, "version").Output()
-	if err != nil || strings.TrimSpace(string(out)) != r.Version {
-		return fmt.Errorf("the downloaded %s does not start as %s: %v %s", name, r.Version, err, bytes.TrimSpace(out))
+	if v, err := versionOf(ctx, tmp); err != nil || v != r.Version {
+		return fmt.Errorf("the downloaded %s does not start as %s: %v %s", name, r.Version, err, v)
 	}
 	return nil
+}
+
+// versionOf is the version the program at path says it is.
+func versionOf(ctx context.Context, path string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, path, "version").Output()
+	return strings.TrimSpace(string(out)), err
 }
 
 // State is what the updater keeps in <data dir>/update/update.json.
@@ -366,6 +371,12 @@ type State struct {
 	From      string    `json:"from,omitempty"`      // the last update's versions
 	To        string    `json:"to,omitempty"`
 	Updated   time.Time `json:"updated,omitzero"`
+	// Pending: the last update was the background updater's, and To has not
+	// connected to its relay yet; Started is when To first started. Failed:
+	// the version it went back from, skipped until a newer one (verify.go).
+	Pending bool      `json:"pending,omitempty"`
+	Started time.Time `json:"started,omitzero"`
+	Failed  string    `json:"failed,omitempty"`
 }
 
 func statePath(dataDir string) string { return filepath.Join(dataDir, "update", "update.json") }

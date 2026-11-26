@@ -1297,7 +1297,12 @@ type ClientEntry struct {
 	// agent whose key a server holds (an MCP connection) counts as online
 	// while its last call is within the relay's activity window; last_seen is
 	// then that call. False while it is connected, and from relays before.
-	Recent        bool `protobuf:"varint,8,opt,name=recent,proto3" json:"recent,omitempty"`
+	Recent bool `protobuf:"varint,8,opt,name=recent,proto3" json:"recent,omitempty"`
+	// Whether a message can go to it (工单 #161): its inbox is registered at
+	// the post office, so a sender can seal to it. Connected is not enough: a
+	// connection that never registered one is online and gets no message.
+	// Unset from relays before.
+	Mailable      *bool `protobuf:"varint,9,opt,name=mailable,proto3,oneof" json:"mailable,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1384,6 +1389,13 @@ func (x *ClientEntry) GetCardDeviceCert() *v1.Signed {
 func (x *ClientEntry) GetRecent() bool {
 	if x != nil {
 		return x.Recent
+	}
+	return false
+}
+
+func (x *ClientEntry) GetMailable() bool {
+	if x != nil && x.Mailable != nil {
+		return *x.Mailable
 	}
 	return false
 }
@@ -6681,7 +6693,7 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"\x06online\x18\x02 \x01(\bR\x06online\x127\n" +
 	"\tlast_seen\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\blastSeen\x12\x12\n" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x18\n" +
-	"\aversion\x18\x06 \x01(\tR\aversionJ\x04\b\x04\x10\x05R\x06status\"\xd3\x02\n" +
+	"\aversion\x18\x06 \x01(\tR\aversionJ\x04\b\x04\x10\x05R\x06status\"\x81\x03\n" +
 	"\vClientEntry\x12.\n" +
 	"\x05grant\x18\x01 \x01(\v2\x18.aide.identity.v1.SignedR\x05grant\x12\x16\n" +
 	"\x06online\x18\x02 \x01(\bR\x06online\x127\n" +
@@ -6691,7 +6703,9 @@ const file_aide_relay_v1_relay_proto_rawDesc = "" +
 	"machineIds\x12,\n" +
 	"\x04card\x18\x06 \x01(\v2\x18.aide.identity.v1.SignedR\x04card\x12B\n" +
 	"\x10card_device_cert\x18\a \x01(\v2\x18.aide.identity.v1.SignedR\x0ecardDeviceCert\x12\x16\n" +
-	"\x06recent\x18\b \x01(\bR\x06recent\"\x19\n" +
+	"\x06recent\x18\b \x01(\bR\x06recent\x12\x1f\n" +
+	"\bmailable\x18\t \x01(\bH\x00R\bmailable\x88\x01\x01B\v\n" +
+	"\t_mailable\"\x19\n" +
 	"\x17GetScreenServersRequest\"N\n" +
 	"\x18GetScreenServersResponse\x122\n" +
 	"\aservers\x18\x01 \x03(\v2\x18.aide.relay.v1.IceServerR\aservers\"[\n" +
@@ -7398,6 +7412,7 @@ func file_aide_relay_v1_relay_proto_init() {
 	if File_aide_relay_v1_relay_proto != nil {
 		return
 	}
+	file_aide_relay_v1_relay_proto_msgTypes[15].OneofWrappers = []any{}
 	file_aide_relay_v1_relay_proto_msgTypes[29].OneofWrappers = []any{
 		(*MachineUpdate_RootChain)(nil),
 		(*MachineUpdate_Revocations)(nil),

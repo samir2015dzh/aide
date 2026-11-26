@@ -60,16 +60,19 @@ import androidx.compose.ui.unit.dp
 import io.aide.android.api.CreateRoomMember
 import io.aide.android.api.CreateRoomRequest
 import io.aide.android.api.Room
+import io.aide.android.api.RoomMemberCheck
 import io.aide.android.api.RoomMessage
 import io.aide.android.api.RoomPatch
 import io.aide.android.model.AppModel
 import io.aide.android.model.Bot
 import io.aide.android.model.DELIVERY_FAILED
 import io.aide.android.model.DELIVERY_REFUSED
+import io.aide.android.model.reachProblem
 import io.aide.android.model.reachedNobody
 import io.aide.android.model.resendable
 import io.aide.android.model.roster
 import io.aide.android.model.timeLines
+import io.aide.android.model.unreachableKey
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.delay
@@ -148,11 +151,12 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
     var msgs by remember { mutableStateOf<List<RoomMessage>>(emptyList()) }
     var failed by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var unreached by remember { mutableStateOf(emptyList<String>()) }
     val scope = rememberCoroutineScope()
     suspend fun read() {
         val r = model.readRoom(machineId, roomId)
         failed = r == null
-        if (r != null) { room = r.room; msgs = r.messages }
+        if (r != null) { room = r.room; msgs = r.messages; unreached = r.unreachedMachineIds }
     }
     DisposableEffect(roomId) {
         model.roomOpen = roomId
@@ -261,6 +265,16 @@ fun RoomPage(model: AppModel, machineId: String, roomId: String, openSession: (S
                     Text(t("$waiting replies are on their way: they come in as soon as the machine keeping the room is back", "还有 $waiting 条回复在路上：负责房间的机器一上线就进房间"), style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
                 }
             }
+            if (r.shadow && unreached.isNotEmpty()) {
+                // 工单 #164: each machine keeps its own copy; one away may hold what the others missed.
+                val names = unreached.map { id -> world.machineName(id) }
+                Text(
+                    t("${names.joinToString(", ")} not reachable now: what only it took may be missing here until it is back.", "${names.joinToString("、")} 现在连不上：只有它收下的那部分，在它回来之前这里可能缺着。"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Warning,
+                    modifier = Modifier.fillMaxWidth().background(aide.inset).padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
             if (r.shadow) {
                 Text(
                     t("Read-only shadow conversation · View messages between your agents here", "只读影子对话 · 仅用于查看 agent 之间的往来消息，不能在此发言"),
@@ -306,8 +320,9 @@ private fun RoomMessageView(model: AppModel, r: Room, m: RoomMessage, repliedTo:
                 append(m.fromName)
                 if (r.shadow && m.toName.isNotEmpty()) append(" → ${m.toName}")
                 if (whenText != null) append(" · $whenText")
+                claimedText(m)?.let { append(" · $it") }
                 if (m.lightChat) append(t(" · Light", " · 轻聊"))
-                if (m.late) append(t(" · came after stop", " · 停止后到达"))
+                if (m.late) append(t(" · came late: hands nothing on", " · 来晚了，不再接力"))
             }
             Text(head, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -396,7 +411,7 @@ internal fun OwnBubble(text: String, failed: Boolean) {
 internal fun OwnDeliveries(m: RoomMessage, shadow: Boolean, nameOf: (String) -> String, resend: () -> Unit) {
     val failed = reachedNobody(m, shadow)
     m.deliveries.forEach { d ->
-        val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded)
+        val (words, bad) = deliveryWords(d.state, nameOf(d.botKey), d.reason, d.reminded, d.untaken)
         val color = if (!bad) aide.faint else if (failed) aide.redText else Warning
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (d.state == DELIVERY_FAILED || d.state == DELIVERY_REFUSED) {
@@ -520,7 +535,18 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
     var maxRounds by rememberSaveable { mutableStateOf(6) }
     var picked by remember { mutableStateOf(mapOf<String, String>()) } // bot key → project ("" for a personal agent)
     var busy by remember { mutableStateOf(false) }
+    // Each member picked is asked of for real (工单 #159), not taken from the roster: bot key → its check (absent while
+    // asked, null when it couldn't be). warned: the members the owner was told may not take their turn.
+    var checks by remember { mutableStateOf(mapOf<String, RoomMemberCheck?>()) }
+    var warned by remember { mutableStateOf("") }
     fun projectsOf(b: Bot) = world.projects.filter { it.machineId == b.machineId && (it.agents.isEmpty() || b.agent in it.agents) }
+    fun member(k: String, project: String = picked[k].orEmpty()) = CreateRoomMember(k, project, bots.firstOrNull { it.key == k }?.name.orEmpty())
+    suspend fun check(ms: List<CreateRoomMember>): List<RoomMemberCheck>? {
+        checks = checks - ms.map { it.botKey }.toSet()
+        val res = model.checkRoomMembers(ms)
+        checks = checks + (res?.associateBy { it.botKey } ?: ms.associate { it.botKey to (null as RoomMemberCheck?) })
+        return res
+    }
     val ready = name.isNotBlank() && picked.isNotEmpty() && picked.all { (k, p) -> k.startsWith("c:") || p.isNotEmpty() }
     Scaffold(
         snackbarHost = { PageFeedback(model) },
@@ -531,11 +557,21 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                     PlainButton(enabled = ready && !busy, onClick = {
                         busy = true
                         scope.launch {
-                            val r = model.createRoom(CreateRoomRequest(name.trim(), picked.map { (k, p) -> CreateRoomMember(k, p, bots.firstOrNull { it.key == k }?.name.orEmpty()) }, if (table) ROUNDTABLE else MANUAL, maxRounds))
+                            val members = picked.keys.map { member(it) }
+                            // Asked again as the room is made: one that may not take its turn is named first, and the
+                            // room is made only when the owner makes it again knowing that.
+                            val found = check(members)
+                            val bad = found?.let { unreachableKey(it) }
+                            if (bad == null || (bad.isNotEmpty() && bad != warned)) {
+                                warned = bad.orEmpty()
+                                busy = false
+                                return@launch
+                            }
+                            val r = model.createRoom(CreateRoomRequest(name.trim(), members, if (table) ROUNDTABLE else MANUAL, maxRounds))
                             busy = false
                             if (r != null) opened(r)
                         }
-                    }) { Text(if (busy) t("Creating…", "正在建…") else t("Create", "建房间"), style = IosType.Headline) }
+                    }) { Text(if (busy) t("Creating…", "正在建…") else if (warned.isNotEmpty()) t("Create anyway", "仍然建房间") else t("Create", "建房间"), style = IosType.Headline) }
                 },
             ) { Text(t("New room", "新建房间")) }
         },
@@ -551,10 +587,15 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                             IosStepper(maxRounds > 1, maxRounds < 20, { maxRounds-- }, { maxRounds++ })
                         }
                     }
-                    Text(if (table) t("Round table: you speak, the bots you name (else the first member) act; a bot naming another hands it on, up to the round limit; stop it any time. A reply starting [FINAL] is the room's agreed result.", "自主圆桌：你说一句，被 @ 的（没 @ 时第一个成员）先动；bot 在回复里 @ 谁，就接力给谁，到轮次上限自动停，随时可以停止。以 [FINAL] 开头的回复是共识结果。")
+                    Text(if (table) t("Round table: you speak, the bots you name (else the first member) act; a bot naming another hands it on; naming no member (or only bots not in the room), it goes to the next member in order; naming only you, it stops for you. A member silent for 3 minutes is skipped and the table goes on. At the round limit with no [FINAL], the last to speak wraps it up. Stop it any time. A reply starting [FINAL] is the room's agreed result.", "自主圆桌：你说一句，被 @ 的（没 @ 时第一个成员）先动；bot 在回复里 @ 谁，就接力给谁；没 @ 任何成员（或 @ 的 bot 不在房间里）就按成员顺序交给下一位；只 @ 你时停下等你。某个成员 3 分钟没回复就跳过它，圆桌继续。到轮次上限还没人以 [FINAL] 收口，由最后发言的成员汇总共识收口。随时可以停止。以 [FINAL] 开头的回复是共识结果。")
                         else t("Manual @: only the bots you name act; a bot naming another only suggests it, for you to hand on.", "手动 @：只有你 @ 到的 bot 才会动；bot 之间 @ 只是建议，由你决定转不转。"),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
                 }
+            }
+            if (warned.isNotEmpty()) item(key = "warned") {
+                val names = picked.keys.filter { it in warned.split(" ") }.map { member(it).name.ifEmpty { it } }.joinToString("、")
+                Text(t("$names may not take its turn (why is on its row). To make the room with it anyway, tap Create anyway.", "$names 可能接不了力（原因见成员行）。确定要带上它建房间，点「仍然建房间」。"),
+                    style = MaterialTheme.typography.bodySmall, color = Warning, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
             }
             item(key = "pick-h") { SectionHeader(t("Members", "成员")) }
             bots.forEachIndexed { i, b ->
@@ -562,7 +603,15 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                     val on = b.key in picked
                     // One card of rows, as every list in the app (工单 #68).
                     Column(Modifier.groupRow(i, bots.size, inset = 86.dp)) {
-                        Row(Modifier.fillMaxWidth().rowPress { picked = if (on) picked - b.key else picked + (b.key to (if (b.personal) "" else projectsOf(b).firstOrNull()?.projectId.orEmpty())) }.padding(horizontal = 16.dp, vertical = 10.dp),
+                        Row(Modifier.fillMaxWidth().rowPress {
+                            warned = ""
+                            if (on) picked = picked - b.key
+                            else {
+                                val project = if (b.personal) "" else projectsOf(b).firstOrNull()?.projectId.orEmpty()
+                                picked = picked + (b.key to project)
+                                scope.launch { check(listOf(member(b.key, project))) }
+                            }
+                        }.padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             RoundCheck(on)
                             HSpace(10)
@@ -570,6 +619,18 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
                             HSpace(10)
                             Text(b.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                             Text(b.state.word, style = MaterialTheme.typography.labelSmall, color = aide.faint)
+                        }
+                        if (on) {
+                            val c = checks[b.key]
+                            val problem = c?.let { reachProblem(it, Instant.now()) }.orEmpty()
+                            val line = when {
+                                b.key !in checks -> t("Checking whether it can take its turn…", "正在确认能否接力…")
+                                c == null -> t("Couldn't check whether it can take its turn", "没能确认它能否接力")
+                                problem.isEmpty() -> t("Can take its turn", "已确认能接力")
+                                else -> problem
+                            }
+                            Text(line, style = MaterialTheme.typography.bodySmall, color = if (c != null && problem.isEmpty()) aide.faint else Warning,
+                                modifier = Modifier.padding(start = 86.dp, end = 16.dp, bottom = 10.dp))
                         }
                         if (on && !b.personal) {
                             val ps = projectsOf(b)
@@ -583,4 +644,16 @@ fun NewRoomPage(model: AppModel, opened: (Room) -> Unit, back: () -> Unit) {
             }
         }
     }
+}
+
+/**
+ * A shadow letter's sender's own time, beside the post office's, when they are minutes apart (工单 #163): the
+ * conversation is in the order the post office took its letters, as a sender's clock may be off.
+ */
+internal fun claimedText(m: RoomMessage): String? {
+    if (m.claimedAt.isEmpty() || m.at.isEmpty()) return null
+    val claimed = runCatching { Instant.parse(m.claimedAt) }.getOrNull() ?: return null
+    val at = runCatching { Instant.parse(m.at) }.getOrNull() ?: return null
+    if (kotlin.math.abs(java.time.Duration.between(at, claimed).toMinutes()) < 5) return null
+    return t("its sender says ", "对方自报 ") + java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT).withZone(java.time.ZoneId.systemDefault()).format(claimed)
 }

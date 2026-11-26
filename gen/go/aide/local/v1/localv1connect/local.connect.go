@@ -205,6 +205,9 @@ const (
 	// LocalServiceReadToolOutputProcedure is the fully-qualified name of the LocalService's
 	// ReadToolOutput RPC.
 	LocalServiceReadToolOutputProcedure = "/aide.local.v1.LocalService/ReadToolOutput"
+	// LocalServiceReadAttachmentProcedure is the fully-qualified name of the LocalService's
+	// ReadAttachment RPC.
+	LocalServiceReadAttachmentProcedure = "/aide.local.v1.LocalService/ReadAttachment"
 	// LocalServiceStartSessionProcedure is the fully-qualified name of the LocalService's StartSession
 	// RPC.
 	LocalServiceStartSessionProcedure = "/aide.local.v1.LocalService/StartSession"
@@ -292,6 +295,9 @@ const (
 	LocalServiceMarkRoomSeenProcedure = "/aide.local.v1.LocalService/MarkRoomSeen"
 	// LocalServiceDeleteRoomProcedure is the fully-qualified name of the LocalService's DeleteRoom RPC.
 	LocalServiceDeleteRoomProcedure = "/aide.local.v1.LocalService/DeleteRoom"
+	// LocalServiceCheckRoomMembersProcedure is the fully-qualified name of the LocalService's
+	// CheckRoomMembers RPC.
+	LocalServiceCheckRoomMembersProcedure = "/aide.local.v1.LocalService/CheckRoomMembers"
 	// LocalServiceListRoomWaitingProcedure is the fully-qualified name of the LocalService's
 	// ListRoomWaiting RPC.
 	LocalServiceListRoomWaitingProcedure = "/aide.local.v1.LocalService/ListRoomWaiting"
@@ -487,6 +493,8 @@ type LocalServiceClient interface {
 	ListSessionEvents(context.Context, *v1.ListSessionEventsRequest) (*v1.ListSessionEventsResponse, error)
 	// A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v12.ToolOutputChunk], error)
+	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
+	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -546,6 +554,11 @@ type LocalServiceClient interface {
 	StopRoom(context.Context, *v1.RoomRef) (*v11.Room, error)
 	MarkRoomSeen(context.Context, *v1.RoomRef) (*v11.Room, error)
 	DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error)
+	// Whether the members picked for a room can be reached now, asked for
+	// real (工单 #159): the coding agents on their own machines, the personal
+	// agents on the machine CreateRoom would pick as host. A machine that
+	// doesn't answer has its members marked so.
+	CheckRoomMembers(context.Context, *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error)
 	// What waits at the post office for a machine that hosts rooms, by room:
 	// every member's reply (personal agents' too) while it is away (工单 #74).
 	ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error)
@@ -964,6 +977,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("ReadToolOutput")),
 			connect.WithClientOptions(opts...),
 		),
+		readAttachment: connect.NewClient[v12.ReadAttachmentRequest, v12.ReadAttachmentResponse](
+			httpClient,
+			baseURL+LocalServiceReadAttachmentProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ReadAttachment")),
+			connect.WithClientOptions(opts...),
+		),
 		startSession: connect.NewClient[v1.StartSessionRequest, v1.SessionResponse](
 			httpClient,
 			baseURL+LocalServiceStartSessionProcedure,
@@ -1150,6 +1169,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("DeleteRoom")),
 			connect.WithClientOptions(opts...),
 		),
+		checkRoomMembers: connect.NewClient[v11.CheckRoomMembersRequest, v11.CheckRoomMembersResponse](
+			httpClient,
+			baseURL+LocalServiceCheckRoomMembersProcedure,
+			connect.WithSchema(localServiceMethods.ByName("CheckRoomMembers")),
+			connect.WithClientOptions(opts...),
+		),
 		listRoomWaiting: connect.NewClient[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse](
 			httpClient,
 			baseURL+LocalServiceListRoomWaitingProcedure,
@@ -1301,6 +1326,7 @@ type localServiceClient struct {
 	streamSessionEvents            *connect.Client[v1.StreamSessionEventsRequest, v12.SessionEvent]
 	listSessionEvents              *connect.Client[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse]
 	readToolOutput                 *connect.Client[v1.ReadToolOutputRequest, v12.ToolOutputChunk]
+	readAttachment                 *connect.Client[v12.ReadAttachmentRequest, v12.ReadAttachmentResponse]
 	startSession                   *connect.Client[v1.StartSessionRequest, v1.SessionResponse]
 	sendMessage                    *connect.Client[v1.SendMessageRequest, v1.SessionResponse]
 	interruptSession               *connect.Client[v1.InterruptSessionRequest, v1.SessionResponse]
@@ -1332,6 +1358,7 @@ type localServiceClient struct {
 	stopRoom                       *connect.Client[v1.RoomRef, v11.Room]
 	markRoomSeen                   *connect.Client[v1.RoomRef, v11.Room]
 	deleteRoom                     *connect.Client[v1.RoomRef, v11.DeleteRoomResponse]
+	checkRoomMembers               *connect.Client[v11.CheckRoomMembersRequest, v11.CheckRoomMembersResponse]
 	listRoomWaiting                *connect.Client[v1.ListRoomWaitingRequest, v1.ListRoomWaitingResponse]
 	dSHSessionOptions              *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
 	listClaudeSessions             *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
@@ -1890,6 +1917,15 @@ func (c *localServiceClient) ReadToolOutput(ctx context.Context, req *v1.ReadToo
 	return c.readToolOutput.CallServerStream(ctx, connect.NewRequest(req))
 }
 
+// ReadAttachment calls aide.local.v1.LocalService.ReadAttachment.
+func (c *localServiceClient) ReadAttachment(ctx context.Context, req *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error) {
+	response, err := c.readAttachment.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // StartSession calls aide.local.v1.LocalService.StartSession.
 func (c *localServiceClient) StartSession(ctx context.Context, req *v1.StartSessionRequest) (*v1.SessionResponse, error) {
 	response, err := c.startSession.CallUnary(ctx, connect.NewRequest(req))
@@ -2163,6 +2199,15 @@ func (c *localServiceClient) MarkRoomSeen(ctx context.Context, req *v1.RoomRef) 
 // DeleteRoom calls aide.local.v1.LocalService.DeleteRoom.
 func (c *localServiceClient) DeleteRoom(ctx context.Context, req *v1.RoomRef) (*v11.DeleteRoomResponse, error) {
 	response, err := c.deleteRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// CheckRoomMembers calls aide.local.v1.LocalService.CheckRoomMembers.
+func (c *localServiceClient) CheckRoomMembers(ctx context.Context, req *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error) {
+	response, err := c.checkRoomMembers.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -2447,6 +2492,8 @@ type LocalServiceHandler interface {
 	ListSessionEvents(context.Context, *v1.ListSessionEventsRequest) (*v1.ListSessionEventsResponse, error)
 	// A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v12.ToolOutputChunk]) error
+	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
+	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -2506,6 +2553,11 @@ type LocalServiceHandler interface {
 	StopRoom(context.Context, *v1.RoomRef) (*v11.Room, error)
 	MarkRoomSeen(context.Context, *v1.RoomRef) (*v11.Room, error)
 	DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error)
+	// Whether the members picked for a room can be reached now, asked for
+	// real (工单 #159): the coding agents on their own machines, the personal
+	// agents on the machine CreateRoom would pick as host. A machine that
+	// doesn't answer has its members marked so.
+	CheckRoomMembers(context.Context, *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error)
 	// What waits at the post office for a machine that hosts rooms, by room:
 	// every member's reply (personal agents' too) while it is away (工单 #74).
 	ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error)
@@ -2920,6 +2972,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("ReadToolOutput")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceReadAttachmentHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceReadAttachmentProcedure,
+		svc.ReadAttachment,
+		connect.WithSchema(localServiceMethods.ByName("ReadAttachment")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceStartSessionHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceStartSessionProcedure,
 		svc.StartSession,
@@ -3104,6 +3162,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceDeleteRoomProcedure,
 		svc.DeleteRoom,
 		connect.WithSchema(localServiceMethods.ByName("DeleteRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceCheckRoomMembersHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceCheckRoomMembersProcedure,
+		svc.CheckRoomMembers,
+		connect.WithSchema(localServiceMethods.ByName("CheckRoomMembers")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceListRoomWaitingHandler := connect.NewUnaryHandlerSimple(
@@ -3316,6 +3380,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListSessionEventsHandler.ServeHTTP(w, r)
 		case LocalServiceReadToolOutputProcedure:
 			localServiceReadToolOutputHandler.ServeHTTP(w, r)
+		case LocalServiceReadAttachmentProcedure:
+			localServiceReadAttachmentHandler.ServeHTTP(w, r)
 		case LocalServiceStartSessionProcedure:
 			localServiceStartSessionHandler.ServeHTTP(w, r)
 		case LocalServiceSendMessageProcedure:
@@ -3378,6 +3444,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceMarkRoomSeenHandler.ServeHTTP(w, r)
 		case LocalServiceDeleteRoomProcedure:
 			localServiceDeleteRoomHandler.ServeHTTP(w, r)
+		case LocalServiceCheckRoomMembersProcedure:
+			localServiceCheckRoomMembersHandler.ServeHTTP(w, r)
 		case LocalServiceListRoomWaitingProcedure:
 			localServiceListRoomWaitingHandler.ServeHTTP(w, r)
 		case LocalServiceDSHSessionOptionsProcedure:
@@ -3663,6 +3731,10 @@ func (UnimplementedLocalServiceHandler) ReadToolOutput(context.Context, *v1.Read
 	return connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadToolOutput is not implemented"))
 }
 
+func (UnimplementedLocalServiceHandler) ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadAttachment is not implemented"))
+}
+
 func (UnimplementedLocalServiceHandler) StartSession(context.Context, *v1.StartSessionRequest) (*v1.SessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.StartSession is not implemented"))
 }
@@ -3785,6 +3857,10 @@ func (UnimplementedLocalServiceHandler) MarkRoomSeen(context.Context, *v1.RoomRe
 
 func (UnimplementedLocalServiceHandler) DeleteRoom(context.Context, *v1.RoomRef) (*v11.DeleteRoomResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.DeleteRoom is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) CheckRoomMembers(context.Context, *v11.CheckRoomMembersRequest) (*v11.CheckRoomMembersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.CheckRoomMembers is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListRoomWaiting(context.Context, *v1.ListRoomWaitingRequest) (*v1.ListRoomWaitingResponse, error) {

@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 
 private val whenFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
 
-/** Claude's plan usage in one line with when it was read (工单 #86); kept after a refresh that failed, "last reading". */
+/** An agent's plan usage in one line with when it was read (工单 #86; Codex's too, #143/#157, as the desktop's usageText); kept after a refresh that failed, "last reading". */
 fun usageLine(a: AgentStatus, now: Instant = Instant.now()): String {
     val u = a.usage ?: return ""
     if (u.windows.isEmpty()) return if (u.unavailable.isNotEmpty()) t("Plan usage not read yet", "套餐用量还没读到") else ""
@@ -79,7 +79,7 @@ fun AgentSettings(model: AppModel, b: Bot, m: Machine) {
             SettingRow(t("Machine", "机器"), t("${m.machineName} (where it runs)", "${m.machineName}（它在这台上运行）"))
             Hairline(Modifier.padding(start = 16.dp))
             SettingRow(t("Projects", "项目"), projects.joinToString(t(", ", "、")) { world.projectTitle(it.machineId, it.projectId) }.ifEmpty { t("No project yet", "还没有项目") })
-            usageLine(a).takeIf { b.agent == "claude" && it.isNotEmpty() }?.let {
+            usageLine(a).takeIf { it.isNotEmpty() }?.let {
                 Hairline(Modifier.padding(start = 16.dp))
                 SettingRow(t("Plan usage", "套餐用量"), it)
             }

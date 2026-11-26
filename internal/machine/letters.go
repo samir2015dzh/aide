@@ -310,7 +310,7 @@ func (n *Machine) takeSealed(ctx context.Context, sm *relayv1.SealedMessage) str
 	// acking it never collides with the recipient agent's delivery state, while
 	// the inner Message is still signed by info.Key (cannot be forged).
 	if info.Kind != "machine" && strings.HasPrefix(m.GetFrom().GetInbox(), "c_") && strings.HasPrefix(m.GetTo().GetInbox(), "c_") && m.GetFrom().GetInbox() == info.Inbox {
-		return n.takeShadowLetter(m, info)
+		return n.takeShadowLetter(m, info, sm.ReceivedAt)
 	}
 	if m.MessageId != sm.MessageId {
 		n.log.Warn("a message whose id does not match envelope", "message", sm.MessageId)

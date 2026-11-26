@@ -16,7 +16,9 @@ import io.aide.android.api.LocalApi
 import io.aide.android.api.Persona
 import io.aide.android.api.QueryWorkRequest
 import io.aide.android.api.QueryWorkResponse
+import io.aide.android.api.ReadAttachmentResponse
 import io.aide.android.api.Session
+import io.aide.android.api.SessionStatus
 import io.aide.android.api.SetLoginRequest
 import io.aide.android.connection.ConnectionService
 import io.aide.android.connection.Keepalive
@@ -67,7 +69,7 @@ class AppModel(private val context: Context) {
     val world = _world.asStateFlow()
     private val _foreground = MutableStateFlow(false)
     val foreground = _foreground.asStateFlow()
-    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    private val _messages = MutableSharedFlow<Notice>(extraBufferCapacity = 8)
     val messages = _messages.asSharedFlow()
     /** Fires on network restore, WiFi/cellular switch, or Watch reconnect so SessionFeed wakes immediately (工单 #115). */
     private val _reconnectPulse = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
@@ -231,6 +233,16 @@ class AppModel(private val context: Context) {
         }
     }
 
+    /** A file a session keeps (ReadAttachment, 工单 #156); null when the machine has none, can't be reached, or is too old to say. */
+    suspend fun readAttachment(sessionId: String, sha256: String, path: String): ReadAttachmentResponse? {
+        val api = api ?: return null
+        return try {
+            api.readAttachment(sessionId, sha256, path)
+        } catch (e: ApiError) {
+            null
+        }
+    }
+
     /** The work over a range (QueryWork, 工单 #142); null when the core cannot be asked now (the card keeps what it had). */
     suspend fun queryWork(req: QueryWorkRequest): QueryWorkResponse? {
         val api = api ?: return null
@@ -313,18 +325,20 @@ class AppModel(private val context: Context) {
      * Where what is said goes (工单 #61, the owner's rule: "a message shows on the screen whose action made it"): the
      * page open on top has its own place to say it (PageFeedback), registered while it shows; with none, the tabs'.
      */
-    private val sinks = mutableListOf<(String) -> Unit>()
+    private val sinks = mutableListOf<(Notice) -> Unit>()
 
-    fun pushSink(f: (String) -> Unit) {
+    fun pushSink(f: (Notice) -> Unit) {
         sinks += f
     }
 
-    fun popSink(f: (String) -> Unit) {
+    fun popSink(f: (Notice) -> Unit) {
         sinks.remove(f)
     }
 
-    fun say(text: String) {
-        sinks.lastOrNull()?.invoke(text) ?: _messages.tryEmit(text)
+    fun say(text: String) = say(Notice(text))
+
+    fun say(n: Notice) {
+        sinks.lastOrNull()?.invoke(n) ?: _messages.tryEmit(n)
     }
 
     private inline fun <T> report(block: () -> T): T? = try {
@@ -471,6 +485,8 @@ class AppModel(private val context: Context) {
     /** A room as its host has it now, with its messages; null when it can't be read now. */
     suspend fun readRoom(machineId: String, roomId: String): io.aide.android.api.ListRoomMessagesResponse? = runCatching { api!!.listRoomMessages(machineId, roomId) }.getOrNull()
     suspend fun createRoom(req: io.aide.android.api.CreateRoomRequest): io.aide.android.api.Room? = report { api!!.createRoom(req) }
+    /** Whether the members picked for a room can be reached now, asked for real (工单 #159); null when it couldn't be asked (said so). */
+    suspend fun checkRoomMembers(members: List<io.aide.android.api.CreateRoomMember>): List<io.aide.android.api.RoomMemberCheck>? = report { api!!.checkRoomMembers(members).members }
     suspend fun updateRoom(machineId: String, patch: io.aide.android.api.RoomPatch): io.aide.android.api.Room? = report { api!!.updateRoom(machineId, patch) }
     suspend fun stopRoom(machineId: String, roomId: String): io.aide.android.api.Room? = report { api!!.stopRoom(machineId, roomId) }
     suspend fun markRoomSeen(machineId: String, roomId: String) {
@@ -708,6 +724,24 @@ class AppModel(private val context: Context) {
             flushOutbox()
         }
     }
+    /**
+     * Archives a conversation from a list (工单 #165): it leaves the list at once, and what is said undoes it for a few
+     * seconds; one its machine would not archive comes back, and why is said.
+     */
+    fun archiveFromList(s: Session) {
+        if (!isArchivable(s)) return
+        replace(s.copy(status = SessionStatus.ARCHIVED))
+        scope.launch {
+            val why = archive(s, true)
+            if (why != null) {
+                replace(s)
+                say(why)
+            } else {
+                say(Notice(t("Archived “${displayTitle(s)}”", "已归档「${displayTitle(s)}」"), t("Undo", "撤销")) { archive(s, false)?.let(::say) })
+            }
+        }
+    }
+
     /** Archives a conversation on its machine, or unarchives it; null when it worked, else why. */
     suspend fun archive(s: Session, on: Boolean): String? = try {
         api!!.archive(s.sessionId, on)?.let { replace(it) }
@@ -840,3 +874,6 @@ fun reasonText(reason: String, args: Map<String, String>, raw: String): String? 
 
 /** The queue is written this long after its last change, so that a burst of changes is one write. */
 private const val OUTBOX_SAVE_DELAY_MS = 100L
+
+/** Something said at the foot of the page (工单 #61); with an action (工单 #165: undoing what was just done), for a few seconds. */
+class Notice(val text: String, val action: String? = null, val run: (suspend () -> Unit)? = null)

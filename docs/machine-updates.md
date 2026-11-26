@@ -83,6 +83,7 @@ Looking for an update reads three small files from `https://github.com/samir2015
 - With a newer version found, it waits for the guard (§3.1), looking again every 10 minutes, then installs (§5.2) and exits; systemd (`Restart=always`) and launchd (`KeepAlive`) start the new program.
 - launchd keeps a job as it loaded it, and an update replaces only the program. So on a Mac whose service an older version installed as a Background job, the new program corrects the plist when it starts and has launchd load the job again (`service.ReloadOldJob`).
 - A failed check or download is logged and tried again at the next check. Nothing is ever shown on a device for it.
+- **Going back** (工单 #162). The `version` check (§5.2) catches a broken download, not a release that starts and then cannot work (its store, a migration). So a background update is *pending* in `update.json` until its new version connects to its relay. The new version notes its first start; if it has not connected 10 minutes after that (`verifyWithin`: ten times the manual update's minute, for a large store and the relay link's retries, at most 10 s apart), it puts back the programs it replaced — the `.previous` that says the version before, on Windows the running one moved aside as `.<name>.failed.exe` — and exits, and the service starts them. Two places do it, both in the new program, so neither needs anything of the old one: as `aided run` starts, before it opens anything (a version that fails as it starts is started again and again by systemd, launchd or the supervisor, and goes back at its first start after the deadline), and while it runs (one that starts but never connects). The version it went back from is kept as failed: the background updater skips it until a newer one is out, `aided status` says so, and the machine's status has the problem `UPDATE_FAILED` with that version, which every screen of the owner shows, until it runs that version or a newer one. `aided update` and the install command are not pending: their person sees the result.
 
 ### 5.4 State
 
@@ -103,7 +104,7 @@ Looking for an update reads three small files from `https://github.com/samir2015
 
 ## 7. Tests
 
-- **Unit** (`internal/update`): signature, version and hash checks, refusing a lower version and an app bundle, the rename and `.previous`, the schedule and the guard with a fake clock.
+- **Unit** (`internal/update`): signature, version and hash checks, refusing a lower version and an app bundle, the rename and `.previous`, the schedule and the guard with a fake clock, going back from an update that does not connect (at start and while running) and skipping its version.
 - **TestWindowsUpdate** (end to end, on `windows-latest`): `install.ps1` installs A from the test's releases and logs in; B published, the machine updates itself and its supervisor starts B; with automatic updates off, `aided update --yes` installs C.
 - **TestLinuxUpdate** (`AIDE_DOCKER=1`, end to end): a systemd Ubuntu container logged in as root, a relay on the Mac, and three signed releases A < B < C served by the test over HTTP (test builds name its address and a test key).
   1. The install command installs A and logs the machine in.
@@ -115,7 +116,6 @@ Looking for an update reads three small files from `https://github.com/samir2015
 ## 8. Later
 
 - **Update from a device.** An "Update Now" button on the iPhone's machine page, sent end to end like other machine commands.
-- **Rollback.** A release that fails to start leaves the machine off until someone logs in and moves `.aided.previous` back. The `version` check (§5.2) catches a broken download, not a broken release. If that is needed, the service would start the previous program after repeated failures.
 
 ## 9. The owner's decisions
 
@@ -125,4 +125,4 @@ Looking for an update reads three small files from `https://github.com/samir2015
 4. `aided update` asks before stopping a session; `--yes` skips the question.
 5. The install command on a machine logged in updates without logging in again.
 6. Linux trusted devices updated themselves too (there are none since 2026-11-20, [accounts.md](accounts.md)).
-7. Not now: apt/yum packages, updating from a device, rollback (§8).
+7. Not now: apt/yum packages, updating from a device (§8). Going back from a background update that does not connect: built (§5.3, 工单 #162, 2026-11-26).

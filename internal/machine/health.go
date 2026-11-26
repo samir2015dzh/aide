@@ -58,6 +58,9 @@ func (n *Machine) checkHealth() []*machinev1.MachineProblem {
 	if why := shellenv.LastProblem(); why != "" && !hasProblem(out, machinev1.MachineProblemKind_MACHINE_PROBLEM_KIND_PROCESSES) {
 		out = append(out, &machinev1.MachineProblem{Kind: machinev1.MachineProblemKind_MACHINE_PROBLEM_KIND_SHELL_PATH, Detail: why})
 	}
+	if v := n.cfg.UpdateFailed; v != "" {
+		out = append(out, &machinev1.MachineProblem{Kind: machinev1.MachineProblemKind_MACHINE_PROBLEM_KIND_UPDATE_FAILED, Version: v})
+	}
 	return out
 }
 

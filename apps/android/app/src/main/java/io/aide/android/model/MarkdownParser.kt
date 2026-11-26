@@ -36,6 +36,8 @@ sealed interface MdInline {
     data class Strike(val children: List<MdInline>) : MdInline
     data class Code(val code: String) : MdInline
     data class Link(val label: String, val url: String) : MdInline
+    /** ![alt](a file on the machine) (工单 #158): its words in the text; the picture is drawn under the reply (ReplyPictures). */
+    data class Picture(val alt: String, val path: String) : MdInline
 }
 
 private val headingRegex = Regex("""^\s{0,3}(#{1,6})(?:\s+(.*?))?\s*#*\s*$""")
@@ -427,6 +429,29 @@ private fun parseInline(text: String, depth: Int): List<MdInline> {
             plain.append(text, i, i + tickLen)
             i += tickLen
             continue
+        }
+
+        // Picture: ![alt](path) of a file on the machine; one of the web stays as before ("!" and its link).
+        if (ch == '!' && i + 1 < text.length && text[i + 1] == '[') {
+            if (nextBracket != -1 && nextBracket <= i + 1) nextBracket = text.indexOf(']', i + 2)
+            val closeBracket = nextBracket
+            if (closeBracket != -1 && closeBracket + 1 < text.length && text[closeBracket + 1] == '(') {
+                if (parenFor != closeBracket) {
+                    parenFor = closeBracket
+                    parenAt = findLinkClose(text, closeBracket + 2)
+                }
+                val closeParen = parenAt
+                if (closeParen != -1) {
+                    val alt = text.substring(i + 2, closeBracket)
+                    val path = text.substring(closeBracket + 2, closeParen).trim().substringBefore(" \"").trim().removePrefix("<").removeSuffix(">")
+                    if (!alt.contains('\n') && isLocalPicture(path)) {
+                        flush()
+                        out.add(MdInline.Picture(alt, path))
+                        i = closeParen + 1
+                        continue
+                    }
+                }
+            }
         }
 
         // Link: [label](url) — the URL may contain balanced parentheses.

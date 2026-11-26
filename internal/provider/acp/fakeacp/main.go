@@ -35,6 +35,22 @@
 //	                    <note>" or "declined: <action>"; "no elicitation"
 //	                    when the client does not take forms
 //
+// and, as Antigravity's background tasks go (task <name> is "conv/<name>",
+// its log $FAKE_ACP_STATE/brain/.system_generated/tasks/<name>.log):
+//
+//	bg <name> <command> run_command that asks permission, then goes on in
+//	                    the background: completed at once, with Antigravity's
+//	                    "Tool is running as a background task" text
+//	log <name> <text>   a line added to the task's log
+//	done <name> <n> <t> the task ends: <t> added to its log, and a message
+//	                    in .system_generated/messages that it finished
+//	                    ("Command exited with code <n>.")
+//	still <name>        a message that the task is still running
+//	kill <name>         manage_task call that kills the task
+//	wake <gate> <a ;; b> once the file <gate> is in $FAKE_ACP_STATE, after
+//	                    the turn: the agent goes on by itself (no prompt)
+//	                    with the commands a, b, …
+//
 // Sessions are kept under $FAKE_ACP_STATE (default $TMPDIR/fakeacp) so a
 // new process can load them. Environment:
 //
@@ -617,8 +633,10 @@ func prompt(id json.RawMessage, sid, text string, images, files []string) {
 		replyErr(id, -32002, "unknown session")
 		return
 	}
-	h.Turns = append(h.Turns, text)
-	save(sid, h)
+	if id != nil { // a turn, not the agent going on by itself (wake)
+		h.Turns = append(h.Turns, text)
+		save(sid, h)
+	}
 	for _, line := range strings.Split(text, "\n") {
 		cmd, arg, _ := strings.Cut(strings.TrimSpace(line), " ")
 		switch cmd {
@@ -749,6 +767,40 @@ func prompt(id json.RawMessage, sid, text string, images, files []string) {
 				reply(id, map[string]any{"stopReason": "cancelled"})
 				return
 			}
+		case "bg":
+			name, command, _ := strings.Cut(arg, " ")
+			tool(sid, "execute", "run_command", map[string]any{"CommandLine": command, "WaitMsBeforeAsync": 500}, "", func() (string, error) {
+				log := taskLog(name)
+				os.MkdirAll(filepath.Dir(log), 0o755)
+				os.WriteFile(log, []byte("started "+name+"\n"), 0o644)
+				return "Tool is running as a background task with task id: conv/" + name + "\nTask logs are available at: " + fileURI(log) +
+					"\n\nLog output:\nstarted " + name + "\n\nYOU MUST TAKE ONE OF THE FOLLOWING TWO ACTIONS: wait for the task, or go on with other work.", nil
+			})
+		case "log":
+			name, text, _ := strings.Cut(arg, " ")
+			appendLog(name, text)
+		case "done":
+			name, rest, _ := strings.Cut(arg, " ")
+			code, text, _ := strings.Cut(rest, " ")
+			appendLog(name, text)
+			taskMessage(name, "finished with result:\nCommand exited with code "+code+".\n")
+		case "still":
+			taskMessage(arg, "is still running after 60s.")
+		case "kill":
+			tool(sid, "other", "manage_task", map[string]any{"Action": "kill", "TaskId": "conv/" + arg}, "", func() (string, error) {
+				return "killed", nil
+			})
+		case "wake":
+			gate, script, _ := strings.Cut(arg, " ")
+			go func() {
+				for i := 0; i < 1500; i++ {
+					if _, err := os.Stat(filepath.Join(stateDir, gate)); err == nil {
+						prompt(nil, sid, strings.ReplaceAll(script, " ;; ", "\n"), nil, nil)
+						return
+					}
+					time.Sleep(20 * time.Millisecond)
+				}
+			}()
 		case "crash":
 			os.Exit(1)
 		case "fail":
@@ -761,7 +813,41 @@ func prompt(id json.RawMessage, sid, text string, images, files []string) {
 			return
 		}
 	}
-	reply(id, map[string]any{"stopReason": "end_turn", "usage": map[string]any{"inputTokens": 100, "outputTokens": 20, "cachedReadTokens": 5}})
+	if id != nil {
+		reply(id, map[string]any{"stopReason": "end_turn", "usage": map[string]any{"inputTokens": 100, "outputTokens": 20, "cachedReadTokens": 5}})
+	}
+}
+
+// taskLog is where background task name logs, as Antigravity keeps them.
+func taskLog(name string) string {
+	return filepath.Join(stateDir, "brain", ".system_generated", "tasks", name+".log")
+}
+
+func appendLog(name, text string) {
+	f, err := os.OpenFile(taskLog(name), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err == nil {
+		fmt.Fprintln(f, text)
+		f.Close()
+	}
+}
+
+// taskMessage writes what Antigravity tells the agent of task name.
+func taskMessage(name, text string) {
+	dir := filepath.Join(stateDir, "brain", ".system_generated", "messages")
+	os.MkdirAll(dir, 0o755)
+	b, _ := json.Marshal(map[string]any{"sender": "conv/" + name, "content": "Task id \"conv/" + name + "\" " + text})
+	n := time.Now().UnixNano()
+	tmp := filepath.Join(dir, fmt.Sprintf(".%d.tmp", n))
+	os.WriteFile(tmp, b, 0o644)
+	os.Rename(tmp, filepath.Join(dir, fmt.Sprintf("%d.json", n)))
+}
+
+func fileURI(path string) string {
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p}).String()
 }
 
 // fakeProvider is a model option of FAKE_ACP_PROVIDERS.

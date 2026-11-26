@@ -33,7 +33,7 @@ aide session insights s_xxx      # review a session once done: each turn's time,
 aide session list                # your sessions (--archived for archived ones)
 aide session list --native       # also the DeepSeek Harness sessions Aide did not start, read-only (dsh_…: session get / events)
 aide session interrupt s_xxx     # stop the running turn; the session stays, and a later message continues it
-aide session archive s_xxx       # when done: read-only, frees the worktree (the branch keeps the changes); unarchive restores it
+aide session archive s_xxx       # when done: read-only, frees the worktree (the branch keeps the changes), or keeps it when it has uncommitted changes (workspace_kept); unarchive restores it
 aide session rollback s_xxx --turn 1 --yes   # back to where turn 1 left it: discards every message and change after it (worktree projects only)
 aide session events s_xxx --after 812   # events page by page: the latest 50 by default; --after newer, --before older
 aide machine exec vps-1 --workdir '~/app' -- git pull --ff-only   # a one-shot shell command on a machine, if the owner allowed this agent to run commands (docs/machine-ops.md)

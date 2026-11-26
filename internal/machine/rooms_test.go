@@ -360,13 +360,15 @@ func TestRoom(t *testing.T) {
 	post("开始", "c:c_muse")
 	muse("@Fake\nsay @Muse 第一棒")
 	waitRoom(t, n, r.RoomId, fakeKey, "第一棒")
-	// Fake named Muse at round 1 of 1: the limit, said so.
+	// Fake named Muse at round 1 of 1: the limit, said so; with no [FINAL], Fake, the last to speak, wraps it up
+	// (工单 #159), its answer sealed.
 	deadline := time.Now().Add(5 * time.Second)
 	for n.ListRooms().Rooms[0].Run != machinev1.RoomRun_ROOM_RUN_STOPPED_LIMIT && time.Now().Before(deadline) {
 		time.Sleep(20 * time.Millisecond)
 	}
-	if ms := roomMsgs(t, n, r.RoomId); !ms[len(ms)-1].System || !strings.Contains(ms[len(ms)-1].Text, "轮次上限（1 轮）") {
-		t.Fatalf("the limit: %v", ms[len(ms)-1])
+	if ms := roomMsgs(t, n, r.RoomId); !ms[len(ms)-2].System || !strings.Contains(ms[len(ms)-2].Text, "轮次上限（1 轮）") || !strings.Contains(ms[len(ms)-2].Text, "请 Fake 汇总共识收口") ||
+		ms[len(ms)-1].From != fakeKey || !ms[len(ms)-1].Final {
+		t.Fatalf("the limit: %v", ms[len(ms)-2:])
 	}
 	// [FINAL]: sealed.
 	post("收个尾", "c:c_muse")

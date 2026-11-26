@@ -61,7 +61,7 @@ func TestShadowRoomRefusesMemberLetters124(t *testing.T) {
 	withGrants(n, museGrant, hermesGrant)
 	out := catchRoomOut(n)
 	first := &inboxv1.Message{MessageId: "msg_01first00000000000000000", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: "c_hermes"}, SentAt: timestamppb.Now(), Text: "hi"}
-	if got := n.takeShadowLetter(first, museContact); got != "handled" {
+	if got := n.takeShadowLetter(first, museContact, nil); got != "handled" {
 		t.Fatalf("shadow copy: %q", got)
 	}
 	rid := shadowRoomID("c_muse", "c_hermes")
@@ -92,7 +92,7 @@ func TestShadowCopyNeedsGrant124(t *testing.T) {
 	n := h.n
 	withGrants(n, hermesGrant) // Muse's grant is revoked
 	m := &inboxv1.Message{MessageId: "msg_01revoked000000000000000", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: "c_hermes"}, SentAt: timestamppb.Now(), Text: "still here"}
-	if got := n.takeShadowLetter(m, museContact); got != "refused" {
+	if got := n.takeShadowLetter(m, museContact, nil); got != "refused" {
 		t.Fatalf("a revoked agent's shadow copy: %q, want refused", got)
 	}
 	for _, r := range n.ListRooms().Rooms {
@@ -102,7 +102,7 @@ func TestShadowCopyNeedsGrant124(t *testing.T) {
 	}
 	// The other way round, from an agent with a grant: kept.
 	back := &inboxv1.Message{MessageId: "msg_01back0000000000000000000", From: &inboxv1.Address{Inbox: "c_hermes"}, To: &inboxv1.Address{Inbox: "c_muse"}, SentAt: timestamppb.Now(), Text: "ok"}
-	if got := n.takeShadowLetter(back, hermesContact); got != "handled" {
+	if got := n.takeShadowLetter(back, hermesContact, nil); got != "handled" {
 		t.Fatalf("a granted agent's shadow copy: %q", got)
 	}
 }
@@ -218,5 +218,34 @@ func TestRoomStatusHasDirectRooms123(t *testing.T) {
 	}
 	if !got[r1.RoomId] || !got[r2.RoomId] {
 		t.Fatalf("direct rooms in the status: %v (want %s and %s)", got, r1.RoomId, r2.RoomId)
+	}
+}
+
+// 工单 #163: a shadow conversation is in the order the post office took its
+// letters, the relay's own time: a sender whose clock is hours ahead (or
+// behind) can't put its letters out of order. What it said is kept beside.
+func TestShadowGoesByThePostOfficesTime163(t *testing.T) {
+	h := newHarness(t, Limits{})
+	n := h.n
+	withGrants(n, museGrant, hermesGrant)
+	now := time.Now()
+	// Muse's clock is two hours ahead: by its word its question comes after Hermes's answer.
+	ask := &inboxv1.Message{MessageId: "msg_01ask00000000000000000000", From: &inboxv1.Address{Inbox: "c_muse"}, To: &inboxv1.Address{Inbox: "c_hermes"}, SentAt: timestamppb.New(now.Add(2 * time.Hour)), Text: "问"}
+	answer := &inboxv1.Message{MessageId: "msg_01ans00000000000000000000", From: &inboxv1.Address{Inbox: "c_hermes"}, To: &inboxv1.Address{Inbox: "c_muse"}, SentAt: timestamppb.New(now.Add(-time.Minute)), Text: "答", InReplyTo: ask.MessageId}
+	if got := n.takeShadowLetter(ask, museContact, timestamppb.New(now.Add(-3*time.Minute))); got != "handled" {
+		t.Fatal(got)
+	}
+	if got := n.takeShadowLetter(answer, hermesContact, timestamppb.New(now.Add(-2*time.Minute))); got != "handled" {
+		t.Fatal(got)
+	}
+	res, err := n.ListRoomMessages(&machinev1.ListRoomMessagesRequest{RoomId: shadowRoomID("c_muse", "c_hermes")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Messages) != 2 || res.Messages[0].Text != "问" || res.Messages[1].Text != "答" {
+		t.Fatalf("not in the post office's order: %v", res.Messages)
+	}
+	if q := res.Messages[0]; !q.At.AsTime().Equal(now.Add(-3*time.Minute).Truncate(time.Nanosecond)) || !q.ClaimedAt.AsTime().Equal(ask.SentAt.AsTime()) {
+		t.Fatalf("times: at %v claimed %v", q.At.AsTime(), q.ClaimedAt.AsTime())
 	}
 }

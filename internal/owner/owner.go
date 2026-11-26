@@ -1881,10 +1881,109 @@ func newestDirectRoom(rooms []*machinev1.Room, clientID string) *machinev1.Room 
 
 func (o *Owner) ListRoomMessages(ctx context.Context, req *localv1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
 	r := &machinev1.ListRoomMessagesRequest{RoomId: req.RoomId, Limit: req.Limit}
+	if machine.IsShadowRoom(req.RoomId) {
+		return o.shadowMessages(ctx, r)
+	}
 	return onDSHMachine(ctx, o, req.MachineId, func(l *machine.Local) (*machinev1.ListRoomMessagesResponse, error) { return l.ListRoomMessages(r) },
 		func(n *peer.Machine) (*machinev1.ListRoomMessagesResponse, error) {
 			return n.Admin.ListRoomMessages(ctx, r)
 		})
+}
+
+// shadowMessages is a shadow conversation as one (工单 #164): each of the
+// owner's machines keeps its own copy, as the post office brought it each
+// one's sealed copy (a machine away takes its copies when it is back, for
+// as long as the post office keeps them); here they are put together by
+// message id, in the post office's order, with the machines that keep one
+// and did not answer now named, as what only they took may be missing.
+func (o *Owner) shadowMessages(ctx context.Context, r *machinev1.ListRoomMessagesRequest) (*machinev1.ListRoomMessagesResponse, error) {
+	machines, err := o.machines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	all := &machinev1.ListRoomMessagesRequest{RoomId: r.RoomId}
+	var parts []*machinev1.ListRoomMessagesResponse
+	var unreached []string
+	var first error
+	for _, m := range machines {
+		if !m.Online && !m.Local {
+			unreached = append(unreached, m.MachineId)
+			continue
+		}
+		res, err := onDSHMachine(ctx, o, m.MachineId, func(l *machine.Local) (*machinev1.ListRoomMessagesResponse, error) { return l.ListRoomMessages(all) },
+			func(n *peer.Machine) (*machinev1.ListRoomMessagesResponse, error) {
+				return n.Admin.ListRoomMessages(ctx, all)
+			})
+		switch {
+		case connect.CodeOf(err) == connect.CodeNotFound:
+			continue // it has taken none of it
+		case err != nil:
+			unreached = append(unreached, m.MachineId)
+			if first == nil {
+				first = err
+			}
+			continue
+		}
+		parts = append(parts, res)
+	}
+	if len(parts) == 0 {
+		if first != nil {
+			return nil, first
+		}
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no conversation %s", r.RoomId))
+	}
+	merged := mergeShadow(parts, r.Limit)
+	merged.UnreachedMachineIds = unreached
+	return merged, nil
+}
+
+// mergeShadow puts the copies of one shadow conversation together: each
+// message once, in the post office's order (ties by id), the newest limit
+// (0: all), with the latest copy's room.
+func mergeShadow(parts []*machinev1.ListRoomMessagesResponse, limit uint32) *machinev1.ListRoomMessagesResponse {
+	out := &machinev1.ListRoomMessagesResponse{}
+	seen := map[string]bool{}
+	for _, p := range parts {
+		if out.Room == nil || p.Room.GetUpdatedAt().AsTime().After(out.Room.GetUpdatedAt().AsTime()) {
+			out.Room = p.Room
+		}
+		for _, x := range p.Messages {
+			if !seen[x.MessageId] {
+				seen[x.MessageId] = true
+				out.Messages = append(out.Messages, x)
+			}
+		}
+	}
+	slices.SortStableFunc(out.Messages, func(x, y *machinev1.RoomMessage) int {
+		if c := x.At.AsTime().Compare(y.At.AsTime()); c != 0 {
+			return c
+		}
+		return strings.Compare(x.MessageId, y.MessageId)
+	})
+	if limit > 0 && len(out.Messages) > int(limit) {
+		out.Messages = out.Messages[len(out.Messages)-int(limit):]
+	}
+	return out
+}
+
+// oneShadowEach keeps one entry of each shadow conversation, the latest:
+// it is on each machine that took its copies (工单 #164).
+func oneShadowEach(rooms []*machinev1.Room) []*machinev1.Room {
+	kept := rooms[:0]
+	at := map[string]int{}
+	for _, r := range rooms {
+		if i, ok := at[r.RoomId]; ok && r.Shadow {
+			if r.GetUpdatedAt().AsTime().After(kept[i].GetUpdatedAt().AsTime()) {
+				kept[i] = r
+			}
+			continue
+		}
+		if r.Shadow {
+			at[r.RoomId] = len(kept)
+		}
+		kept = append(kept, r)
+	}
+	return kept
 }
 
 func (o *Owner) PostRoomMessage(ctx context.Context, req *localv1.PostRoomMessageRequest) (*machinev1.RoomMessage, error) {
@@ -1950,6 +2049,7 @@ func (o *Owner) ListRooms(ctx context.Context) (*localv1.ListRoomsResponse, erro
 			res.Rooms = append(res.Rooms, rooms.Rooms...)
 		}
 	}
+	res.Rooms = oneShadowEach(res.Rooms)
 	return res, nil
 }
 
@@ -1988,6 +2088,77 @@ func (o *Owner) CreateRoom(ctx context.Context, req *localv1.CreateRoomRequest) 
 	}
 	return onDSHMachine(ctx, o, host.MachineId, func(l *machine.Local) (*machinev1.Room, error) { return l.CreateRoom(r) },
 		func(n *peer.Machine) (*machinev1.Room, error) { return n.Admin.CreateRoom(ctx, r) })
+}
+
+// roomCheckWait is how long a machine has to say whether its members can be
+// reached: it checks its coding agents again, each CLI run.
+const roomCheckWait = 30 * time.Second
+
+// CheckRoomMembers asks, for real, whether each member picked for a room
+// can be reached now (工单 #159): each coding agent of its own machine, the
+// personal agents of the machine CreateRoom would make the room on. A machine
+// not online, or not answering in time, has its members marked so: the
+// roster's word is not taken for it.
+func (o *Owner) CheckRoomMembers(ctx context.Context, req *machinev1.CheckRoomMembersRequest) (*machinev1.CheckRoomMembersResponse, error) {
+	machines, err := o.roomMachines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(machines) == 0 {
+		return nil, reason.New(connect.CodeUnavailable, "no_room_host_online", "no machine of yours is online to keep the room: start Aide on one")
+	}
+	online := map[string]bool{}
+	for _, m := range machines {
+		online[m.MachineId] = true
+	}
+	by := map[string][]*machinev1.CreateRoomMember{} // the machine to ask → its members
+	for _, m := range req.Members {
+		where := machines[0].MachineId // the room's host
+		if mid, _, ok := strings.Cut(strings.TrimPrefix(m.BotKey, "m:"), "/"); ok && strings.HasPrefix(m.BotKey, "m:") {
+			where = mid
+		}
+		by[where] = append(by[where], m)
+	}
+	got := map[string]*machinev1.RoomMemberCheck{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for mid, members := range by {
+		wg.Go(func() {
+			r := &machinev1.CheckRoomMembersRequest{Members: members}
+			var res *machinev1.CheckRoomMembersResponse
+			err := errors.New("not online")
+			if online[mid] {
+				ctx, cancel := context.WithTimeout(ctx, roomCheckWait)
+				defer cancel()
+				res, err = onDSHMachine(ctx, o, mid, func(l *machine.Local) (*machinev1.CheckRoomMembersResponse, error) {
+					return l.CheckRoomMembers(ctx, r), nil
+				},
+					func(n *peer.Machine) (*machinev1.CheckRoomMembersResponse, error) {
+						return n.Admin.CheckRoomMembers(ctx, r)
+					})
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				problem := machinev1.RoomMemberProblem_ROOM_MEMBER_PROBLEM_MACHINE_OFFLINE
+				if connect.CodeOf(err) == connect.CodeUnimplemented {
+					problem = machinev1.RoomMemberProblem_ROOM_MEMBER_PROBLEM_MACHINE_OUTDATED
+				}
+				for _, m := range members {
+					got[m.BotKey] = &machinev1.RoomMemberCheck{BotKey: m.BotKey, Problem: problem}
+				}
+			}
+			for _, c := range res.GetMembers() {
+				got[c.BotKey] = c
+			}
+		})
+	}
+	wg.Wait()
+	out := &machinev1.CheckRoomMembersResponse{}
+	for _, m := range req.Members {
+		out.Members = append(out.Members, got[m.BotKey])
+	}
+	return out, nil
 }
 
 func (o *Owner) UpdateRoom(ctx context.Context, req *localv1.UpdateRoomRequest) (*machinev1.Room, error) {
@@ -2396,7 +2567,7 @@ func clientsFrom(res *relayv1.ListClientsResponse, ownerID string, trust *identi
 		a := &localv1.Client{ClientId: g.ClientId, GrantId: g.GrantId, Label: g.ClientLabel, Fingerprint: identity.ShortFingerprint(g.ClientPublicKey),
 			Spec: specFromGrant(g), GrantVersion: g.Version, ExpiresAt: g.ExpiresAt, Online: c.Online && !expired, Recent: c.Recent && !expired, LastSeen: c.LastSeen, Revoked: c.Revoked || revoked[g.GrantId],
 			Custodian: g.Custodian, Icon: g.ClientIcon, Image: g.ClientImage, HerMachineId: g.HerMachineId,
-			Category: g.ClientCategory, CategoryMachineId: g.ClientCategoryMachineId}
+			Category: g.ClientCategory, CategoryMachineId: g.ClientCategoryMachineId, Mailable: c.Mailable}
 		if len(c.MachineIds) > 0 { // without removed machines; an update signs them away
 			a.Spec.MachineIds = c.MachineIds
 		}
@@ -2760,6 +2931,20 @@ func (o *Owner) ListSessionEvents(ctx context.Context, req *sessionv1.ListEvents
 		}
 	}
 	return res, err
+}
+
+// ReadAttachment gives back a file a session keeps, from its machine
+// (工单 #156). A machine too old for it says Unimplemented: the apps then
+// show the file by its name, as before.
+func (o *Owner) ReadAttachment(ctx context.Context, req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
+	if l := o.localSession(req.SessionId); l != nil {
+		return l.ReadAttachment(req)
+	}
+	n, err := o.sessionMachine(ctx, req.SessionId)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.ReadAttachment(ctx, req)
 }
 
 // ReadToolOutput streams a tool's whole output from its session's machine.

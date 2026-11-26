@@ -278,7 +278,7 @@ fun BotPage(model: AppModel, key: String, openSession: (String) -> Unit, edit: (
                         }
                     }
                 }
-                taskItems(b, world, openSession)
+                taskItems(b, world, openSession, model::archiveFromList)
                 if (peerShadows.isNotEmpty()) peerShadowItems(peerShadows, openRoom)
                 if (chat != null) chatItems(model, chat, b, directRooms)
                 if (conv != null) conversationItems(model, conv, b, openSession)
@@ -297,7 +297,7 @@ private const val RECENT_TASKS = 3
  * What it is doing (工单 #97 补充二): its tasks waiting for you, at work, with a result not opened, and the last few done,
  * each with its state — the same buckets and rows as the tasks tab (World.bucketsOf), so a task reads the same on both.
  */
-private fun LazyListScope.taskItems(b: Bot, world: io.aide.android.model.World, openSession: (String) -> Unit) {
+private fun LazyListScope.taskItems(b: Bot, world: io.aide.android.model.World, openSession: (String) -> Unit, archive: (io.aide.android.api.Session) -> Unit) {
     val k = world.bucketsOf(b)
     val rows = k.needsYou + k.inProgress + k.unseen + k.recent.take(RECENT_TASKS)
     val earlier = k.recent.size - RECENT_TASKS
@@ -305,7 +305,7 @@ private fun LazyListScope.taskItems(b: Bot, world: io.aide.android.model.World, 
     if (rows.isEmpty()) item(key = "tasks-none") {
         Text(t("No task for ${b.name} yet.", "${b.name} 还没有任务。"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
     }
-    rows.forEachIndexed { i, s -> item(key = "t-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, rows.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
+    rows.forEachIndexed { i, s -> item(key = "t-${s.sessionId}", contentType = "session") { Box(Modifier.groupRow(i, rows.size, inset = 68.dp)) { SessionRow(s, world, { archive(s) }) { openSession(s.sessionId) } } } }
     if (earlier > 0) item(key = "tasks-more") {
         Text(t("$earlier earlier: on the Tasks tab", "还有 $earlier 个更早的：在「任务」页"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 6.dp, horizontal = 16.dp))
     }
@@ -373,7 +373,7 @@ private fun LazyListScope.conversationItems(model: AppModel, c: Conversation, b:
             )
             if (convs.others.isNotEmpty()) {
                 SectionHeader(t("Handed to it by other agents", "别的 agent 派给它的"), count = convs.others.size)
-                Column { convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world) { openSession(s.sessionId) } } } }
+                Column { convs.others.forEachIndexed { i, s -> Box(Modifier.groupRow(i, convs.others.size, inset = 68.dp)) { SessionRow(s, world, { model.archiveFromList(s) }) { openSession(s.sessionId) } } } }
             }
             // The count and the list say the same (工单 #135 P33): how many are shown of all, and of which kinds.
             io.aide.android.model.convCountHint(convs, rows.size + convs.others.size)?.let {
@@ -406,7 +406,7 @@ private fun TextLink(text: String, onClick: () -> Unit) {
 private fun stateWord(s: Session): String = when (s.status) {
     SessionStatus.RUNNING -> t("Running", "进行中")
     SessionStatus.WAITING_INPUT -> t("Waiting for you", "等你回答")
-    SessionStatus.ARCHIVED -> t("Archived", "已归档")
+    SessionStatus.ARCHIVED -> if (s.workspaceKept) t("Archived · worktree kept", "已归档 · 工作区已保留") else t("Archived", "已归档")
     SessionStatus.CRASHED -> t("Failed", "出错")
     else -> t("Idle", "空闲")
 }
@@ -550,9 +550,12 @@ private fun rememberDirectChat(model: AppModel, clientId: String): DirectChat {
     return chat
 }
 
-/** What became of the owner's message for a member, in words (工单 #71: sent → it took it → it answered; #70: queued, quiet). */
-fun deliveryWords(state: String, name: String, reason: String, reminded: Boolean): Pair<String, Boolean> = when (state) {
-    "ROOM_DELIVERY_STATE_SENT" -> if (reminded) t("$name has been quiet for two minutes: you were told", "$name 两分钟没动静，已提醒你") to true else t("Sent: waiting for $name to take it", "已发出：等 $name 取信") to false
+/**
+ * What became of the owner's message for a member, in words (工单 #71: sent → it took it → it answered; #70: queued,
+ * quiet; #160: still not taken a day on, it may not arrive), as the desktop's deliveryWords.
+ */
+fun deliveryWords(state: String, name: String, reason: String, reminded: Boolean, untaken: Boolean = false): Pair<String, Boolean> = when (state) {
+    "ROOM_DELIVERY_STATE_SENT" -> if (untaken) t("$name hasn't taken it for a day: it may not arrive", "$name 已一天没来取信，可能送不到") to true else if (reminded) t("$name has been quiet for two minutes: you were told", "$name 两分钟没动静，已提醒你") to true else t("Sent: waiting for $name to take it", "已发出：等 $name 取信") to false
     "ROOM_DELIVERY_STATE_TAKEN" -> if (reminded) t("$name has been quiet for two minutes: you were told", "$name 两分钟没动静，已提醒你") to true else t("$name took it", "$name 已取信") to false
     "ROOM_DELIVERY_STATE_QUEUED" -> t("Queued: as many bots as can work at once are busy; $name is woken when its turn comes", "排队中：同时在忙的 bot 已到上限，轮到时自动叫醒 $name") to false
     "ROOM_DELIVERY_STATE_REPLIED" -> t("$name answered", "$name 已回复") to false
@@ -707,11 +710,14 @@ private fun ChatCompose(model: AppModel, chat: DirectChat, b: Bot) {
             }
         }
     }
+    // A message can't go to it now (its inbox not set up, 工单 #161): said over the box before one is written, as on the
+    // desktop, not found out by sending.
+    val cant = b.state.usable == Usable.NO
     Composer(
         text, { text = it }, { send() },
         if (chat.lightChat) t("Quick chat with ${b.name}…", "和 ${b.name} 轻聊一句…") else t("Message ${b.name}", "给 ${b.name} 发消息"),
         chat.state,
-        enabled = chat.room != null,
-        why = if (chat.lightChat) ComposerWhy(t("Light chat: quick reply with minimal context", "轻聊模式：快速交流，不拖带长上下文")) else null,
+        enabled = chat.room != null && !cant,
+        why = if (cant) ComposerWhy(b.state.line, warn = true) else if (chat.lightChat) ComposerWhy(t("Light chat: quick reply with minimal context", "轻聊模式：快速交流，不拖带长上下文")) else null,
     )
 }

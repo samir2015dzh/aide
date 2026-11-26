@@ -1149,11 +1149,21 @@ func (a *app) post(ctx context.Context, ms relayv1connect.MessageServiceClient, 
 			if serr != nil {
 				continue
 			}
-			_, _ = ms.Send(ctx, &relayv1.SendSealedRequest{Message: &relayv1.SealedMessage{
-				Inbox:     c.info.Inbox,
-				MessageId: shadowID,
-				Sealed:    shadowSealed,
-			}})
+			// The owner's copy is not the letter: one not posted fails nothing, but it is tried again,
+			// and said, as the owner's view of the conversation will miss it (工单 #164).
+			copy := &relayv1.SendSealedRequest{Message: &relayv1.SealedMessage{Inbox: c.info.Inbox, MessageId: shadowID, Sealed: shadowSealed}}
+			var err error
+			for try := 0; try < 3; try++ {
+				if try > 0 {
+					time.Sleep(time.Duration(try) * 500 * time.Millisecond)
+				}
+				if _, err = ms.Send(ctx, copy); err == nil || ctx.Err() != nil {
+					break
+				}
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "warning: the owner's copy for %s was not posted (%v): the owner's view of this conversation will miss this message\n", c.info.Inbox, err)
+			}
 		}
 	}
 	return nil

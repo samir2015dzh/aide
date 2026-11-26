@@ -51,7 +51,8 @@ func Background(ctx context.Context, dataDir, current string, busy func() int, l
 
 // check returns a newer release, when automatic updates are on.
 func check(ctx context.Context, dataDir, current string, log *slog.Logger) *Release {
-	if Load(dataDir).Off {
+	st := Load(dataDir)
+	if st.Off {
 		return nil
 	}
 	r, err := Latest(ctx)
@@ -59,7 +60,10 @@ func check(ctx context.Context, dataDir, current string, log *slog.Logger) *Rele
 		log.Warn("update check", "err", err)
 		return nil
 	}
-	newer := r.Newer(current)
+	newer := r.Newer(current) && (st.Failed == "" || r.Newer(st.Failed))
+	if r.Newer(current) && !newer {
+		log.Info("update skipped: it went back from it before", "version", r.Version)
+	}
 	Edit(dataDir, func(s *State) {
 		s.Checked, s.Available = time.Now(), ""
 		if newer {
@@ -82,7 +86,10 @@ func installed(ctx context.Context, dataDir, current string, r *Release, log *sl
 		log.Warn("update", "version", r.Version, "err", err)
 		return false
 	}
-	Edit(dataDir, func(s *State) { s.From, s.To, s.Updated, s.Available = current, r.Version, time.Now(), "" })
+	Edit(dataDir, func(s *State) {
+		s.From, s.To, s.Updated, s.Available = current, r.Version, time.Now(), ""
+		s.Pending, s.Started = true, time.Time{} // until it connects (verify.go)
+	})
 	log.Info("updated; restarting", "from", current, "to", r.Version)
 	return true
 }

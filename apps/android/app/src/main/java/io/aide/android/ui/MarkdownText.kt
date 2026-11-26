@@ -442,6 +442,9 @@ private fun AnnotatedString.Builder.appendInlineNodes(
             ) {
                 append("\u2009${node.code}\u2009")
             }
+            is MdInline.Picture -> withStyle(SpanStyle(color = textColor.copy(alpha = 0.6f))) {
+                append("\u2009🖼\u2009${node.alt.ifEmpty { node.path.substringAfterLast('/').substringAfterLast('\\') }}\u2009")
+            }
             is MdInline.Link -> withLink(
                 LinkAnnotation.Url(
                     url = node.url,

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Client, Machine } from "@aide/proto/local";
 import { Workspace } from "@aide/proto/identity";
@@ -27,11 +27,12 @@ import { Code } from "./Code";
 import { Markdown } from "./Markdown";
 import { partialOutput, useToolOutput } from "./output";
 import { QuestionPanel } from "./Question";
-import { ContentScope } from "./scope";
+import { ContentScope, useContentSession } from "./scope";
 import { desktopOutbox, useSessionOutbox } from "./outbox";
 import { useRowState } from "./useRowState";
 import { useVirtualRows, type VirtualRow } from "./useVirtualRows";
-import { rememberSent, sentPicture } from "./sentFiles";
+import { rememberSent, usePicture } from "./sentFiles";
+import { Lightbox, PicturesContext, ReplyContext, shownPictures } from "./Picture";
 /**
  * The conversation, newest at the bottom, ending with the reply the agent is
  * still writing (draft); while a turn is live, the control area sits over
@@ -48,6 +49,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
   const who = mine ? t("chat.you") : grant;
   const running = isActive(s);
   const items = useMemo(() => groupSteps(transcript(events, running)), [events, running]);
+  const pictures = useMemo(() => shownPictures(events), [events]);
   const ends = useMemo(() => replyEnds(items, running), [items, running]);
   const live = isInterruptible(s);
   // Each turn's prompt can roll the session back to before it, while no turn runs (not in place: no snapshots there),
@@ -78,6 +80,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
   const unread = items.length === 0 && draft === "" && outbox.length === 0 && (s.progress?.lastEventSeq ?? 0n) > 0n;
   return (
     <ContentScope value={s.sessionId}>
+      <PicturesContext.Provider value={pictures}>
       <ChatFrame
         rows={rows}
         initial={rowHeights}
@@ -88,7 +91,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
           s.status === SessionStatus.ARCHIVED && (
             <div className="anote">
               <Icon name="archive" className="sm" />
-              {t("chat.archived")}
+              {t(s.workspaceKept ? "chat.archivedKept" : "chat.archived")}
               <button className="link" onClick={() => unarchive(st, s)}>{t("chat.unarchive")}</button>
             </div>
           )
@@ -109,6 +112,7 @@ export function Chat({ s, events, draft }: { s: Session; events: SessionEvent[];
         control={live ? (onHeight, lift) => <ControlArea s={s} grant={grant} events={events} onHeight={onHeight} lift={lift} /> : undefined}
         dock={writing ? (onHeight) => <MessageBox s={s} onHeight={onHeight} /> : undefined}
       />
+      </PicturesContext.Provider>
     </ContentScope>
   );
 }
@@ -462,7 +466,7 @@ function RowView({ it, rowKey, end, live, sessionId, clients, grant, starter, pr
     }
     case "agent":
       // A turn's reply is one, however many times it writes: when it is over, its last words say when and Copy.
-      return <AgentText text={it.text} end={end} at={it.at} live={live} />;
+      return <AgentText text={it.text} end={end} at={it.at} live={live} seq={it.seq} />;
     case "tools":
       return it.calls.length === 1 ? (
         <ToolRow id={String(it.calls[0].seq)} call={it.calls[0].call} result={it.calls[0].result} resultSeq={it.calls[0].resultSeq} running={it.calls[0].running} sessionId={sessionId} />
@@ -538,39 +542,59 @@ export function UserBubble({ text, at, by, rollback, files = [] }: { text: strin
   );
 }
 
-/** The files that went with a message (工单 #143): a picture sent from here as its thumbnail, any other by name. */
+/** The files that went with a message (工单 #143): a picture as its thumbnail (from the machine when sent from elsewhere, 工单 #156), any other by name. */
 function SentFiles({ files }: { files: AttachmentInfo[] }) {
   const { t } = useTranslation("common");
   return (
     <ul className="um-files" aria-label={t("composer.sentFiles")}>
-      {files.map((f) => {
-        const kind = attachmentKind({ name: f.name, type: f.mediaType });
-        const pic = kind === "image" ? sentPicture(f.sha256) : "";
-        return (
-          <li key={f.sha256 + f.name} className={`um-file ${pic ? "img" : ""}`} title={`${f.name}\n${t(`composer.attach.${kind}`)} · ${sizeText(Number(f.size))}`}>
-            {pic ? (
-              <img src={pic} alt={f.name} />
-            ) : (
-              <>
-                <Icon name={kind === "image" ? "image" : kind === "audio" ? "audio" : "doc"} />
-                <span className="um-file-t">
-                  <b>{f.name}</b>
-                  <span>{t(`composer.attach.${kind}`)} · {sizeText(Number(f.size))}</span>
-                </span>
-              </>
-            )}
-          </li>
-        );
-      })}
+      {files.map((f) => (
+        <SentFile key={f.sha256 + f.name} f={f} />
+      ))}
     </ul>
   );
 }
 
-/** The agent's words across the page. end: the last of its reply, which says when on hover, and Copy. live: still being written. */
-export function AgentText({ text, end, at, live = false }: { text: string; end: boolean; at?: Date; live?: boolean }) {
+function SentFile({ f }: { f: AttachmentInfo }) {
+  const { t } = useTranslation("common");
+  const sessionId = useContentSession();
+  const kind = attachmentKind({ name: f.name, type: f.mediaType });
+  const got = usePicture(sessionId, f.sha256, "", kind !== "image");
+  const pic = typeof got === "object" ? got : undefined;
+  const [open, setOpen] = useState(false);
+  return (
+    <li className={`um-file ${pic ? "img" : ""}`} title={`${f.name}\n${t(`composer.attach.${kind}`)} · ${sizeText(Number(f.size))}`}>
+      {pic ? (
+        <>
+          <button type="button" className="um-file-open" onClick={() => setOpen(true)}>
+            <img src={pic.url} alt={f.name} />
+          </button>
+          {open && <Lightbox pic={{ ...pic, name: f.name }} onClose={() => setOpen(false)} />}
+        </>
+      ) : (
+        <>
+          <Icon name={kind === "image" ? "image" : kind === "audio" ? "audio" : "doc"} />
+          <span className="um-file-t">
+            <b>{f.name}</b>
+            <span>{t(`composer.attach.${kind}`)} · {sizeText(Number(f.size))}</span>
+          </span>
+        </>
+      )}
+    </li>
+  );
+}
+
+/**
+ * The agent's words across the page. end: the last of its reply, which says when on hover, and Copy. live: still being
+ * written. seq: its event's, by which the pictures its turn kept are found (工单 #158).
+ */
+export function AgentText({ text, end, at, live = false, seq }: { text: string; end: boolean; at?: Date; live?: boolean; seq?: bigint }) {
+  const pictures = useContext(PicturesContext);
+  const reply = useMemo(() => ({ kept: seq === undefined ? undefined : pictures.get(seq), first: new Map<string, number>() }), [pictures, seq]);
   return (
     <div className={end ? "am end" : "am"}>
-      <Markdown text={text} streaming={live} />
+      <ReplyContext.Provider value={reply}>
+        <Markdown text={text} streaming={live} />
+      </ReplyContext.Provider>
       {end && <Copy text={text} at={at} />}
     </div>
   );

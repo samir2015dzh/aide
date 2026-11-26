@@ -54,4 +54,12 @@ class BatchIAgentsTest {
         assertEquals("套餐 5h 20% · 周 59% · 上次读数 · 3 分钟前", usageLine(read.copy(usage = read.usage!!.copy(stale = true)), now))
         assertEquals("套餐用量还没读到", usageLine(AgentStatus("claude", usage = ClaudeUsage(unavailable = "signed_out")), now))
     }
+
+    @Test
+    fun codexPlanUsageIsSaidTheSameWayAsClaudes() {
+        // 工单 #157: the row was Claude's alone; Codex's reading (#143) is said in the same words, as on the desktop.
+        val codex = AgentStatus("codex", usage = ClaudeUsage(windows = listOf(UsageWindow("five_hour", 7.0), UsageWindow("seven_day", 31.0)), fetchedAt = "2026-11-23T09:57:00Z"))
+        assertEquals("套餐 5h 7% · 周 31% · 3 分钟前读数", usageLine(codex, now))
+        assertEquals("", usageLine(AgentStatus("codex"), now))
+    }
 }

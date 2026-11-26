@@ -183,6 +183,30 @@ describe("an MCP connection is online by its last call (工单 #94)", () => {
   });
 });
 
+describe("whether a message can go to it is part of its state (工单 #161)", () => {
+  const now = new Date("2026-11-26T10:00:00Z");
+  const state = (over: object) => personalBotState(create(ClientSchema, { clientId: "c1", label: "Bot", ...over }), now);
+  test("online with no inbox: online but can't take messages, not usable, its dot not online", () => {
+    const s = state({ online: true, mailable: false });
+    expect(s).toMatchObject({ word: "在线但收不了消息", usable: "no", why: "noInbox", presence: "unconfirmed" });
+    expect(s.line).toContain("信箱还没开通");
+    // Online by its last call (an MCP connection) the same.
+    expect(state({ online: true, recent: true, lastSeen: timestampFromDate(now), mailable: false })).toMatchObject({ usable: "no", why: "noInbox" });
+  });
+  test("away with no inbox: can't take messages, not merely unverified", () => {
+    expect(state({ mailable: false })).toMatchObject({ word: "收不了消息", usable: "no", why: "noInbox", presence: "unknown" });
+  });
+  test("with its inbox, or from a relay that doesn't say: as before", () => {
+    expect(state({ online: true, mailable: true })).toMatchObject({ word: "在线", usable: "yes", presence: "online" });
+    expect(state({ online: true })).toMatchObject({ word: "在线", usable: "yes" });
+    expect(state({ mailable: true })).toMatchObject({ word: "不在线", usable: "unverified" });
+  });
+  test("the counts at the top don't count it ready", () => {
+    const r = roster([], [client("c1", "Bot", { online: true, mailable: false }), client("c2", "Other", { online: true, mailable: true })], [], now);
+    expect(botCounts(allBots(r))).toMatchObject({ ready: 1, total: 2 });
+  });
+});
+
 describe("stateDetail (工单 #137 P10)", () => {
   test("what the line adds beyond the word, never the word again", async () => {
     const { stateDetail } = await import("./roster");

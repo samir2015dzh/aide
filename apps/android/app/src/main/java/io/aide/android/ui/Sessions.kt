@@ -11,11 +11,14 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.animation.core.tween
 import io.aide.android.model.onMachine
 import io.aide.android.model.Buckets
+import io.aide.android.model.isArchivable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -114,10 +117,10 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
                     StatTile(t("New results", "新结果"), "${b.unseen.size}", Modifier.weight(1f))
                 }
             } }
-            section(t("Needs You", "需要你处理"), b.needsYou, world, open, Tone.Warn)
-            section(t("New Results", "有新结果未看"), b.unseen, world, open, Tone.Live)
-            section(t("In Progress", "进行中"), b.inProgress, world, open, Tone.Live)
-            section(t("Recent", "最近"), b.recent, world, open, Tone.Quiet)
+            section(t("Needs You", "需要你处理"), b.needsYou, world, open, Tone.Warn, model::archiveFromList)
+            section(t("New Results", "有新结果未看"), b.unseen, world, open, Tone.Live, model::archiveFromList)
+            section(t("In Progress", "进行中"), b.inProgress, world, open, Tone.Live, model::archiveFromList)
+            section(t("Recent", "最近"), b.recent, world, open, Tone.Quiet, model::archiveFromList)
             // A year of tokens by coding agent or by machine, last as on the desktop's overview (工单 #142).
             item(key = "usage") { UsageCard(model) }
             if (world.sessions.isEmpty() && world.watched) {
@@ -148,7 +151,7 @@ fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
             if (sessions.isEmpty()) {
                 item { Text(t("Nothing waits for you.", "没有等你处理的事。"), Modifier.padding(top = 16.dp, start = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                section(t("Tasks waiting for you", "等你处理的任务"), sessions, world, open, Tone.Warn)
+                section(t("Tasks waiting for you", "等你处理的任务"), sessions, world, open, Tone.Warn, model::archiveFromList)
             }
         }
         }
@@ -156,46 +159,56 @@ fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
 }
 
 /** A group of sessions: a heading with its count, then its rows as one card (each row a list item of its own). */
-private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String, sessions: List<Session>, world: World, open: (String) -> Unit, tone: Tone) {
+private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String, sessions: List<Session>, world: World, open: (String) -> Unit, tone: Tone, archive: ((Session) -> Unit)? = null) {
     if (sessions.isEmpty()) return
     item(key = "h-$title", contentType = "heading") { SectionHeader(title, count = sessions.size, tone = tone) }
     itemsIndexed(sessions, key = { _, s -> s.sessionId }, contentType = { _, _ -> "session" }) { i, s ->
         Column(Modifier.animateItem(fadeInSpec = tween(Motion.Medium), placementSpec = Motion.spring(IntOffset.VisibilityThreshold), fadeOutSpec = tween(Motion.Short)).groupRow(i, sessions.size, inset = 68.dp)) {
-            SessionRow(s, world) { open(s.sessionId) }
+            SessionRow(s, world, archive?.let { a -> { a(s) } }) { open(s.sessionId) }
         }
     }
 }
 
 @Composable
-fun SessionRow(s: Session, world: World, onClick: () -> Unit) {
+/** archive: a long press offers it (工单 #165), when given; one that can't be archived now (a turn running) says so. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+fun SessionRow(s: Session, world: World, archive: (() -> Unit)? = null, onClick: () -> Unit) {
     val waits = needsYou(s)
-    Row(Modifier.fillMaxWidth().rowPress(onClick).padding(start = 16.dp, end = 16.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.Top) {
-        Box {
-            AgentFace(s.agent, 40)
-            Box(Modifier.align(Alignment.BottomEnd).offset(x = 3.dp, y = 3.dp)) { StatusDot(s) }
-        }
-        HSpace(12)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(displayTitle(s), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                HSpace(8)
-                Text(relativeTime(s.updatedAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+    var menu by remember { mutableStateOf(false) }
+    val press = if (archive == null) Modifier.rowPress(onClick)
+    else Modifier.combinedClickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), onLongClickLabel = t("Archive", "归档"), onLongClick = { menu = true }, onClick = onClick)
+    Box(Modifier.fillMaxWidth()) {
+        if (archive != null) IosMenu(menu, { menu = false }, listOf(
+            MenuEntry(if (isArchivable(s)) t("Archive", "归档") else t("Archive (not while it works or waits for you)", "归档（进行中或等你回答时不能归档）"), enabled = isArchivable(s)) { menu = false; archive() },
+        ))
+        Row(Modifier.fillMaxWidth().then(press).padding(start = 16.dp, end = 16.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.Top) {
+            Box {
+                AgentFace(s.agent, 40)
+                Box(Modifier.align(Alignment.BottomEnd).offset(x = 3.dp, y = 3.dp)) { StatusDot(s) }
             }
-            Text(
-                "${world.senderName(s)} → ${agentTitle(s.agent)} · ${world.projectTitle(s.machineId, s.projectId)}",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                StatusPill(statusLine(s, world), sessionTone(s))
-                if (manyMachines(world.machines.size)) {
+            HSpace(12)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(displayTitle(s), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     HSpace(8)
-                    Text(world.machineName(s.machineId), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(relativeTime(s.updatedAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
+                Text(
+                    "${world.senderName(s)} → ${agentTitle(s.agent)} · ${world.projectTitle(s.machineId, s.projectId)}",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusPill(statusLine(s, world), sessionTone(s))
+                    if (manyMachines(world.machines.size)) {
+                        HSpace(8)
+                        Text(world.machineName(s.machineId), style = MaterialTheme.typography.labelSmall, color = aide.faint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
-        }
-        if (waits) {
-            HSpace(8)
-            Box(Modifier.padding(top = 4.dp).width(3.dp).height(32.dp).background(aide.orange, CircleShape))
+            if (waits) {
+                HSpace(8)
+                Box(Modifier.padding(top = 4.dp).width(3.dp).height(32.dp).background(aide.orange, CircleShape))
+            }
         }
     }
 }
@@ -257,7 +270,7 @@ fun statusText(s: Session): String = when (s.status) {
     SessionStatus.PREPARING -> t("preparing", "准备中")
     SessionStatus.QUEUED -> t("queued", "排队中")
     SessionStatus.CRASHED -> t("stopped", "已中断")
-    SessionStatus.ARCHIVED -> t("archived", "已归档")
+    SessionStatus.ARCHIVED -> if (s.workspaceKept) t("archived · worktree kept", "已归档 · 工作区已保留") else t("archived", "已归档")
     SessionStatus.IDLE -> if (s.progress?.lastFailure != null) t("failed", "失败") else t("done", "完成")
     SessionStatus.UNKNOWN -> t("state unknown", "状态未知")
     else -> ""

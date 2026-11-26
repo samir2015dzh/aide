@@ -261,6 +261,8 @@ data class Client(
     val categoryMachineId: String = "",
     /** The icon the owner picked: "bot:<shape>:<colour>" its character's look (工单 #83); else its seed's. */
     val icon: String = "",
+    /** Whether a message can go to it: its inbox is registered at the post office (工单 #161); null from an older relay. */
+    val mailable: Boolean? = null,
 )
 
 @Serializable
@@ -379,6 +381,8 @@ data class Session(
     val effort: String = "",
     /** Unset from an older machine, which keeps nothing seen. */
     val seen: SessionSeen? = null,
+    /** Archived, its worktree kept: it had changes not in the last turn's snapshot (Session.workspace_kept). */
+    val workspaceKept: Boolean = false,
 )
 
 @Serializable
@@ -455,7 +459,8 @@ data class QueryWorkResponse(val sessions: List<SessionCount> = emptyList(), val
 /** title: the line it shows by when summary is its raw arguments (a session read from DSH's or Claude Desktop's records). */
 @Serializable data class ToolCall(val callId: String = "", val kind: String = "", val name: String = "", val summary: String = "", val decision: String = "", val reason: String = "", val title: String = "")
 @Serializable data class ToolResult(val callId: String = "", val summary: String = "", val isError: Boolean = false, val truncated: Boolean = false, val preview: Boolean = false)
-@Serializable data class TurnCompleted(val result: String = "", val isError: Boolean = false, val commit: String = "", val failure: Failure? = null)
+/** shown: the pictures its replies showed, kept with the session (工单 #158), by the path the reply wrote. */
+@Serializable data class TurnCompleted(val result: String = "", val isError: Boolean = false, val commit: String = "", val failure: Failure? = null, val shown: List<AttachmentInfo> = emptyList())
 @Serializable data class ErrorEvent(val message: String = "", val failure: Failure? = null)
 @Serializable data class QuestionAsked(val question: Question? = null)
 @Serializable data class QuestionResolved(val questionId: String = "", val resolution: String = "", val by: String = "", val answers: List<Answer> = emptyList(), val clientMessageIds: List<String> = emptyList())
@@ -610,6 +615,16 @@ data class SessionEvent(
 @Serializable data class ClaudeSessionEntry(val machineId: String = "", val machineName: String = "", val session: ClaudeSession = ClaudeSession(), val lost: Boolean = false, val readAt: String = "")
 @Serializable data class ClaudeIndexEntry(val machineId: String = "", val indexes: List<String> = emptyList())
 @Serializable data class ListClaudeSessionsResponse(val sessions: List<ClaudeSessionEntry> = emptyList(), val unreachable: List<DSHUnreachable> = emptyList(), val indexes: List<ClaudeIndexEntry> = emptyList())
+/** A file a session keeps (SessionService.ReadAttachment, 工单 #156): by its SHA-256, or a picture a reply showed by its path. */
+@Serializable data class ReadAttachmentRequest(val sessionId: String, val sha256: String = "", val path: String = "")
+/** data: the file's bytes, base64 as Connect's JSON gives them. */
+@Serializable data class ReadAttachmentResponse(
+    val name: String = "",
+    val mediaType: String = "",
+    @Serializable(with = Int64::class) val size: Long = 0,
+    val sha256: String = "",
+    val data: String = "",
+)
 @Serializable data class ReadClaudeSessionRequest(
     val machineId: String,
     val sessionId: String,
@@ -701,20 +716,27 @@ data class TalkToPersonaResponse(
     /** Read-only shadow conversation aggregating 1:1 agent mailbox traffic (工单 #124). */
     val shadow: Boolean = false,
 )
-@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "", val reminded: Boolean = false)
+@Serializable data class RoomDelivery(val botKey: String = "", val state: String = "", val reason: String = "", val copyId: String = "", val reminded: Boolean = false, val untaken: Boolean = false)
 @Serializable data class RoomMessage(
     val messageId: String = "", val roomId: String = "", val from: String = "", val fromName: String = "", val text: String = "", val at: String = "",
     val deliveries: List<RoomDelivery> = emptyList(), val inReplyTo: String = "", val mentions: List<String> = emptyList(), val round: Int = 0,
     @SerialName("final") val isFinal: Boolean = false, val finalSha256: String = "", val late: Boolean = false, val asks: List<String> = emptyList(), val system: Boolean = false,
     val toName: String = "", val subject: String = "", val lightChat: Boolean = false,
+    /** A shadow letter's sender's own word of when it sent it (工单 #163); at is the post office's. */
+    val claimedAt: String = "",
 )
 @Serializable data class OpenDirectRoomRequest(val clientId: String)
 @Serializable data class OpenDirectRoomResponse(val room: Room? = null)
 @Serializable data class ListRoomMessagesRequest(val machineId: String, val roomId: String, val limit: Int = 200)
-@Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList())
+/** unreachedMachineIds: a shadow conversation's, the owner's machines that keep a copy and did not answer (工单 #164). */
+@Serializable data class ListRoomMessagesResponse(val room: Room? = null, val messages: List<RoomMessage> = emptyList(), val unreachedMachineIds: List<String> = emptyList())
 @Serializable data class PostRoomMessageRequest(val machineId: String, val roomId: String, val text: String, val idempotencyKey: String, val mentions: List<String> = emptyList(), val lightChat: Boolean = false)
 @Serializable data class CreateRoomMember(val botKey: String, val projectId: String = "", val name: String = "")
 @Serializable data class CreateRoomRequest(val name: String, val members: List<CreateRoomMember>, val mode: String, val maxRounds: Int)
+// Whether the members picked for a room can be reached now, asked for real (工单 #159).
+@Serializable data class CheckRoomMembersRequest(val members: List<CreateRoomMember>)
+@Serializable data class RoomMemberCheck(val botKey: String = "", val problem: String = "", val detail: String = "", val lastSeen: String = "")
+@Serializable data class CheckRoomMembersResponse(val members: List<RoomMemberCheck> = emptyList())
 @Serializable data class RoomPatch(val roomId: String, val name: String? = null, val mode: String? = null, val maxRounds: Int? = null)
 @Serializable data class UpdateRoomRequest(val machineId: String, val room: RoomPatch)
 @Serializable data class RoomRef(val machineId: String, val roomId: String)

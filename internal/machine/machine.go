@@ -69,6 +69,9 @@ type Config struct {
 	ModelCatalogSync bool
 	// ModelCatalog overrides the default open model catalog (for tests).
 	ModelCatalog *modelcatalog.Catalog
+	// UpdateFailed is the version this machine updated itself to and went
+	// back from (internal/update, 工单 #162): a problem in its status.
+	UpdateFailed string
 }
 
 func DefaultProviders() map[string]provider.Provider {

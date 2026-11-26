@@ -124,3 +124,12 @@
 /* Rows away from what is in sight are not drawn at all (useVirtualRows): no content-visibility on replies,
    which would skip drawn rows just outside the view and have them measured at a placeholder's height. */
 @media print{.md-tools{display:none}.md-table-scroll{overflow:visible;max-height:none}.md-wide{width:100%!important;margin:0!important}}
+
+/* A picture a reply shows (工单 #158): sized to the column, a click opens it large; the same one again is a chip. */
+.md .rp{display:block;margin:6px 0}
+.md .rp-img{display:inline-block;padding:0;border:0;background:var(--surface-hover);border-radius:var(--radius-card);overflow:hidden;cursor:zoom-in;box-shadow:inset 0 0 0 .5px var(--sep)}
+.md .rp-img img{display:block;max-width:min(460px,100%);max-height:380px;object-fit:contain}
+.md .rp-wait{display:inline-flex;align-items:center;min-width:120px;min-height:80px;padding:0 12px;border-radius:var(--radius-card);background:var(--surface-hover);color:var(--l2)}
+.md .rp-chip,.md .rp-gone{display:inline-flex;align-items:center;gap:4px;padding:0 8px;border:0;border-radius:var(--radius-pill);background:var(--surface-hover);color:var(--l1);font:inherit;font-size:.92em;vertical-align:baseline}
+.md .rp-chip{cursor:zoom-in}
+.md .rp-gone{color:var(--l2)}

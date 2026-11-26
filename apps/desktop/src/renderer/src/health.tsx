@@ -28,6 +28,8 @@ export function problemTitle(m: Machine, p: MachineProblem): string {
       return i18n.t("common:health.diskTitle", { name });
     case MachineProblemKind.FILES:
       return i18n.t("common:health.filesTitle", { name });
+    case MachineProblemKind.UPDATE_FAILED:
+      return i18n.t("common:health.updateFailedTitle", { name, version: p.version });
     default:
       return i18n.t("common:health.shellPathTitle", { name });
   }
@@ -43,6 +45,8 @@ export function problemBody(p: MachineProblem): string {
       return i18n.t("common:health.diskBody", { free: gb(p.used) });
     case MachineProblemKind.FILES:
       return i18n.t("common:health.filesBody", n);
+    case MachineProblemKind.UPDATE_FAILED:
+      return i18n.t("common:health.updateFailedBody", { version: p.version });
     default:
       return i18n.t("common:health.shellPathBody", { detail: p.detail });
   }
@@ -57,6 +61,8 @@ export function problemShort(p: MachineProblem): string {
       return i18n.t("common:health.shortDisk");
     case MachineProblemKind.FILES:
       return i18n.t("common:health.shortFiles");
+    case MachineProblemKind.UPDATE_FAILED:
+      return i18n.t("common:health.shortUpdateFailed");
     default:
       return i18n.t("common:health.shortShellPath");
   }

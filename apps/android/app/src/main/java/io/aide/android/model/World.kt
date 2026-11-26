@@ -141,6 +141,9 @@ fun needsYou(s: Session): Boolean = s.status == SessionStatus.WAITING_INPUT || s
 fun doneUnseen(s: Session): Boolean = s.status in setOf(SessionStatus.IDLE, SessionStatus.UNKNOWN) && s.progress?.lastFailure == null && unseen(s)
 
 /** A session's title in lists: its own, else the first line of its last message, else its id. */
+/** Whether a session can be archived now, as the desktop's (packages/core isArchivable): idle or crashed, no turn running. */
+fun isArchivable(s: Session): Boolean = s.status == SessionStatus.IDLE || s.status == SessionStatus.CRASHED
+
 fun displayTitle(s: Session): String = s.title.ifBlank { s.progress?.lastMessageExcerpt?.lineSequence()?.firstOrNull()?.take(60).orEmpty() }.ifBlank { s.sessionId.take(12) }
 
 fun isLive(s: Session): Boolean = s.status in setOf(SessionStatus.RUNNING, SessionStatus.PREPARING, SessionStatus.QUEUED)

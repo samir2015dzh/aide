@@ -1,5 +1,9 @@
 package io.aide.android.ui
 
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
+import io.aide.android.model.Notice
 import android.content.ActivityNotFoundException
 import android.content.ContentResolver
 import android.content.Context
@@ -397,6 +401,16 @@ fun ToggleChip(label: String, on: Boolean, onClick: () -> Unit) {
     )
 }
 
+/** Shows what is said; one with an action (Undo, 工单 #165) for 5.2 seconds, as the desktop's toast, and runs it when tapped. */
+suspend fun SnackbarHostState.showNotice(n: Notice) {
+    if (n.action == null || n.run == null) {
+        showSnackbar(n.text)
+        return
+    }
+    val r = withTimeoutOrNull(5_200) { showSnackbar(n.text, actionLabel = n.action, duration = SnackbarDuration.Indefinite) }
+    if (r == SnackbarResult.ActionPerformed) n.run.invoke()
+}
+
 /**
  * A page's own place to say things (工单 #61): what an action on this page says shows here, at the foot of this page,
  * while it is open — not on the tabs underneath once it is closed. Put in its Scaffold's snackbarHost.
@@ -406,7 +420,7 @@ fun PageFeedback(model: AppModel) {
     val host = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     DisposableEffect(model) {
-        val sink: (String) -> Unit = { text -> scope.launch { host.showSnackbar(text) } }
+        val sink: (Notice) -> Unit = { n -> scope.launch { host.showNotice(n) } }
         model.pushSink(sink)
         onDispose { model.popSink(sink) }
     }

@@ -90,6 +90,9 @@ const (
 	// MachineAdminServiceDeleteRoomProcedure is the fully-qualified name of the MachineAdminService's
 	// DeleteRoom RPC.
 	MachineAdminServiceDeleteRoomProcedure = "/aide.machine.v1.MachineAdminService/DeleteRoom"
+	// MachineAdminServiceCheckRoomMembersProcedure is the fully-qualified name of the
+	// MachineAdminService's CheckRoomMembers RPC.
+	MachineAdminServiceCheckRoomMembersProcedure = "/aide.machine.v1.MachineAdminService/CheckRoomMembers"
 	// MachineAdminServiceApplyAdminCommandProcedure is the fully-qualified name of the
 	// MachineAdminService's ApplyAdminCommand RPC.
 	MachineAdminServiceApplyAdminCommandProcedure = "/aide.machine.v1.MachineAdminService/ApplyAdminCommand"
@@ -627,6 +630,13 @@ type MachineAdminServiceClient interface {
 	// The owner read the room up to now.
 	MarkRoomSeen(context.Context, *v1.MarkRoomSeenRequest) (*v1.Room, error)
 	DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error)
+	// Whether the members picked for a room can be reached now (工单 #159),
+	// asked for real, not read from the roster: a personal agent's grant
+	// here, its inbox at the post office and whether anything takes its
+	// letters now; a coding agent of this machine's, checked again now. The
+	// owner's device asks each coding agent's own machine of it, and the
+	// room's host of the personal agents.
+	CheckRoomMembers(context.Context, *v1.CheckRoomMembersRequest) (*v1.CheckRoomMembersResponse, error)
 	ApplyAdminCommand(context.Context, *v1.ApplyAdminCommandRequest) (*v1.ApplyAdminCommandResponse, error)
 	PushRevocations(context.Context, *v1.PushRevocationsRequest) (*v1.PushRevocationsResponse, error)
 	// The git repositories under the home folder, for Add a Project: read
@@ -789,6 +799,12 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+MachineAdminServiceDeleteRoomProcedure,
 			connect.WithSchema(machineAdminServiceMethods.ByName("DeleteRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		checkRoomMembers: connect.NewClient[v1.CheckRoomMembersRequest, v1.CheckRoomMembersResponse](
+			httpClient,
+			baseURL+MachineAdminServiceCheckRoomMembersProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("CheckRoomMembers")),
 			connect.WithClientOptions(opts...),
 		),
 		applyAdminCommand: connect.NewClient[v1.ApplyAdminCommandRequest, v1.ApplyAdminCommandResponse](
@@ -956,6 +972,7 @@ type machineAdminServiceClient struct {
 	stopRoom                *connect.Client[v1.StopRoomRequest, v1.Room]
 	markRoomSeen            *connect.Client[v1.MarkRoomSeenRequest, v1.Room]
 	deleteRoom              *connect.Client[v1.DeleteRoomRequest, v1.DeleteRoomResponse]
+	checkRoomMembers        *connect.Client[v1.CheckRoomMembersRequest, v1.CheckRoomMembersResponse]
 	applyAdminCommand       *connect.Client[v1.ApplyAdminCommandRequest, v1.ApplyAdminCommandResponse]
 	pushRevocations         *connect.Client[v1.PushRevocationsRequest, v1.PushRevocationsResponse]
 	listRepos               *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
@@ -1058,6 +1075,15 @@ func (c *machineAdminServiceClient) MarkRoomSeen(ctx context.Context, req *v1.Ma
 // DeleteRoom calls aide.machine.v1.MachineAdminService.DeleteRoom.
 func (c *machineAdminServiceClient) DeleteRoom(ctx context.Context, req *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error) {
 	response, err := c.deleteRoom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// CheckRoomMembers calls aide.machine.v1.MachineAdminService.CheckRoomMembers.
+func (c *machineAdminServiceClient) CheckRoomMembers(ctx context.Context, req *v1.CheckRoomMembersRequest) (*v1.CheckRoomMembersResponse, error) {
+	response, err := c.checkRoomMembers.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -1314,6 +1340,13 @@ type MachineAdminServiceHandler interface {
 	// The owner read the room up to now.
 	MarkRoomSeen(context.Context, *v1.MarkRoomSeenRequest) (*v1.Room, error)
 	DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error)
+	// Whether the members picked for a room can be reached now (工单 #159),
+	// asked for real, not read from the roster: a personal agent's grant
+	// here, its inbox at the post office and whether anything takes its
+	// letters now; a coding agent of this machine's, checked again now. The
+	// owner's device asks each coding agent's own machine of it, and the
+	// room's host of the personal agents.
+	CheckRoomMembers(context.Context, *v1.CheckRoomMembersRequest) (*v1.CheckRoomMembersResponse, error)
 	ApplyAdminCommand(context.Context, *v1.ApplyAdminCommandRequest) (*v1.ApplyAdminCommandResponse, error)
 	PushRevocations(context.Context, *v1.PushRevocationsRequest) (*v1.PushRevocationsResponse, error)
 	// The git repositories under the home folder, for Add a Project: read
@@ -1472,6 +1505,12 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		MachineAdminServiceDeleteRoomProcedure,
 		svc.DeleteRoom,
 		connect.WithSchema(machineAdminServiceMethods.ByName("DeleteRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	machineAdminServiceCheckRoomMembersHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceCheckRoomMembersProcedure,
+		svc.CheckRoomMembers,
+		connect.WithSchema(machineAdminServiceMethods.ByName("CheckRoomMembers")),
 		connect.WithHandlerOptions(opts...),
 	)
 	machineAdminServiceApplyAdminCommandHandler := connect.NewUnaryHandlerSimple(
@@ -1645,6 +1684,8 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceMarkRoomSeenHandler.ServeHTTP(w, r)
 		case MachineAdminServiceDeleteRoomProcedure:
 			machineAdminServiceDeleteRoomHandler.ServeHTTP(w, r)
+		case MachineAdminServiceCheckRoomMembersProcedure:
+			machineAdminServiceCheckRoomMembersHandler.ServeHTTP(w, r)
 		case MachineAdminServiceApplyAdminCommandProcedure:
 			machineAdminServiceApplyAdminCommandHandler.ServeHTTP(w, r)
 		case MachineAdminServicePushRevocationsProcedure:
@@ -1738,6 +1779,10 @@ func (UnimplementedMachineAdminServiceHandler) MarkRoomSeen(context.Context, *v1
 
 func (UnimplementedMachineAdminServiceHandler) DeleteRoom(context.Context, *v1.DeleteRoomRequest) (*v1.DeleteRoomResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.DeleteRoom is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) CheckRoomMembers(context.Context, *v1.CheckRoomMembersRequest) (*v1.CheckRoomMembersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.CheckRoomMembers is not implemented"))
 }
 
 func (UnimplementedMachineAdminServiceHandler) ApplyAdminCommand(context.Context, *v1.ApplyAdminCommandRequest) (*v1.ApplyAdminCommandResponse, error) {

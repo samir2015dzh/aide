@@ -163,6 +163,7 @@ func (m *messageService) Register(ctx context.Context, req *relayv1.RegisterInbo
 	if err := m.s.messageStore().PutRegistration(p.t.ownerID, reg.Inbox, req.Registration); err != nil {
 		return nil, err
 	}
+	m.s.wakeOwner(p.t) // its row says it is mailable now (工单 #161)
 	return &relayv1.RegisterInboxResponse{}, nil
 }
 

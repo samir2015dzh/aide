@@ -74,6 +74,9 @@ class LocalApi(port: Long, token: String) {
     suspend fun readClaudeSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadClaudeSessionResponse =
         call("ReadClaudeSession", ReadClaudeSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
 
+    suspend fun readAttachment(sessionId: String, sha256: String, path: String): ReadAttachmentResponse =
+        call("ReadAttachment", ReadAttachmentRequest(sessionId, sha256, path), timeoutSeconds = 60)
+
     suspend fun readDSHSession(machineId: String, sessionId: String, beforeSeq: Long = 0): ReadDSHSessionResponse =
         call("ReadDSHSession", ReadDSHSessionRequest(machineId, sessionId, beforeSeq), timeoutSeconds = 60)
 
@@ -158,6 +161,8 @@ class LocalApi(port: Long, token: String) {
     suspend fun listRoomMessages(machineId: String, roomId: String): ListRoomMessagesResponse = call("ListRoomMessages", ListRoomMessagesRequest(machineId, roomId))
     suspend fun postRoomMessage(machineId: String, roomId: String, text: String, key: String, mentions: List<String> = emptyList(), lightChat: Boolean = false): RoomMessage = call("PostRoomMessage", PostRoomMessageRequest(machineId, roomId, text, key, mentions, lightChat))
     suspend fun createRoom(req: CreateRoomRequest): Room = call("CreateRoom", req)
+    /** Each member's machine checks it again (its coding agents are run): longer than a call's usual wait. */
+    suspend fun checkRoomMembers(members: List<CreateRoomMember>): CheckRoomMembersResponse = call("CheckRoomMembers", CheckRoomMembersRequest(members), timeoutSeconds = 60)
     suspend fun updateRoom(machineId: String, patch: RoomPatch): Room = call("UpdateRoom", UpdateRoomRequest(machineId, patch))
     suspend fun stopRoom(machineId: String, roomId: String): Room = call("StopRoom", RoomRef(machineId, roomId))
     suspend fun markRoomSeen(machineId: String, roomId: String): Room = call("MarkRoomSeen", RoomRef(machineId, roomId))

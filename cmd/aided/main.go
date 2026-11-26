@@ -197,6 +197,11 @@ A computer that runs no coding agents can approve instead: aided device.`}
 			if n := rlimit.RaiseNoFile(); n > 0 { // Windows has no such limit
 				log.Info("open file limit", "soft", n)
 			}
+			// A background update's version that never connected is undone
+			// here, before anything that could fail as it starts (工单 #162).
+			if service.Supervised(dataDir) && update.Starting(dataDir, machine.Version, log) {
+				return nil // its service starts the programs from before
+			}
 			switch reloading, err := service.ReloadOldJob(dataDir); {
 			case err != nil:
 				log.Warn("updating the service's launchd job", "err", err)
@@ -228,8 +233,9 @@ A computer that runs no coding agents can approve instead: aided device.`}
 				go func() { log.Warn("debug server stopped", "err", metrics.Serve(debugAddr)) }()
 			}
 			// The background updater (docs/machine-updates.md): after an
-			// update aided stops, and its service starts the new program.
-			autoUpdate := func(busy func() int) {
+			// update aided stops, and its service starts the new program,
+			// which goes back to the one before unless it connects in time.
+			autoUpdate := func(busy func() int, connected func() bool) {
 				if !service.Supervised(dataDir) {
 					return
 				}
@@ -239,7 +245,7 @@ A computer that runs no coding agents can approve instead: aided device.`}
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithCancel(ctx)
 				go func() {
-					if update.Background(ctx, dataDir, machine.Version, busy, log) {
+					if update.Confirm(ctx, dataDir, machine.Version, connected, log) || update.Background(ctx, dataDir, machine.Version, busy, log) {
 						cancel()
 					}
 				}()
@@ -264,19 +270,20 @@ A computer that runs no coding agents can approve instead: aided device.`}
 				if socket == "" {
 					socket = paths.LocalAPI(dataDir)
 				}
-				if noMachine { // a Linux trusted device
-					autoUpdate(func() int { return 0 })
+				if noMachine { // a Linux trusted device: no machine link to wait for
+					autoUpdate(func() int { return 0 }, func() bool { return true })
 				}
 				log.Info("serving local API", "socket", socket)
 				return serveUntilStopped(ctx, stop, o.Run, func(ctx context.Context) error { return o.ServeLocal(ctx, socket) })
 			}
 			cfg := machineConfig()
 			cfg.SelfErase = true
+			cfg.UpdateFailed = update.Failed(dataDir, machine.Version)
 			n, err := machine.Open(cfg)
 			if err != nil {
 				return err
 			}
-			autoUpdate(n.Busy)
+			autoUpdate(n.Busy, n.Connected)
 			savePower(func() *machine.Machine { return n })
 			err = n.Run(ctx)
 			n.Close()

@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from "
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { agoText, allBots, dateOf, displayTitle, listTime, projectTitle, type Bot } from "@aide/core";
-import { RoomDeliveryState, RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMessage } from "@aide/proto/machine";
+import { RoomDeliveryState, RoomMode, RoomRun, type Room, type RoomDelivery, type RoomMemberCheck, type RoomMessage } from "@aide/proto/machine";
 import { projectsFor } from "../AgentList";
 import { local } from "../api";
 import { StateText } from "../components";
@@ -10,7 +10,9 @@ import { Icon } from "../icons";
 import { TimeLine } from "../session/Chat";
 import { Markdown } from "../session/Markdown";
 import { Check, Picker } from "../Picker";
+import { reachProblem, unreachableKey } from "../roomReach";
 import { errorText, useNow, useStore, type Store } from "../store";
+import { machineName } from "../Sidebar";
 import { BotFace, deliveryWords, useRoster } from "./Bots";
 import { Composer, type ComposerState } from "./Composer";
 
@@ -140,8 +142,8 @@ export function SidebarRooms() {
 /** What became of the owner's message for a member, in words. */
 export function DeliveryLine({ d, name }: { d: RoomDelivery; name: string }) {
   const { t } = useTranslation("common");
-  const w = deliveryWords(t, d.state, name, d.reason, d.reminded);
-  const failed = d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED;
+  const w = deliveryWords(t, d.state, name, d.reason, d.reminded, d.untaken);
+  const failed = d.state === RoomDeliveryState.FAILED || d.state === RoomDeliveryState.REFUSED || d.state === RoomDeliveryState.SKIPPED;
   return (
     <span className={`chat-state ${w.bad ? "warn" : ""}`} data-state={d.state}>
       {failed && <Icon name="alert" className="sm" />}
@@ -185,6 +187,14 @@ function FinalCard({ m, room }: { m: RoomMessage; room: Room }) {
  * member's naming another as a suggestion the owner can hand on. For read-only shadow conversations (#124), renders
  * sender -> recipient, timestamp, optional subject, and reply reference.
  */
+/** Beside a shadow letter's time (the post office's): the time its sender says, when they are minutes apart (工单 #163). */
+function Claimed({ at, claimed }: { at: Date; claimed: Date | undefined }) {
+  const { t } = useTranslation("common");
+  const now = useNow(30_000);
+  if (!claimed || Math.abs(claimed.getTime() - at.getTime()) < 5 * 60_000) return null;
+  return <em title={t("rooms.shadowClaimedTip")}>· {t("rooms.shadowClaimed", { when: listTime(claimed, now) })}</em>;
+}
+
 export function RoomTimeline({ room, msgs, handOn, resend }: { room: Room; msgs: RoomMessage[]; handOn?: (to: string, m: RoomMessage) => void; resend?: (m: RoomMessage) => void }) {
   const st = useStore();
   const { t } = useTranslation("common");
@@ -230,6 +240,7 @@ export function RoomTimeline({ room, msgs, handOn, resend }: { room: Room; msgs:
                   <span className="chat-who">
                     {room.shadow && m.toName ? `${m.fromName} → ${m.toName}` : m.fromName}
                     {room.shadow && atDate && <em>· {agoText(atDate, now)}</em>}
+                    {room.shadow && atDate && <Claimed at={atDate} claimed={dateOf(m.claimedAt)} />}
                     {m.late && <em>{t("rooms.late")}</em>}
                     {light && <span className="room-ro-tag">{t("rooms.light")}</span>}
                   </span>
@@ -292,6 +303,8 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
   const bots = allBots(useRoster());
   const [room, setRoom] = useState<Room>();
   const [msgs, setMsgs] = useState<RoomMessage[]>([]);
+  // A shadow conversation's: the owner's machines that keep a copy and did not answer (工单 #164).
+  const [unreached, setUnreached] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
@@ -302,7 +315,7 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
   // What was read last stays shown while the host can't be read (工单 #74): the room is not gone, its host is away.
   const read = () =>
     local.listRoomMessages({ machineId, roomId, limit: 300 }).then(
-      (r) => (setRoom(r.room), setMsgs(r.messages), setError("")),
+      (r) => (setRoom(r.room), setMsgs(r.messages), setUnreached(r.unreachedMachineIds), setError("")),
       (e) => setError(errorText(e)),
     );
   useEffect(() => {
@@ -443,7 +456,10 @@ export function RoomPage({ machineId, roomId }: { machineId: string; roomId: str
           {waiting.count > 0 && <div className="room-sys" role="note">{t("rooms.waitingInline", { count: waiting.count })}</div>}
         </div>
         {shadow ? (
-          <div className="shadow-ro-foot" role="note">{t("rooms.shadowReadOnly")}</div>
+          <div className="shadow-ro-foot" role="note">
+            {unreached.length > 0 && <div className="shadow-partial">{t("rooms.shadowPartial", { names: unreached.map((id) => machineName(st, id)).join(t("rooms.namesSep")) })}</div>}
+            {t("rooms.shadowReadOnly")}
+          </div>
         ) : (
           <Composer
             value={text}
@@ -554,12 +570,40 @@ export function NewRoomSheet() {
   const [maxRounds, setMaxRounds] = useState(6);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Each member picked is asked of for real (工单 #159), not taken from the roster: bot key → its check (undefined
+  // while asked, null when it couldn't be). warned: the members the owner was told may not take their turn.
+  const [checks, setChecks] = useState<Record<string, RoomMemberCheck | null | undefined>>({});
+  const [warned, setWarned] = useState("");
+  const now = useNow(30_000);
   const projectsOf = (b: Bot) => projectsFor(st.projects.filter((p) => p.machineId === b.machineId), b.agent);
+  const member = (k: string, project = picked[k] ?? "") => ({ botKey: k, projectId: project, name: bots.find((b) => b.key === k)?.name ?? "" });
+  const check = async (ms: ReturnType<typeof member>[]) => {
+    setChecks((c) => ({ ...c, ...Object.fromEntries(ms.map((m) => [m.botKey, undefined])) }));
+    try {
+      const res = await local.checkRoomMembers({ members: ms });
+      setChecks((c) => ({ ...c, ...Object.fromEntries(res.members.map((m) => [m.botKey, m])) }));
+      return res.members;
+    } catch (err) {
+      setChecks((c) => ({ ...c, ...Object.fromEntries(ms.map((m) => [m.botKey, null])) }));
+      throw err;
+    }
+  };
   const toggle = (b: Bot) => {
     const next = { ...picked };
     if (b.key in next) delete next[b.key];
-    else next[b.key] = b.kind === "personal" ? "" : (projectsOf(b)[0]?.projectId ?? "");
+    else {
+      next[b.key] = b.kind === "personal" ? "" : (projectsOf(b)[0]?.projectId ?? "");
+      check([member(b.key, next[b.key])]).catch((err) => setError(errorText(err)));
+    }
     setPicked(next);
+    setWarned("");
+  };
+  const reachWords = (c: RoomMemberCheck | null | undefined) => {
+    if (c === undefined) return t("rooms.reach.checking");
+    if (c === null) return t("rooms.reach.failed");
+    const p = reachProblem(c);
+    const seen = dateOf(c.lastSeen);
+    return p ? t(`rooms.reach.${p}` as never, { since: seen ? agoText(seen, now) : "" }) : t("rooms.reach.ok");
   };
   const keys = Object.keys(picked);
   const ready = name.trim() !== "" && keys.length > 0 && keys.every((k) => k.startsWith("c:") || picked[k] !== "");
@@ -569,10 +613,16 @@ export function NewRoomSheet() {
     setBusy(true);
     setError("");
     try {
-      const r = await local.createRoom({
-        name: name.trim(), mode, maxRounds,
-        members: keys.map((k) => ({ botKey: k, projectId: picked[k], name: bots.find((b) => b.key === k)?.name ?? "" })),
-      });
+      const members = keys.map((k) => member(k));
+      // Asked again as the room is made: one that may not take its turn is named first, and the room is made only
+      // when the owner makes it again knowing that.
+      const bad = unreachableKey(await check(members));
+      if (bad !== "" && bad !== warned) {
+        setWarned(bad);
+        setBusy(false);
+        return;
+      }
+      const r = await local.createRoom({ name: name.trim(), mode, maxRounds, members });
       st.set({ sheet: null, selection: { kind: "room", machineId: r.hostMachineId, roomId: r.roomId } });
     } catch (err) {
       setError(errorText(err));
@@ -607,6 +657,7 @@ export function NewRoomSheet() {
       <div className="fgroup room-pick" role="group" aria-label={t("rooms.pick")}>
         {bots.map((b) => {
           const on = b.key in picked;
+          const c = checks[b.key];
           const projects = b.kind === "personal" ? [] : projectsOf(b);
           return (
             <div key={b.key} className={`frow room-pick-row ${on ? "on" : ""}`}>
@@ -615,6 +666,7 @@ export function NewRoomSheet() {
               <span className="ft" onClick={() => toggle(b)}>
                 <span>{b.name}</span>
                 <span className="fdesc">{b.state.word}</span>
+                {on && <span className={`fdesc room-reach ${c === undefined ? "checking" : c && !reachProblem(c) ? "" : "warn"}`}>{reachWords(c)}</span>}
               </span>
               {on && b.kind !== "personal" && (
                 projects.length ? (
@@ -626,10 +678,15 @@ export function NewRoomSheet() {
           );
         })}
       </div>
+      {warned && (
+        <p className="warn" role="alert">
+          {t("rooms.mayNotTakeTurn", { names: keys.filter((k) => warned.split(" ").includes(k)).map((k) => member(k).name || k).join("、") })}
+        </p>
+      )}
       {error && <p className="err" role="alert">{error}</p>}
       <div className="sheet-foot">
         <button type="button" className="btn" onClick={() => st.set({ sheet: null })}>{t("rooms.cancel")}</button>
-        <button type="submit" className="btn primary" disabled={!ready || busy}>{busy ? t("rooms.creating") : t("rooms.create")}</button>
+        <button type="submit" className="btn primary" disabled={!ready || busy}>{busy ? t("rooms.creating") : t(warned ? "rooms.createAnyway" : "rooms.create")}</button>
       </div>
     </form>
   );
