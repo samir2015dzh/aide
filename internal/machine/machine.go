@@ -125,6 +125,7 @@ type Machine struct {
 	usageCLI    cliUsageSource              // reads it through Claude Code here (工单 #86)
 	usageCache  cacheUsageSource            // reads what Claude Code here cached of it (工单 #104)
 	usageNoCLI  map[string]bool             // Claude Code binaries@versions without /usage outside a terminal
+	agentUsage  agentUsages                 // other agents' plan usage, as their checks answered it (工单 #143)
 	paused      bool
 	infos       map[string]provider.Info // what the last check of each coding agent found
 	dshBridge   *machinev1.DSHBridge     // the DSH bridge plugin, as the last check of DSH found it
@@ -265,7 +266,7 @@ func Open(cfg Config) (*Machine, error) {
 		return nil, err
 	}
 	n := &Machine{cfg: cfg, log: cfg.Logger, st: st, key: key, lock: lock, inboxWake: make(chan struct{}, 1), machineID: identity.MachineID(identity.MarshalPublicKey(key.Public())),
-		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{}, kept: map[string]keptModels{},
+		infos: map[string]provider.Info{}, logins: map[string]*agentLogin{}, usageNoCLI: map[string]bool{}, agentUsage: agentUsages{}, hidden: map[string]hiddenAgent{}, offers: map[string]provider.Offers{}, defaults: map[string]*identityv1.AgentDefaults{}, tunnels: map[*tunnel]struct{}{}, adminSeen: map[string]time.Time{}, grantSeen: map[string]uint64{}, kept: map[string]keptModels{},
 		statusKick: make(chan struct{}, 1), revocations: &identityv1.RevocationList{MinGrantVersions: map[string]uint64{}}}
 	if n.audit, err = OpenAudit(filepath.Join(cfg.DataDir, "audit"), key); err != nil {
 		return nil, err
@@ -301,6 +302,7 @@ func Open(cfg Config) (*Machine, error) {
 		n.usageCLI = &claude.CLIUsage{}
 		n.usageCache = &claude.CacheUsage{}
 		n.loadUsage()
+		n.loadAgentUsage()
 	}
 	n.sessions.offered = n.offered
 	n.sessions.signedIn = n.agentSignedIn
@@ -638,6 +640,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 			if !i.CheckedAt.IsZero() {
 				a.CheckedAt = timestamppb.New(i.CheckedAt)
 			}
+			a.Usage = n.agentUsage[name] // asked at its check (工单 #143); Claude Code's below
 			if name == "claude" {
 				a.Usage = n.usage // the last reading; a refresh is kicked below
 				a.Login = n.loginOfLocked(name)

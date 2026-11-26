@@ -7,7 +7,7 @@ function dateOf(ts: { seconds: bigint; nanos: number } | undefined): Date | unde
 
 /**
  * When the agent's plan usage resets, to pause it until then (SetAgentPaused resume_at), as far as the machine
- * read it (Claude Code only): the latest reset of the windows used up, since it runs again only once all of them
+ * read it (Claude Code; Codex once a check asked it, #143): the latest reset of the windows used up, since it runs again only once all of them
  * have reset; with none used up, the reset of the fullest. Undefined without a reading of a reset still to come:
  * no time is guessed, and only the owner resumes it then.
  */

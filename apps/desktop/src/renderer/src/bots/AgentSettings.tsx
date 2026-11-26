@@ -77,13 +77,13 @@ export function BotSettings({ b, m }: { b: Bot; m?: Machine }) {
   );
 }
 
-/** Its plan's usage (Claude Code's, #86), with how it stands. */
+/** Its plan's usage (Claude Code's, #86; Codex's, asked at its check, #143), with how it stands. */
 function Usage({ b, m }: { b: Bot; m: Machine }) {
   const { t } = useTranslation("common");
   const tf = useTranslation("firstrun").t;
   const now = useNow(30_000);
   const a = m.status?.agents.find((x) => x.name === b.agent);
-  const usage = a && b.agent === "claude" ? usageText(a, tf, now) : "";
+  const usage = a ? usageText(a, tf, now) : "";
   return usage ? <Row k={t("agentSettings.usage")}><span className="mono agent-usage">{usage}</span></Row> : null;
 }
 

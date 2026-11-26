@@ -5,6 +5,7 @@ package codex
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -74,9 +76,11 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 		info.LoggedIn = true
 	}
 	// Its models come from a `codex app-server` it starts: only on purpose
-	// (工单 #112), else an earlier list stands.
+	// (工单 #112), else an earlier list stands. Signed in, the same
+	// app-server is asked its account's plan usage too, when the machine
+	// reads plan usage (工单 #143).
 	if provider.IsOnPurpose(ctx) {
-		info.Models, info.Own, _ = catalog(ctx, env, bin)
+		info.Models, info.Own, info.PlanUsage, _ = catalog(ctx, env, bin, provider.AsksUsage(ctx) && info.LoggedIn)
 	} else {
 		info.ModelsSkipped = true
 	}
@@ -164,13 +168,88 @@ func alreadySo(err error) bool {
 }
 
 // catalog asks Codex's app server for the models it offers and the
-// configuration its sessions follow unless told otherwise.
-func catalog(ctx context.Context, env []string, bin string) (models []provider.Model, own provider.Settings, err error) {
+// configuration its sessions follow unless told otherwise and, withUsage,
+// then its account's plan usage (account/rateLimits/read); usage is nil
+// when not asked.
+func catalog(ctx context.Context, env []string, bin string, withUsage bool) (models []provider.Model, own provider.Settings, usage *provider.PlanUsage, err error) {
 	err = appServer(ctx, env, bin, func(call func(string, any, any) error) error {
-		models, own, err = catalogFrom(call)
-		return err
+		if models, own, err = catalogFrom(call); err != nil || !withUsage {
+			return err
+		}
+		usage = usageFrom(call)
+		return nil
 	})
-	return models, own, err
+	if withUsage && usage == nil {
+		usage = &provider.PlanUsage{At: time.Now(), Unavailable: provider.UsageFailed, Detail: "codex account/rateLimits/read: not asked (the app-server failed first)"}
+	}
+	return models, own, usage, err
+}
+
+// usageFrom asks account/rateLimits/read (工单 #143, after upstream
+// 1c862bde; Codex 0.171, testdata/codex-0.171-rate-limits-read.json): the
+// account's windows as account/rateLimits/updated tells them in a turn,
+// primary and secondary, either null, each how much of it is used (a whole
+// percent), how long it is and when it starts again (Unix seconds), and
+// the plan. A window is named as the Claude usage endpoint names its own
+// (工单 #86): five hours five_hour, a week seven_day, any other window_<n>m.
+func usageFrom(call func(method string, params, v any) error) *provider.PlanUsage {
+	var res struct {
+		RateLimits struct {
+			Primary, Secondary *rateWindow
+			PlanType           string `json:"planType"`
+		} `json:"rateLimits"`
+	}
+	u := &provider.PlanUsage{At: time.Now()}
+	if err := call("account/rateLimits/read", nil, &res); err != nil {
+		u.Unavailable, u.Detail = provider.UsageFailed, "codex account/rateLimits/read: "+err.Error()
+		return u
+	}
+	u.Plan = res.RateLimits.PlanType
+	for _, w := range []*rateWindow{res.RateLimits.Primary, res.RateLimits.Secondary} {
+		if w == nil || w.UsedPercent == nil || w.WindowDurationMins == 0 {
+			continue
+		}
+		x := provider.UsageWindow{Key: windowKey(w.WindowDurationMins), Utilization: *w.UsedPercent}
+		if w.ResetsAt > 0 {
+			x.ResetsAt = time.Unix(w.ResetsAt, 0)
+		}
+		u.Windows = append(u.Windows, x)
+	}
+	slices.SortStableFunc(u.Windows, func(a, b provider.UsageWindow) int { return cmp.Compare(windowMinutes(a.Key), windowMinutes(b.Key)) })
+	if len(u.Windows) == 0 {
+		u.Unavailable, u.Detail = provider.UsageNone, "codex account/rateLimits/read: no window (an API key, or a plan without limits)"
+	}
+	return u
+}
+
+// rateWindow is one of Codex's windows as it says them.
+type rateWindow struct {
+	UsedPercent        *float64 `json:"usedPercent"`
+	WindowDurationMins uint32   `json:"windowDurationMins"`
+	ResetsAt           int64    `json:"resetsAt"`
+}
+
+func windowKey(mins uint32) string {
+	switch mins {
+	case 5 * 60:
+		return "five_hour"
+	case 7 * 24 * 60:
+		return "seven_day"
+	}
+	return fmt.Sprintf("window_%dm", mins)
+}
+
+// windowMinutes orders the windows the shortest first.
+func windowMinutes(key string) uint32 {
+	switch key {
+	case "five_hour":
+		return 5 * 60
+	case "seven_day":
+		return 7 * 24 * 60
+	}
+	var m uint32
+	fmt.Sscanf(key, "window_%dm", &m)
+	return m
 }
 
 func catalogFrom(call func(method string, params, v any) error) ([]provider.Model, provider.Settings, error) {
