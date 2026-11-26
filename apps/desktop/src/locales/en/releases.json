@@ -1,4 +1,12 @@
 {
+  "0.2.13": {
+    "improvements": [
+      "DSH model lists are complete from a cold start: the probe now waits for DSH's credential store to finish loading before it reads, the fresher list wins over a stale one, and every model picker — new session, contacts, bot dialogs, switching models mid-session and the default-model setting — refreshes the machine's list when opened. Providers whose keys live in DSH's credential store, such as magpie, now appear everywhere and can actually be picked."
+    ],
+    "fixes": [
+      "Bridge sessions tell the truth about stopped turns: a turn you stopped in DSH itself now reads 'This turn was stopped'; a turn cut off because the DSH process exited says so, and notes when work continued after a restart; and interrupting a turn that already ended answers 'This turn has already ended' instead of surfacing an internal error."
+    ]
+  },
   "0.2.12": {
     "improvements": [
       "Updates land on their own now: on Windows, when an update is ready and you've been away for 10 minutes with no session running, the app swaps itself to the new version and restarts the background service — no more new version sitting beside the old one for days. If the service is ever lost, the app keeps retrying until it's back, and service status now reports login autostart honestly, with the reason when something is off.",
