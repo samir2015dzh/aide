@@ -9,6 +9,7 @@ import {
   markOutboxSending,
   markOutboxSent,
   nextOutboxMessages,
+  outboxForPersist,
   outboxForSession,
   parseOutboxState,
   reconcileOutboxWithEvents,
@@ -22,8 +23,17 @@ import {
 } from "@aide/core";
 import { local } from "../api";
 import { errorText } from "../store";
+import { clearSessionEventCache, dropPersistedSessionEvents } from "./events";
+import { isMainWindowHash } from "./keep";
 
 const STORAGE_KEY = "aide.outbox.v1";
+/** The account the locally kept conversations and queue belong to (owner_id). */
+const OWNER_KEY = "aide.localConversations.owner";
+
+/** Only the main window sends and writes the queue (see isMainWindowHash). */
+export function isOutboxWindow(): boolean {
+  return typeof location === "undefined" || isMainWindowHash(location.hash);
+}
 
 function toBase64(bytes: Uint8Array): string {
   let bin = "";
@@ -50,15 +60,41 @@ function loadState(): OutboxState {
   }
 }
 
-function saveState(st: OutboxState) {
+/**
+ * Persists the queue: attachments too large to keep (outboxForPersist) stay in memory
+ * only; when storage refuses even that (over quota), the queue is kept without any
+ * attachment bytes. Returns the messages whose files are in memory only, and why
+ * nothing could be kept at all ("" when it was).
+ */
+function saveState(st: OutboxState): { memoryOnly: Set<string>; error: string } {
+  if (typeof localStorage === "undefined") return { memoryOnly: new Set(), error: "" };
+  const plan = outboxForPersist(st);
   try {
-    if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, serializeOutboxState(st));
+    localStorage.setItem(STORAGE_KEY, serializeOutboxState(plan.state));
+    return { memoryOnly: new Set(plan.memoryOnly), error: "" };
   } catch {
-    // Storage full or unavailable; in-memory queue still works for the live process.
+    const bare = serializeOutboxState(outboxForPersist(st, 0).state);
+    const all = new Set(st.items.filter((x) => x.attachments.length > 0).map((x) => x.id));
+    try {
+      localStorage.setItem(STORAGE_KEY, bare);
+      return { memoryOnly: all, error: "" };
+    } catch {
+      // The conversations' cached events are only a cache: the queue goes first.
+      dropPersistedSessionEvents();
+      try {
+        localStorage.setItem(STORAGE_KEY, bare);
+        return { memoryOnly: all, error: "" };
+      } catch (e) {
+        return { memoryOnly: new Set(st.items.map((x) => x.id)), error: errorText(e) };
+      }
+    }
   }
 }
 
 type Listener = () => void;
+
+/** How a queued message is kept: "memory" when it (or its files) would not survive closing the app. */
+export type OutboxKeeping = "disk" | "memory";
 
 class DesktopOutboxManager {
   private state: OutboxState = loadState();
@@ -66,9 +102,23 @@ class DesktopOutboxManager {
   private flushing = new Set<string>();
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private retryAttempt = 0;
+  private memoryOnly = new Set<string>();
+  /** Why the queue could not be persisted at all ("" when it was). */
+  persistError = "";
+  /** Only the main window sends and writes the queue (isOutboxWindow); the others only read it. */
+  readonly active = isOutboxWindow();
 
   constructor() {
-    saveState(this.state);
+    if (typeof window !== "undefined") {
+      // Another window cleared it (signing out) or, never with one owner, wrote it: take what is there.
+      window.addEventListener("storage", (e) => {
+        if (e.key !== STORAGE_KEY && e.key !== null) return;
+        this.state = loadState();
+        for (const fn of this.listeners) fn();
+      });
+    }
+    if (!this.active) return;
+    this.persist();
     if (typeof window !== "undefined") {
       window.addEventListener("online", () => {
         this.retryAttempt = 0;
@@ -80,6 +130,13 @@ class DesktopOutboxManager {
     }
   }
 
+  private persist() {
+    if (!this.active) return;
+    const r = saveState(this.state);
+    this.memoryOnly = r.memoryOnly;
+    this.persistError = r.error;
+  }
+
   subscribe(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -88,7 +145,7 @@ class DesktopOutboxManager {
   private setState(next: OutboxState) {
     if (next === this.state) return;
     this.state = next;
-    saveState(next);
+    this.persist();
     for (const fn of this.listeners) fn();
   }
 
@@ -96,10 +153,31 @@ class DesktopOutboxManager {
     return outboxForSession(this.state, sessionId);
   }
 
+  /** "memory": closing the app now loses this message's files, or the whole queue could not be kept. */
+  keeping(id: string): OutboxKeeping {
+    return this.memoryOnly.has(id) ? "memory" : "disk";
+  }
+
+  /** Forgets the whole queue (signing out, another account). */
+  clear() {
+    this.retryAttempt = 0;
+    this.setState(emptyOutboxState());
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Nothing kept to remove.
+    }
+  }
+
+  /**
+   * afterSeq: the session's last event seq the window knows now, so that an older server
+   * (no echoed client_message_id) only matches the message against later events.
+   */
   enqueue(
     sessionId: string,
     text: string,
     attachments: Array<{ name: string; mediaType: string; data: Uint8Array }>,
+    afterSeq?: bigint,
   ): OutboxMessage {
     const encoded: OutboxAttachment[] = attachments.map((a) => ({
       name: a.name,
@@ -110,7 +188,7 @@ class DesktopOutboxManager {
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const { state, item } = enqueueOutbox(this.state, { id, sessionId, text, attachments: encoded });
+    const { state, item } = enqueueOutbox(this.state, { id, sessionId, text, attachments: encoded, afterSeq });
     this.setState(state);
     void this.flushSession(sessionId);
     return item;
@@ -140,7 +218,7 @@ class DesktopOutboxManager {
   }
 
   async flushSession(sessionId: string) {
-    if (this.flushing.has(sessionId)) return;
+    if (!this.active || this.flushing.has(sessionId)) return;
     this.flushing.add(sessionId);
     try {
       while (true) {
@@ -195,13 +273,51 @@ class DesktopOutboxManager {
   }
 }
 
-export const desktopOutbox = new DesktopOutboxManager();
+let manager: DesktopOutboxManager | undefined;
+
+/** The queue, made on first use (a window that never shows a conversation never makes one). */
+export function desktopOutbox(): DesktopOutboxManager {
+  manager ??= new DesktopOutboxManager();
+  return manager;
+}
 
 export function useSessionOutbox(sessionId: string): OutboxMessage[] {
-  const [items, setItems] = useState<OutboxMessage[]>(() => desktopOutbox.itemsFor(sessionId));
+  const [items, setItems] = useState<OutboxMessage[]>(() => desktopOutbox().itemsFor(sessionId));
   useEffect(() => {
-    setItems(desktopOutbox.itemsFor(sessionId));
-    return desktopOutbox.subscribe(() => setItems(desktopOutbox.itemsFor(sessionId)));
+    const q = desktopOutbox();
+    setItems(q.itemsFor(sessionId));
+    return q.subscribe(() => setItems(q.itemsFor(sessionId)));
   }, [sessionId]);
   return items;
+}
+
+/** What this device knows of the account, as the status says (GetStatusResponse). */
+export type AccountStatus = { ownerId: string; signedOut: boolean; removed: boolean; initialized: boolean; machineOnly: boolean };
+
+/**
+ * The conversations kept on this device (the queue, the cached events) are the signed-in
+ * account's: signing out, being removed, or another account signing in forgets them.
+ * Called by the main window whenever the status changes.
+ */
+export function guardLocalConversations(status: AccountStatus | null | undefined) {
+  if (!status || !isOutboxWindow()) return;
+  let kept: string | null = null;
+  try {
+    kept = localStorage.getItem(OWNER_KEY);
+  } catch {
+    return;
+  }
+  const member = (status.initialized || status.machineOnly) && !status.signedOut && !status.removed && status.ownerId !== "";
+  const owner = member ? status.ownerId : "";
+  if (kept === owner) return;
+  // Kept for no account known yet (a first start after an update): it is this account's.
+  if (kept !== null || !member) {
+    desktopOutbox().clear();
+    clearSessionEventCache();
+  }
+  try {
+    localStorage.setItem(OWNER_KEY, owner);
+  } catch {
+    // Next time again.
+  }
 }

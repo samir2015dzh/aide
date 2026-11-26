@@ -63,7 +63,11 @@
       "failed": "发送失败",
       "retry": "重试",
       "cancel": "取消",
-      "attachments": "{{count}} 个附件"
+      "attachments": "{{count}} 个附件",
+      "cancelMaybeSent": "不再重发（可能已送达）",
+      "memoryOnly": "附件只在内存里：关闭应用前没发出就会丢失",
+      "attachmentsLost": "附件太大没能存下，重启后已丢失：请取消后重新附加",
+      "notKept": "待发队列存不进本机（{{error}}）：关闭应用前没发出的消息会丢失"
     }
   },
   "control": {
