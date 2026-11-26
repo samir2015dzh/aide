@@ -114,11 +114,21 @@ func (p *Provider) recordHandshake(protoVer uint32, caps provider.Capabilities) 
 
 func (p *Provider) Name() string { return p.Agent.Name }
 
-// CanRollbackConversation reports that ACP agents currently do not expose a
-// conversation rewind/rollback primitive, so Aide refuses workspace-only file
-// rollback to prevent file and conversation state from diverging (工单 #113).
-func (p *Provider) CanRollbackConversation() (bool, string) {
-	return false, fmt.Sprintf("provider %q (ACP) does not support conversation rollback; refusing to roll back files alone to avoid file and conversation mismatch", p.Agent.Name)
+// CanRollbackConversation: an ACP agent's session rolls back as Claude's and
+// Codex's do (审计 F, 工单 #113): Aide resets the worktree to the turn's
+// snapshot and the next turn starts a fresh agent conversation that is told
+// what was discarded (Sessions.Rollback), so files and conversation never
+// diverge. ACP needs no rewind primitive for that.
+func (p *Provider) CanRollbackConversation() (bool, string) { return true, "" }
+
+// refineCapabilities records what a session's configuration shows the agent
+// offers to choose: reasoning efforts and modes (initialize does not say).
+func (p *Provider) refineCapabilities(efforts, modes bool) {
+	p.modelsMu.Lock()
+	defer p.modelsMu.Unlock()
+	if p.lastCaps != nil {
+		p.lastCaps.SelectEffort, p.lastCaps.SelectMode = efforts, modes
+	}
 }
 
 func (p *Provider) binary() string {
@@ -508,6 +518,7 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	}
 	if offers != nil {
 		cfg.addEfforts(offers) // those of the model chosen, too
+		p.refineCapabilities(cfg.option("thought_level") != nil, len(offers.Modes) > 0)
 	}
 	s.emit(provider.Event{Kind: provider.EventRef, Ref: s.sessionID, Model: cfg.model(), Effort: cfg.effort(), Offers: offers})
 	if err := s.Send(ctx, provider.Input{Text: spec.Prompt, Images: spec.Images, Files: spec.Files}); err != nil {
@@ -516,8 +527,11 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	return s, nil
 }
 
+// protocolVersion is the ACP protocol version Aide speaks: 1, the only one
+// whose messages it handles (审计 F: no v2 is claimed).
+const protocolVersion = 1
+
 // initializeParamsFor builds ACP initialize request parameters for protocol version v.
-// Aide requests ACP v2 preview first and negotiates down to v1 for v1-only agents (工单 #110).
 func initializeParamsFor(protoVer uint32) map[string]any {
 	return map[string]any{
 		"protocolVersion": protoVer,
@@ -532,7 +546,7 @@ func initializeParamsFor(protoVer uint32) map[string]any {
 	}
 }
 
-var initializeParams = initializeParamsFor(1)
+var initializeParams = initializeParamsFor(protocolVersion)
 
 type acpInitResult struct {
 	ProtocolVersion uint32 `json:"protocolVersion"`
@@ -564,17 +578,22 @@ func hasCap(raw json.RawMessage) bool {
 	return trimmed != "" && trimmed != "null" && trimmed != "false"
 }
 
+// toCapabilities is what Aide can do with the agent, as initialize says:
+// a model is chosen (and changed between turns) through the session's model
+// option or session/set_model, one it does not offer failing the start;
+// reasoning efforts and modes only once a session's configuration shows
+// them (refineCapabilities). Aide sends no session/fork, so no fork.
 func (r acpInitResult) toCapabilities() provider.Capabilities {
 	caps := r.AgentCapabilities
 	return provider.Capabilities{
 		SelectModel:          true,
 		SwitchModelInSession: true,
-		SelectEffort:         true,
-		SelectMode:           true,
+		SelectEffort:         false,
+		SelectMode:           false,
 		LoginInAide:          false, // ACP credentials stay managed by the agent itself (#108/#110).
 		Usage:                false,
-		Fork:                 hasCap(caps.SessionCapabilities.Fork),
-		Rollback:             false, // ACP has no conversation rollback primitive (#113).
+		Fork:                 false,
+		Rollback:             true,  // Aide's worktree rollback, a fresh conversation after (审计 F).
 		Steer:                false, // ACP Steer returns provider.ErrNoSteer.
 		Resume:               caps.LoadSession || hasCap(caps.SessionCapabilities.Resume),
 		Images:               caps.PromptCapabilities.Image,
@@ -582,19 +601,11 @@ func (r acpInitResult) toCapabilities() provider.Capabilities {
 	}
 }
 
-// initializeSession negotiates ACP protocol version: v2 preview preferred,
-// automatically falling back to v1 if the agent rejects v2 or responds with v1.
+// initializeSession negotiates the ACP protocol version as the spec says:
+// Aide asks for the one it speaks (1); an agent that answers another one
+// speaks a protocol Aide does not, and the connection is not used.
 func (p *Provider) initializeSession(ctx context.Context, s *session) (acpInitResult, error) {
-	res, err := s.call(ctx, "initialize", initializeParamsFor(2))
-	negotiatedReq := uint32(2)
-	if err != nil {
-		var rpcErr *rpcError
-		if errors.As(err, &rpcErr) && ctx.Err() == nil {
-			// Agent explicitly rejected v2 preview: negotiate down to v1.
-			res, err = s.call(ctx, "initialize", initializeParamsFor(1))
-			negotiatedReq = 1
-		}
-	}
+	res, err := s.call(ctx, "initialize", initializeParamsFor(protocolVersion))
 	if err != nil {
 		return acpInitResult{}, err
 	}
@@ -602,8 +613,13 @@ func (p *Provider) initializeSession(ctx context.Context, s *session) (acpInitRe
 	if err := json.Unmarshal(res, &init); err != nil {
 		return acpInitResult{}, errors.New("its answer is not an ACP initialize result")
 	}
-	if init.ProtocolVersion == 0 {
-		init.ProtocolVersion = negotiatedReq
+	switch init.ProtocolVersion {
+	case 0: // not said: taken as the one asked for
+		init.ProtocolVersion = protocolVersion
+	case protocolVersion:
+	default:
+		return acpInitResult{}, provider.Fail(sessionv1.FailureKind_FAILURE_KIND_START_FAILED,
+			fmt.Sprintf("the agent speaks ACP protocol version %d, and Aide only version %d; update Aide, or use a version of the agent that speaks version %d", init.ProtocolVersion, protocolVersion, protocolVersion))
 	}
 	p.recordHandshake(init.ProtocolVersion, init.toCapabilities())
 	return init, nil

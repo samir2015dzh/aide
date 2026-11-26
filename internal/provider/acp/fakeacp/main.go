@@ -68,6 +68,7 @@
 //	                                  [{"name", "models": [{"value",
 //	                                  "name"}]}]}; the first model current
 //	FAKE_ACP_LOG=<path>               append method names only, for no-prompt assertions
+//	FAKE_ACP_PROTOCOL=<n>             the ACP protocol version it answers (default 1)
 //	FAKE_ACP_PRESETS=<default>        DSH's permission presets (read-only,
 //	                                  workspace-write, danger-full-access;
 //	                                  <default> is "" or one of them): its
@@ -320,13 +321,11 @@ func handle(m msg) {
 			ProtocolVersion int `json:"protocolVersion"`
 		}
 		_ = json.Unmarshal(m.Params, &initReq)
-		if os.Getenv("FAKE_ACP_REJECT_V2") == "1" && initReq.ProtocolVersion >= 2 {
-			replyErr(m.ID, -32602, "unsupported protocolVersion 2")
-			return
-		}
+		// FAKE_ACP_PROTOCOL=<n>: the only protocol version it speaks,
+		// answered whatever is asked (as the spec has an agent do).
 		protoVer := 1
-		if os.Getenv("FAKE_ACP_V2") == "1" && initReq.ProtocolVersion >= 2 {
-			protoVer = 2
+		if v, err := strconv.Atoi(os.Getenv("FAKE_ACP_PROTOCOL")); err == nil {
+			protoVer = v
 		}
 		caps["sessionCapabilities"] = sessionCaps
 		caps["promptCapabilities"] = map[string]any{"image": os.Getenv("FAKE_ACP_IMAGES") == "1", "audio": os.Getenv("FAKE_ACP_AUDIO") == "1"}

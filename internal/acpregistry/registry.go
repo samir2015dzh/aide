@@ -756,10 +756,16 @@ func (r *Registry) downloadAndHash(ctx context.Context, rawURL, dst string) (str
 	body := &progressReader{r: io.LimitReader(resp.Body, maxArchiveBytes+1), progress: func() { idle.Reset(r.idle) }}
 	h := sha256.New()
 	n, err := io.Copy(io.MultiWriter(f, h), body)
+	idle.Stop()
+	// A cancelled request's body can also end in a clean EOF: what
+	// cancelled it decides.
+	if errors.Is(context.Cause(ctx), errStalled) {
+		return "", fmt.Errorf("%w: no data for %s", errStalled, r.idle)
+	}
+	if err == nil {
+		err = ctx.Err()
+	}
 	if err != nil {
-		if errors.Is(context.Cause(ctx), errStalled) {
-			return "", fmt.Errorf("%w: no data for %s", errStalled, r.idle)
-		}
 		return "", err
 	}
 	if n > maxArchiveBytes {
