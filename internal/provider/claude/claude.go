@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
@@ -391,12 +390,16 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 }
 
 // isStdinClosed reports whether a stdin write failed because the child process
-// already exited and closed its stdin pipe (Unix EPIPE / os.ErrClosed from
-// exec.Cmd.Wait, or Windows broken-pipe errors).
+// already exited and closed its stdin pipe: the OS's closed-pipe error
+// (EPIPE on Unix, ERROR_NO_DATA / ERROR_BROKEN_PIPE on Windows, matched by
+// number because Windows words them in the system's language; see
+// isPipeClosedErrno), or os.ErrClosed once exec.Cmd.Wait closed the pipe.
 func isStdinClosed(err error) bool {
-	if errors.Is(err, syscall.EPIPE) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, os.ErrClosed) {
+	if isPipeClosedErrno(err) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, os.ErrClosed) {
 		return true
 	}
+	// Last resort for an error that reached here as text only; English
+	// systems' wording.
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "broken pipe") ||
 		strings.Contains(msg, "pipe is being closed") ||
