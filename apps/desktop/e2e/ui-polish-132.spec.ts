@@ -3,7 +3,7 @@ import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { DeviceSchema, ExecLogEntrySchema } from "@aide/proto/local";
 import { AgentStatusSchema, DSHBridgeSchema, DSHBridgeState, ExecOutcome, ExecRecordSchema, RoomDeliverySchema, RoomDeliveryState, RoomMemberSchema, RoomMessageSchema, RoomMode, RoomSchema } from "@aide/proto/machine";
 import { SessionEventSchema, SessionSchema, SessionStatus } from "@aide/proto/session";
-import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
+import { expect, test, type ElectronApplication, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -74,6 +74,8 @@ test.beforeAll(async () => {
       dshBridge: create(DSHBridgeSchema, { state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.0", latestVersion: "0.3.0" }),
     }),
     create(AgentStatusSchema, { name: "codex", available: true, loggedIn: false, version: "1.0.0", checkedAt: timestampFromMs(now - 10_000) }),
+    // 审计 B（P25）：ACP agent 的「未确认」与 DSH 同色
+    create(AgentStatusSchema, { name: "gemini", available: true, loggedIn: false, loginUnconfirmed: true, version: "0.9.0", checkedAt: timestampFromMs(now - 10_000) }),
   ];
   // 离线机器设备（故意让 device.machineOnline 过期为 true，验证 Account 页与 st.machines 同源显示离线 #135 P08）
   daemon.world.devices.push(
@@ -182,6 +184,19 @@ test.beforeAll(async () => {
         exitCode: 1,
         startedAt: timestampFromMs(now - 240_000),
         endedAt: timestampFromMs(now - 239_200),
+      }),
+    }),
+    // 审计 B：被拒绝的多行脚本——折叠态也要看得到拒绝原因
+    create(ExecLogEntrySchema, {
+      machineId: "m-local",
+      machineName: "MacBook Pro",
+      record: create(ExecRecordSchema, {
+        clientId: "c-0",
+        clientLabel: "Claude",
+        command: ["bash -c '", "set -e", "rm -rf build", "make all", "'"].join("\n"),
+        outcome: ExecOutcome.REFUSED,
+        reason: "这台机器已暂停，不接新的执行",
+        startedAt: timestampFromMs(now - 300_000),
       }),
     }),
   ];
@@ -389,6 +404,40 @@ test("工单 #135: 状态口径统一（P03/P04/P08/P17/P25/P33）", async () =>
   await snap(page, "desktop-135-rail-status-dots");
   await page.getByRole("button", { name: "展开边栏" }).click();
 
+  // 审计 B（P25）：同一文字同一点色，页页相同——侧栏 MacBook Pro 下每个 bot 的「文字 → 点色」与机器页（设置 · 机器）
+  // 逐一相同；「未确认」DSH 与 ACP agent（Gemini）同为黄点，「已登录」在两页都是蓝点。
+  // [文字, 点色 class] for each item under root: the dot inside the word's element, else the item's first.
+  const wordDots = (root: Locator, item: string, word: string) =>
+    root.evaluate(
+      (el, [item, word]) =>
+        [...el.querySelectorAll(item)].map((x) => {
+          const w = x.querySelector(word);
+          const d = w?.querySelector(".dotc") ?? x.querySelector(".dotc");
+          return [w?.textContent?.trim() ?? "", d ? d.className.replace("dotc", "").trim() : "?"] as [string, string];
+        }),
+      [item, word] as const,
+    );
+  const sideDots = await wordDots(sidebar.getByRole("group", { name: "MacBook Pro" }), ".bot-row", ".bot-word");
+  const sideMap = Object.fromEntries(sideDots);
+  expect(sideDots.filter(([w]) => w === "未确认").length).toBeGreaterThanOrEqual(2);
+  expect(new Set(sideDots.filter(([w]) => w === "未确认").map(([, d]) => d))).toEqual(new Set(["warn"]));
+  expect(sideMap["已登录"]).toBe("ready");
+  expect(sideMap["未登录"]).toBe("bad");
+  {
+    const [machinesWin] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("machines"))]);
+    try {
+      const panel = machinesWin.getByRole("main", { name: "机器" });
+      await panel.getByRole("list", { name: "机器" }).getByRole("button", { name: /^MacBook Pro/ }).click();
+      const agentsList = panel.getByRole("list", { name: "编码 Agent" });
+      await expect(agentsList.locator(".ag-state").first()).toBeVisible();
+      const machineDots = await wordDots(agentsList, ".ag", ".ag-state");
+      expect(machineDots.length).toBeGreaterThanOrEqual(4);
+      for (const [w, d] of machineDots) expect([w, d]).toEqual([w, sideMap[w]]);
+    } finally {
+      await machinesWin.close();
+    }
+  }
+
   // P03 + P04 + P33：打开 MacBook Pro 下的 Claude Code 主页
   const macGroup = sidebar.getByRole("group", { name: "MacBook Pro" });
   await macGroup.locator(".bot-row", { hasText: "Claude Code" }).click();
@@ -500,7 +549,7 @@ test("工单 #138: 执行记录摘要层、折叠详情与连接记录同源去�
   try {
     await settings.waitForLoadState();
     const opsList = settings.getByRole("list", { name: "执行记录" });
-    await expect(opsList.getByRole("listitem")).toHaveCount(2, { timeout: 15_000 });
+    await expect(opsList.getByRole("listitem")).toHaveCount(3, { timeout: 15_000 });
 
     // P14：默认折叠态显示人话摘要 + 退出码并入摘要行，不铺满原始 PowerShell 脚本
     const psRow = opsList.getByRole("listitem").nth(0);
@@ -513,6 +562,11 @@ test("工单 #138: 执行记录摘要层、折叠详情与连接记录同源去�
     const failRow = opsList.getByRole("listitem").nth(1);
     await expect(failRow.locator(".ops-preview")).toHaveText("git fetch origin --prune");
     await expect(failRow.locator(".ops-outcome")).toHaveText("失败（退出码 1）");
+
+    // 审计 B：折叠的脚本被拒绝时，摘要行仍给出拒绝原因
+    const refusedRow = opsList.getByRole("listitem").filter({ hasText: "这台机器已暂停" });
+    await expect(refusedRow.locator(".ops-script")).toHaveCount(0);
+    await expect(refusedRow.locator(".ops-reason")).toHaveText("这台机器已暂停，不接新的执行");
 
     // P15：成对重复的连接记录合并成 2 条，不出现「窗口发现」「应用后台发现」与右侧同义「已恢复/断开」
     const linkList = settings.getByRole("list", { name: "这台电脑的连接" });

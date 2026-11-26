@@ -22,6 +22,20 @@ export const STALE_AFTER_MS = 15 * 60_000;
 /** ok: works; partial: works, with something missing; missing: does not work until fixed; unknown: not known now. */
 export type ConnState = "ok" | "partial" | "missing" | "unknown" | "checking";
 
+/**
+ * What a state dot says (工单 #135 P25 / 审计 B): one colour per meaning, and the same label the same colour on every
+ * page (the sidebar, a bot's page, the connections card, the machine page), read from this enum — never from the label's
+ * words.
+ * - online: a personal agent connected now ("在线" / "刚活跃"), a machine online;
+ * - signedIn: a coding agent signed in or ready ("已登录" / "可以用"), a part that works (the bridge plugin installed);
+ * - unconfirmed: there, but its sign-in not confirmed ("未确认" — DSH, Claude Code and ACP agents alike — or DSH's
+ *   "已检测到"), or a part that works only partly (the bridge plugin not running);
+ * - signedOut: does not work until fixed ("未登录" / "未安装" / "出错");
+ * - checking: being checked, signing in, reconnecting;
+ * - unknown: not known now (stale, its machine away, a personal agent away, paused).
+ */
+export type Presence = "online" | "signedIn" | "unconfirmed" | "signedOut" | "checking" | "unknown";
+
 /** What a fix takes the owner to. */
 export type ConnFix = "prepareBridge" | "installBridge" | "openDSH" | "claudeCLI" | "claudeLogin" | "signIn" | "install";
 
@@ -42,7 +56,29 @@ export type ConnRow = {
   checkedAt?: Date;
   /** What it works with, apart from its state: DSH's DeepSeek models (DSH is the agent, DeepSeek its account's models, 工单 #53). */
   note?: string;
+  /** Its dot when that is not what its state alone says (rowPresence): set where the label is about the sign-in. */
+  presence?: Presence;
 };
+
+/**
+ * A row's dot (Presence): its own presence where it has one, else what its state says. Claude Code's and an ACP
+ * agent's "未确认" rows are "unknown" by state (tasks may go to them, unverified) but unconfirmed by presence, like DSH's.
+ */
+export function rowPresence(r: Pick<ConnRow, "state" | "presence">): Presence {
+  if (r.presence) return r.presence;
+  switch (r.state) {
+    case "ok":
+      return "signedIn";
+    case "partial":
+      return "unconfirmed";
+    case "missing":
+      return "signedOut";
+    case "checking":
+      return "checking";
+    default:
+      return "unknown";
+  }
+}
 
 export type MachineConnections = {
   /** The machine answers now (its findings are current, unless stale). */
@@ -131,6 +167,7 @@ export function machineConnections(m: Machine, now: Date): MachineConnections {
       r.state = "unknown";
       r.text = t("conn.unknown");
       r.fix = undefined;
+      r.presence = undefined;
     }
   }
   const state = rows.length ? order.find((s) => rows.some((r) => r.state === s))! : reachable ? "ok" : "unknown";
@@ -181,6 +218,7 @@ function claudeRows(a: AgentStatus): ConnRow[] {
   } else if (a.available && a.loginUnconfirmed) {
     // Its own `auth status` said nothing clear (工单 #108): unconfirmed, never the desktop app's sign-in in its place.
     cli.state = "unknown";
+    cli.presence = "unconfirmed";
     cli.text = t("conn.unconfirmed");
     cli.lacks = t("conn.cliUnconfirmed");
     cli.fix = "claudeLogin";
@@ -240,6 +278,9 @@ function dshRows(a: AgentStatus): ConnRow[] {
     text: dshText,
     lacks: dshUnconfirmed ? t("conn.agentUnconfirmed", { agent: title }) : undefined,
     note: models.length ? t("conn.dshModels", { models: models.slice(0, 3).join(" · ") }) : undefined,
+    // Its dot follows its own label, whatever the plugin's state makes the row's: "已登录" is signed in here as
+    // everywhere, "未确认" / "已检测到" unconfirmed (审计 B / P25).
+    presence: a.loggedIn ? "signedIn" : "unconfirmed",
   }];
   const b = a.dshBridge;
   const v = bridgeView(b);
@@ -294,7 +335,7 @@ function agentRow(a: AgentStatus): ConnRow {
     return { ...r, state: "missing", text: a.problem === AgentProblem.NOT_FOUND ? t("conn.notInstalled") : t("conn.broken"), lacks: a.detail || undefined, fix: "install" };
   }
   // Its check cannot tell (工单 #112: an ACP agent's sign-in shows only in a session): unconfirmed, never signed in on a guess.
-  if (!a.loggedIn && a.loginUnconfirmed) return { ...r, state: "unknown", text: t("conn.unconfirmed"), lacks: t("conn.agentUnconfirmed", { agent: r.title }) };
+  if (!a.loggedIn && a.loginUnconfirmed) return { ...r, state: "unknown", presence: "unconfirmed", text: t("conn.unconfirmed"), lacks: t("conn.agentUnconfirmed", { agent: r.title }) };
   if (!a.loggedIn) return { ...r, state: "missing", text: t("conn.signedOut"), lacks: t("conn.agentSignedOut", { agent: r.title }), fix: "signIn" };
   return { ...r, text: a.version ? t("conn.readyVersion", { version: a.version }) : t("conn.ready") };
 }

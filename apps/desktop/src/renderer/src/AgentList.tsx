@@ -13,7 +13,8 @@ import type { TerminalCommand } from "../../shared/bridge";
 import { useRecheckAgents } from "./agents";
 import { autoResumedAt, pauseOf, usageResetAt } from "./agentPause";
 import { local } from "./api";
-import { ClaudeLogin, claudeLoginWaiting, connDot, ConnRowView } from "./Connections";
+import { ClaudeLogin, claudeLoginWaiting, ConnRowView } from "./Connections";
+import { presenceDot } from "./presence";
 import { Icon } from "./icons";
 import { useNow, useStore } from "./store";
 import "./agentlist.css";
@@ -119,7 +120,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
     const b = connections ? codingBotState(m, name, new Date(), connections) : undefined;
     return b ? (
       <span className="conn-state ag-state" data-state={b.state} title={b.line}>
-        <i className={`dotc ${connDot(b.state)}`} />
+        <i className={`dotc ${presenceDot(b.presence)}`} />
         {b.word}
       </span>
     ) : null;
@@ -325,7 +326,7 @@ export function AgentPage({ m, agent, bare = false }: { m: Machine; agent: strin
             {a?.version && <span className="mono">{a.version}</span>}
             {a && e ? (
               <span className="conn-state ag-state" data-state={e.state} title={e.line}>
-                <i className={`dotc ${connDot(e.state)}`} />
+                <i className={`dotc ${presenceDot(e.presence)}`} />
                 {e.word}
               </span>
             ) : a && (broken(a) ? <BrokenState a={a} /> : (

@@ -214,8 +214,11 @@ const powershell = (script: string, timeout = 20_000) =>
 const symbols = () => (nativeTheme.shouldUseDarkColors ? "#ffffff" : "#1a1a1a");
 /** Mica, behind the sidebar as macOS's vibrancy is: Windows 11 22H2 (build 22621) and later. */
 const mica = Number(os.release().split(".")[2] ?? 0) >= 22621;
-/** The caption buttons as high as the top band: the first run's (48 px) or the toolbar's (44 px). */
-const buttonsHeight = (kind: WindowKind) => (kind === "onboarding" ? 48 : 44);
+/**
+ * The caption buttons as high as the top band: the first run's (48 px), the main window's title bar and the settings'
+ * top (40 px, --size-titlebar; 审计 B: at 44 they hung 4 px over the session toolbar below it), or the others' (44 px).
+ */
+const buttonsHeight = (kind: WindowKind) => (kind === "onboarding" ? 48 : kind === "main" || kind === "settings" ? 40 : 44);
 
 export const win: Platform = {
   token: "win",

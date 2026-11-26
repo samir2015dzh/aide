@@ -3,7 +3,7 @@ import type { Client, Machine } from "@aide/proto/local";
 import { SessionStatus, type Session } from "@aide/proto/session";
 import { agentName } from "@aide/ui";
 import { codingAgentTitle } from "./agents";
-import { agentEntry, clientCategory, grantCategory, isAideClient, machineConnections, type ConnFix, type ConnRow, type ConnState, type MachineConnections } from "./connections";
+import { agentEntry, clientCategory, grantCategory, isAideClient, machineConnections, rowPresence, type ConnFix, type ConnRow, type ConnState, type MachineConnections, type Presence } from "./connections";
 import { t } from "./i18n";
 import { displayTitle, isActive, updatedDate } from "./sessions";
 import { agoText } from "./text";
@@ -33,6 +33,8 @@ export type BotState = {
   line: string;
   usable: Usable;
   why?: NotReady;
+  /** Its dot, the same for the same word on every page (工单 #135 P25 / 审计 B). */
+  presence: Presence;
   /** What fixes it from Aide, as its main connection row says (Claude Code's sign-in, 工单 #108). */
   fix?: ConnFix;
 };
@@ -48,19 +50,20 @@ export function codingBotState(m: Machine, agent: string, now: Date, c: MachineC
 function stateOf(main: ConnRow, reachable: boolean, paused: boolean): BotState {
   const line = main.state === "ok" || main.state === "partial" ? main.text : main.lacks || main.text;
   // Paused is the owner's own say, known whatever the machine last reported: it comes first.
-  if (paused && main.state !== "missing") return { state: main.state, word: t("roster.paused"), line: t("roster.pausedLine"), usable: "no", why: "paused" };
+  if (paused && main.state !== "missing") return { state: main.state, word: t("roster.paused"), line: t("roster.pausedLine"), usable: "no", why: "paused", presence: "unknown" };
+  const presence = rowPresence(main);
   switch (main.state) {
     case "ok":
     case "partial":
-      return { state: main.state, word: firstWord(main.text), line, usable: "yes" };
+      return { state: main.state, word: firstWord(main.text), line, usable: "yes", presence };
     case "checking":
-      return { state: "checking", word: firstWord(main.text), line, usable: "unverified", why: "checking" };
+      return { state: "checking", word: firstWord(main.text), line, usable: "unverified", why: "checking", presence };
     case "unknown":
       return reachable
-        ? { state: "unknown", word: main.text, line, usable: "unverified", why: "unknown" }
-        : { state: "unknown", word: main.text, line, usable: "no", why: "offline" };
+        ? { state: "unknown", word: main.text, line, usable: "unverified", why: "unknown", presence }
+        : { state: "unknown", word: main.text, line, usable: "no", why: "offline", presence };
     default:
-      return { state: "missing", word: firstWord(main.text), line, usable: "no", why: main.fix === "install" ? "missing" : "signedOut" };
+      return { state: "missing", word: firstWord(main.text), line, usable: "no", why: main.fix === "install" ? "missing" : "signedOut", presence };
   }
 }
 
@@ -82,16 +85,17 @@ export function personalBotState(c: Client, now: Date): BotState {
   const seen = s ? new Date(Number(s) * 1000) : undefined;
   if (c.online && c.recent && seen) {
     const line = t("roster.activeLine", { when: agoText(seen, now) });
-    if (now.getTime() - seen.getTime() < justActiveMs) return { state: "ok", word: t("roster.online"), line, usable: "yes" };
-    return { state: "ok", word: t("roster.recent"), line, usable: "yes" };
+    if (now.getTime() - seen.getTime() < justActiveMs) return { state: "ok", word: t("roster.online"), line, usable: "yes", presence: "online" };
+    return { state: "ok", word: t("roster.recent"), line, usable: "yes", presence: "online" };
   }
-  if (c.online) return { state: "ok", word: t("roster.online"), line: t("roster.onlineLine"), usable: "yes" };
+  if (c.online) return { state: "ok", word: t("roster.online"), line: t("roster.onlineLine"), usable: "yes", presence: "online" };
   return {
     state: "unknown",
     word: t("roster.away"),
     line: seen ? t("roster.seen", { when: agoText(seen, now) }) : t("roster.neverSeen"),
     usable: "unverified",
     why: "unknown",
+    presence: "unknown",
   };
 }
 
@@ -157,7 +161,7 @@ export function grantAgent(label: string): string | undefined {
  * — what was last known of it is not what is, and the app not hearing is not the agent being offline.
  */
 export function whileReconnecting(r: Roster): Roster {
-  const state: BotState = { state: "checking", word: t("roster.reconnecting"), line: t("roster.reconnectingLine"), usable: "no", why: "reconnecting" };
+  const state: BotState = { state: "checking", word: t("roster.reconnecting"), line: t("roster.reconnectingLine"), usable: "no", why: "reconnecting", presence: "checking" };
   const re = (bots: Bot[]) => bots.map((b) => ({ ...b, state }));
   return { ...r, personal: re(r.personal), machines: r.machines.map((g) => ({ ...g, bots: re(g.bots) })) };
 }

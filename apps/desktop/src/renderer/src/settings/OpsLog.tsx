@@ -91,7 +91,8 @@ export function OpsLog() {
                     </div>
                     {scriptLabel && <div className="mono ops-preview-sub">{sum.preview}</div>}
                     <div className="fdesc">{sub.join(" · ")}</div>
-                    {!isOpen && !sum.collapsible && r.reason && <div className="fdesc">{r.reason}</div>}
+                    {/* Why it was refused or failed stays on the row while it is folded, scripts too (审计 B); in full when open. */}
+                    {!isOpen && r.reason && <div className="fdesc ops-reason" title={r.reason}>{r.reason}</div>}
                   </div>
                   {hasDetail && (
                     <button
