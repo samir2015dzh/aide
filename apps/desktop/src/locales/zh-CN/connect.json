@@ -116,18 +116,28 @@
   },
   "antigravity": {
     "intro": "Antigravity 是 Google 的主力编码 Agent，通过官方 ACP 服务在你的电脑上运行，支持三档权限预设（仅可查看 / 工作区内修改 / 完全权限）与真实会话模型发现。",
-    "need1": "运行它的电脑上装好 Google Antigravity ACP 服务（agy_acp_server；可从官方发布包安装到 ~/.local/share/antigravity-acp/）。",
-    "need2": "Antigravity 已完成登录：在终端运行一次 aide agent login antigravity。",
     "step1": "在上面选装了 Antigravity 的电脑（默认就是这台）。",
     "step2": "看「状态」：应该显示「已检测到」。如果没有，按下面的清单逐项检查，然后点「重新检查」。",
     "step3": "如果 Antigravity 还没有项目，点「添加项目…」，选一个允许它工作的文件夹。",
     "step4": "点「运行测试」。Antigravity 会回答一个简短的问题。",
     "step5": "点「开始测试任务」。一个真正的任务会开始，并在 Aide 里打开。",
-    "fixInstall": "在 {{machine}} 上装好 Google Antigravity 官方 ACP 服务（agy_acp_server）。仅安装桌面应用是不够的。",
-    "fixWhere": "已经装了？确认 agy_acp_server 在新开终端的 PATH 里，或放在 ~/.local/share/antigravity-acp/（Windows 也可放 %LOCALAPPDATA%\\antigravity-acp\\）。",
+    "fixInstall": "点上面的「安装 Antigravity ACP 服务」：Antigravity 桌面应用不带这个服务，Aide 会替你装好。",
+    "fixWhere": "想自己装？把官方发布包解压到 ~/.local/share/antigravity-acp/（Windows 是 %LOCALAPPDATA%\\antigravity-acp\\），或让 agy_acp_server 在新开终端的 PATH 里。",
     "fixSignIn": "给 Antigravity 登录一次：打开终端（Windows 上是 PowerShell），粘贴下面的命令回车并按提示完成登录。",
     "testFailedHint": "如果原因是没登录或权限受限，按上面「状态」里的说明运行 aide agent login antigravity 登录后再测。",
-    "where1": "你在 Aide 里用 Antigravity 开的任务都在 Aide 的任务列表里，支持选机器、选项目、选三档权限与继续对话，所有设备上都能看到。"
+    "where1": "你在 Aide 里用 Antigravity 开的任务都在 Aide 的任务列表里，支持选机器、选项目、选三档权限与继续对话，所有设备上都能看到。",
+    "needServer": "Google 官方的 Antigravity ACP 服务（agy_acp_server）：Aide 运行的是它，不是 Antigravity 桌面应用。",
+    "needServerMissing": "{{machine}} 上还没有 Google 官方的 Antigravity ACP 服务（桌面应用不带它）：在下面「状态」里点「安装 Antigravity ACP 服务」，Aide 会装好。",
+    "needServerBroken": "{{machine}} 上的 Antigravity ACP 服务运行不了：看下面「状态」里的原因，可以点「安装 Antigravity ACP 服务」重新装一遍。",
+    "needServerOk": "{{machine}} 上已装好 Google 官方的 Antigravity ACP 服务。",
+    "needSignIn": "你的 Google 账号登录：只能你本人在浏览器里完成，Aide 替不了你。",
+    "needSignInMissing": "还没登录：这一步只能你本人完成。在终端运行一次 aide agent login antigravity，在打开的浏览器里用 Google 账号授权。",
+    "needSignInUnconfirmed": "登录状态要跑一轮才知道：点下面的「运行测试」。如果说没登录，在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
+    "needSignInOk": "已用你的 Google 账号登录。",
+    "needSignInLater": "服务装好后再登录：这一步只能你本人完成，在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
+    "install": "安装 Antigravity ACP 服务",
+    "installing": "正在下载并校验…",
+    "installWhat": "Aide 会从 Google 的官方发布处下载 Antigravity ACP 服务，按官方 ACP 注册表的 SHA-256 校验后装到 {{machine}} 上 Aide 找它的位置，装好后自动重新检查。"
   },
   "custom": {
     "intro": "Aide 没列出的编码 Agent，只要支持 Agent Client Protocol（ACP），都可以连接。告诉 Aide 怎么启动它；Aide 会把它保存在那台电脑上，和其他 Agent 列在一起。不支持 ACP、但能在终端里运行命令的 Agent（例如 WorkBuddy），在下面的「助手」里选「其他 Agent」连接。",
@@ -229,5 +239,6 @@
     "connectedBody": "它已授权使用你的项目。请注意：仅显示在线不算接入完成——确认它已配好「保活 + 信箱盯守」（常驻定时轮询 / message_wake webhook / 外部轮询 hook），并从 App 发一条真实消息确认能自动取走并回复。",
     "scope": "调整它能用什么…"
   },
-  "details": "连接细项"
+  "details": "连接细项",
+  "installFailed": "没装上：{{reason}}"
 }

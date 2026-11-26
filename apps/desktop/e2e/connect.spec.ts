@@ -139,3 +139,33 @@ test("the guide from the sidebar, and opened at a line: the assistants' shows on
   await api(settings, "RevokeClient", { grantId: clients.find((c) => c.label === name)!.grantId });
   await app.close();
 });
+
+// 工单 #133: a computer with Antigravity's desktop app only has no ACP server for Aide. Its line says so as it is — not
+// "signed in" beside "not detected" — and installs the server itself, one button, from the ACP registry (here the
+// test's: e2e/desktop_test.go); then it is detected, and what is left is the sign-in, which only its owner can give.
+test("Antigravity's line installs its ACP server with one button, and says what is left as it stands", async () => {
+  const { app, page } = await launch();
+  try {
+    const settings = await openSettings(app, page, "connect/antigravity");
+    const main = settings.getByRole("main", { name: "连接" });
+    await expect(main.getByRole("tab", { name: "Antigravity" })).toHaveAttribute("aria-selected", "true");
+    const before = main.getByRole("region", { name: "开始之前" });
+    const status = main.getByRole("status");
+    await expect(status).toContainText("没有检测到", { timeout: 30_000 });
+    await expect(before).toContainText("还没有 Google 官方的 Antigravity ACP 服务");
+    await expect(before).toContainText("服务装好后再登录");
+    await expect(before).not.toContainText("已完成登录");
+    await snap(settings, "connect-133-antigravity-missing");
+
+    const install = main.getByRole("group", { name: "安装 Antigravity ACP 服务" });
+    await install.getByRole("button", { name: "安装 Antigravity ACP 服务" }).click();
+    await expect(status).toContainText("找到了，但还没登录", { timeout: 60_000 });
+    await expect(install).toHaveCount(0);
+    await expect(before).toContainText("已装好 Google 官方的 Antigravity ACP 服务");
+    await expect(before).toContainText("还没登录：这一步只能你本人完成");
+    await expect(main.getByText("aide agent login antigravity").first()).toBeVisible();
+    await snap(settings, "connect-133-antigravity-installed");
+  } finally {
+    await app.close();
+  }
+});

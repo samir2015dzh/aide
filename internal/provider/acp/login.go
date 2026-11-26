@@ -18,7 +18,7 @@ import (
 func (p *Provider) Login(ctx context.Context, method string, output io.Writer) error {
 	bin, pre, env := p.command()
 	if bin == "" {
-		return errors.New(p.Command + " not found; install the official Antigravity ACP archive (see docs/antigravity.md)")
+		return errors.New(p.Command + " not found; install it from Aide's Connect page (Antigravity › Install Antigravity ACP Server), or by hand from the official archive (see docs/antigravity.md)")
 	}
 	proc, err := provider.StartProc(ctx, bin, append(pre, p.Args...), "", append(provider.ProbeEnv(p.PathEnv), env...))
 	if err != nil {

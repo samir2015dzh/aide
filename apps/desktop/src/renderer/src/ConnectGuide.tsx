@@ -8,7 +8,7 @@ import { AgentTile, Mark } from "@aide/ui";
 import { projectsFor, whyBroken } from "./AgentList";
 import { ConnectionsCard } from "./Connections";
 import { local } from "./api";
-import { agentOf, detect, fixes, formOf, formProblem, lines, looksSecret, notLoggedIn, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
+import { agentOf, detect, fixes, formOf, formProblem, installs, lines, looksSecret, needs, notLoggedIn, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
 import { Icon } from "./icons";
 import { needsUpdate } from "./skew";
 import { errorText, useStore } from "./store";
@@ -81,14 +81,16 @@ export function ConnectGuide({ line, place }: { line: Line; place: Place }) {
           <span className="cg-note">{t("machineNote")}</span>
         </div>
       )}
-      <Steps title={t("before")} items={needs(line).map((k) => t(k as never))} />
+      <Steps title={t("before")} items={needs(line, lineState(m, line)).map((k) => t(k as never, { machine: m.machineName }))} />
       <Steps title={t("steps")} items={[1, 2, 3, 4, 5].map((n) => t(`${line}.step${n}` as never))} ordered />
       {line === "custom" ? <Customs m={m} place={place} /> : <Agent m={m} agent={line} line={line} place={place} />}
     </div>
   );
 }
 
-const needs = (line: Line) => (line === "codex" || line === "antigravity" || line === "custom" ? [`${line}.need1`, `${line}.need2`] : [`${line}.need1`, `${line}.need2`, `${line}.need3`]);
+/** How a line's agent stands on m now (the custom line has none of its own). */
+const lineState = (m: Machine, line: Line) =>
+  line === "custom" ? "checking" : detect(m.status?.agents.find((x) => x.name === line), m.online || m.local, !!m.status?.agents.length);
 
 function Steps({ title, items, ordered }: { title: string; items: ReactNode[]; ordered?: boolean }) {
   const List = ordered ? "ol" : "ul";
@@ -140,6 +142,7 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
             </button>
           )}
         </div>
+        {installs[line] && (d === "missing" || d === "appOnly" || d === "broken") && <Install m={m} line={line} registryId={installs[line]} />}
         {fixes(line, d).length > 0 && (
           <div className="cg-fix">
             <span>{t("tryThis")}</span>
@@ -182,6 +185,35 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
       )}
       {line === "claude" && <p className="cg-note">{t("claude.assistant")}</p>}
     </>
+  );
+}
+
+/**
+ * Installs the agent's program on m from the official ACP registry, where the agent finds it (工单 #133): one button, its
+ * download checked against the registry's SHA-256, done only once the machine finds the agent there; else why not.
+ */
+function Install({ m, line, registryId }: { m: Machine; line: Line; registryId: string }) {
+  const { t } = useTranslation("connect");
+  const [state, setState] = useState<{ busy: boolean; error?: string }>({ busy: false });
+  const install = async () => {
+    setState({ busy: true });
+    try {
+      await local.installMachineACPRegistryAgent({ machineId: m.machineId, registryId });
+      await recheck(m).catch(() => {}); // the next status says it is detected
+      setState({ busy: false });
+    } catch (e) {
+      setState({ busy: false, error: errorText(e) });
+    }
+  };
+  return (
+    <div className="cg-install" role="group" aria-label={t(`${line}.install` as never)}>
+      <p>{t(`${line}.installWhat` as never, { machine: m.machineName })}</p>
+      <button className="btn primary" disabled={state.busy} onClick={install}>
+        {state.busy ? <Mark size={12} variant="seq" /> : <Icon name="arrowDown" />}
+        {state.busy ? t(`${line}.installing` as never) : t(`${line}.install` as never)}
+      </button>
+      {state.error && <p className="cg-err" role="alert">{t("installFailed", { reason: state.error })}</p>}
+    </div>
   );
 }
 
