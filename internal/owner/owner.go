@@ -2762,6 +2762,20 @@ func (o *Owner) ListSessionEvents(ctx context.Context, req *sessionv1.ListEvents
 	return res, err
 }
 
+// ReadAttachment gives back a file a session keeps, from its machine
+// (工单 #156). A machine too old for it says Unimplemented: the apps then
+// show the file by its name, as before.
+func (o *Owner) ReadAttachment(ctx context.Context, req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
+	if l := o.localSession(req.SessionId); l != nil {
+		return l.ReadAttachment(req)
+	}
+	n, err := o.sessionMachine(ctx, req.SessionId)
+	if err != nil {
+		return nil, err
+	}
+	return n.Session.ReadAttachment(ctx, req)
+}
+
 // ReadToolOutput streams a tool's whole output from its session's machine.
 // One from before ReadToolOutput gives it as the event at req.Seq recorded
 // it (its first 16 KiB).

@@ -98,6 +98,9 @@ const (
 	// SessionServiceGetSessionInsightsProcedure is the fully-qualified name of the SessionService's
 	// GetSessionInsights RPC.
 	SessionServiceGetSessionInsightsProcedure = "/aide.session.v1.SessionService/GetSessionInsights"
+	// SessionServiceReadAttachmentProcedure is the fully-qualified name of the SessionService's
+	// ReadAttachment RPC.
+	SessionServiceReadAttachmentProcedure = "/aide.session.v1.SessionService/ReadAttachment"
 )
 
 // SessionServiceClient is a client for the aide.session.v1.SessionService service.
@@ -179,6 +182,15 @@ type SessionServiceClient interface {
 	// when the session is archived or when asked, and kept until a new event
 	// comes.
 	GetSessionInsights(context.Context, *v1.GetSessionInsightsRequest) (*v1.SessionInsights, error)
+	// ReadAttachment gives back a file the session keeps (工单 #156), so that
+	// any device shows it, after a restart too: a file a user message
+	// attached, or a picture a reply of the agent's showed and its turn kept
+	// (TurnCompleted.shown, 工单 #158), found by its SHA-256. Never any other
+	// file. By path, for a picture a reply showed that no turn kept (the turn
+	// is still running, or ended before pictures were kept): the owner only,
+	// and only a picture (PNG, JPEG, GIF or WebP by its content, at most
+	// 10 MiB) that a reply in this session showed.
+	ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error)
 }
 
 // NewSessionServiceClient constructs a client for the aide.session.v1.SessionService service. By
@@ -324,6 +336,12 @@ func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(sessionServiceMethods.ByName("GetSessionInsights")),
 			connect.WithClientOptions(opts...),
 		),
+		readAttachment: connect.NewClient[v1.ReadAttachmentRequest, v1.ReadAttachmentResponse](
+			httpClient,
+			baseURL+SessionServiceReadAttachmentProcedure,
+			connect.WithSchema(sessionServiceMethods.ByName("ReadAttachment")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -351,6 +369,7 @@ type sessionServiceClient struct {
 	clearCheckpoints   *connect.Client[v1.ClearCheckpointsRequest, v1.ClearCheckpointsResponse]
 	markSessionSeen    *connect.Client[v1.MarkSessionSeenRequest, v1.Session]
 	getSessionInsights *connect.Client[v1.GetSessionInsightsRequest, v1.SessionInsights]
+	readAttachment     *connect.Client[v1.ReadAttachmentRequest, v1.ReadAttachmentResponse]
 }
 
 // StartSession calls aide.session.v1.SessionService.StartSession.
@@ -539,6 +558,15 @@ func (c *sessionServiceClient) GetSessionInsights(ctx context.Context, req *v1.G
 	return nil, err
 }
 
+// ReadAttachment calls aide.session.v1.SessionService.ReadAttachment.
+func (c *sessionServiceClient) ReadAttachment(ctx context.Context, req *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error) {
+	response, err := c.readAttachment.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // SessionServiceHandler is an implementation of the aide.session.v1.SessionService service.
 type SessionServiceHandler interface {
 	StartSession(context.Context, *v1.StartSessionRequest) (*v1.StartSessionResponse, error)
@@ -618,6 +646,15 @@ type SessionServiceHandler interface {
 	// when the session is archived or when asked, and kept until a new event
 	// comes.
 	GetSessionInsights(context.Context, *v1.GetSessionInsightsRequest) (*v1.SessionInsights, error)
+	// ReadAttachment gives back a file the session keeps (工单 #156), so that
+	// any device shows it, after a restart too: a file a user message
+	// attached, or a picture a reply of the agent's showed and its turn kept
+	// (TurnCompleted.shown, 工单 #158), found by its SHA-256. Never any other
+	// file. By path, for a picture a reply showed that no turn kept (the turn
+	// is still running, or ended before pictures were kept): the owner only,
+	// and only a picture (PNG, JPEG, GIF or WebP by its content, at most
+	// 10 MiB) that a reply in this session showed.
+	ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error)
 }
 
 // NewSessionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -759,6 +796,12 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 		connect.WithSchema(sessionServiceMethods.ByName("GetSessionInsights")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sessionServiceReadAttachmentHandler := connect.NewUnaryHandlerSimple(
+		SessionServiceReadAttachmentProcedure,
+		svc.ReadAttachment,
+		connect.WithSchema(sessionServiceMethods.ByName("ReadAttachment")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.session.v1.SessionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SessionServiceStartSessionProcedure:
@@ -805,6 +848,8 @@ func NewSessionServiceHandler(svc SessionServiceHandler, opts ...connect.Handler
 			sessionServiceMarkSessionSeenHandler.ServeHTTP(w, r)
 		case SessionServiceGetSessionInsightsProcedure:
 			sessionServiceGetSessionInsightsHandler.ServeHTTP(w, r)
+		case SessionServiceReadAttachmentProcedure:
+			sessionServiceReadAttachmentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -900,4 +945,8 @@ func (UnimplementedSessionServiceHandler) MarkSessionSeen(context.Context, *v1.M
 
 func (UnimplementedSessionServiceHandler) GetSessionInsights(context.Context, *v1.GetSessionInsightsRequest) (*v1.SessionInsights, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.GetSessionInsights is not implemented"))
+}
+
+func (UnimplementedSessionServiceHandler) ReadAttachment(context.Context, *v1.ReadAttachmentRequest) (*v1.ReadAttachmentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.session.v1.SessionService.ReadAttachment is not implemented"))
 }

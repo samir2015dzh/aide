@@ -205,6 +205,10 @@ func (l *Local) ReadToolOutput(req *sessionv1.ReadToolOutputRequest, send func(*
 	return l.n.sessions.ReadToolOutput(l.p, req, send)
 }
 
+func (l *Local) ReadAttachment(req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
+	return l.n.sessions.ReadAttachment(l.p, req)
+}
+
 func (l *Local) ListEvents(req *sessionv1.ListEventsRequest) (*sessionv1.ListEventsResponse, error) {
 	return l.n.sessions.ListEvents(l.p, req)
 }

@@ -172,6 +172,8 @@ service LocalService {
   rpc ListSessionEvents(ListSessionEventsRequest) returns (ListSessionEventsResponse);
   // A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
   rpc ReadToolOutput(ReadToolOutputRequest) returns (stream aide.session.v1.ToolOutputChunk);
+  // A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
+  rpc ReadAttachment(aide.session.v1.ReadAttachmentRequest) returns (aide.session.v1.ReadAttachmentResponse);
   // StartSession starts a session on one of the owner's machines as the
   // owner (created_by "owner"): any project or GitHub repository and coding
   // agent there, as aide.session.v1.SessionService.StartSession checks

@@ -277,6 +277,9 @@ type live struct {
 	draftQueued int
 	draftTimer  *time.Timer
 	draftShown  string
+	// shown: the paths of the pictures this turn's replies showed, kept
+	// when it ends (TurnCompleted.shown).
+	shown []string
 }
 
 // continuityNotice tells an agent starting a fresh provider session in an
@@ -2479,6 +2482,8 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 		l.retryTimer = nil
 	}
 	id, turn, repo := l.row.ID, l.turn, l.repo
+	shown, workDir := l.shown, l.row.Worktree
+	l.shown = nil
 	// In place: no snapshots, the directory and its git are the owner's.
 	inPlace := l.row.Workspace == identityv1.Workspace_WORKSPACE_IN_PLACE
 	edits := l.mayHaveEdits && !s.ws.none && !inPlace
@@ -2495,7 +2500,8 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 		}
 	}
 	tc := &sessionv1.TurnCompleted{Turn: turn, Result: e.Text, IsError: e.IsError,
-		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: costUSD, CostEstimated: costEstimated}}
+		Usage: &sessionv1.Usage{InputTokens: e.Usage.InputTokens, OutputTokens: e.Usage.OutputTokens, CostUsd: costUSD, CostEstimated: costEstimated},
+		Shown: s.keepShown(id, workDir, shown)}
 	if e.IsError {
 		f := e.Failure
 		if f == nil {
@@ -2793,6 +2799,7 @@ func (s *Sessions) emitOutput(l *live, e *sessionv1.SessionEvent, output string)
 		p.LastMessageExcerpt = "" // what the agent said last turn is not this turn's progress
 	case *sessionv1.SessionEvent_AgentMessage:
 		p.LastMessageExcerpt, _ = provider.Truncate(k.AgentMessage.Text, 280)
+		l.shown = append(l.shown, shownPictures(k.AgentMessage.Text)...)
 	case *sessionv1.SessionEvent_ToolCall:
 		p.CurrentTool = k.ToolCall.Name + ": " + k.ToolCall.Summary
 		switch k.ToolCall.Kind {

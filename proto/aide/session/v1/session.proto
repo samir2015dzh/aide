@@ -129,6 +129,17 @@ service SessionService {
   rpc GetSessionInsights(GetSessionInsightsRequest) returns (SessionInsights) {
     option (aide.options.v1.access) = ACCESS_READ;
   }
+  // ReadAttachment gives back a file the session keeps (工单 #156), so that
+  // any device shows it, after a restart too: a file a user message
+  // attached, or a picture a reply of the agent's showed and its turn kept
+  // (TurnCompleted.shown, 工单 #158), found by its SHA-256. Never any other
+  // file. By path, for a picture a reply showed that no turn kept (the turn
+  // is still running, or ended before pictures were kept): the owner only,
+  // and only a picture (PNG, JPEG, GIF or WebP by its content, at most
+  // 10 MiB) that a reply in this session showed.
+  rpc ReadAttachment(ReadAttachmentRequest) returns (ReadAttachmentResponse) {
+    option (aide.options.v1.access) = ACCESS_READ;
+  }
 }
 
 enum SessionStatus {
@@ -818,6 +829,27 @@ message TurnCompleted {
   string commit = 6;
   // Set when is_error is true.
   Failure failure = 7;
+  // The pictures the turn's replies showed (![alt](path) of a file on the
+  // machine), kept with the session as the turn left them (工单 #158):
+  // path is as the reply wrote it; ReadAttachment gives each back by its
+  // sha256. Pictures that are the same file are one.
+  repeated AttachmentInfo shown = 8;
+}
+
+message ReadAttachmentRequest {
+  string session_id = 1;
+  // A file the session keeps: what AttachmentInfo.sha256 says.
+  string sha256 = 2;
+  // Or a picture a reply showed, as the reply wrote its path.
+  string path = 3;
+}
+
+message ReadAttachmentResponse {
+  string name = 1;
+  string media_type = 2;
+  uint64 size = 3;
+  string sha256 = 4;
+  bytes data = 5;
 }
 
 message ErrorEvent {

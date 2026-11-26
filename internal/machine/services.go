@@ -57,6 +57,10 @@ func (s *sessionService) ReadToolOutput(ctx context.Context, req *sessionv1.Read
 	return s.n.sessions.ReadToolOutput(principalFrom(ctx), req, stream.Send)
 }
 
+func (s *sessionService) ReadAttachment(ctx context.Context, req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
+	return s.n.sessions.ReadAttachment(principalFrom(ctx), req)
+}
+
 func (s *sessionService) StreamEvents(ctx context.Context, req *sessionv1.StreamEventsRequest, stream *connect.ServerStream[sessionv1.SessionEvent]) error {
 	return s.n.sessions.Stream(ctx, principalFrom(ctx), req, stream.Send)
 }

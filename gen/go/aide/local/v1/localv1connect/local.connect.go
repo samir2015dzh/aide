@@ -205,6 +205,9 @@ const (
 	// LocalServiceReadToolOutputProcedure is the fully-qualified name of the LocalService's
 	// ReadToolOutput RPC.
 	LocalServiceReadToolOutputProcedure = "/aide.local.v1.LocalService/ReadToolOutput"
+	// LocalServiceReadAttachmentProcedure is the fully-qualified name of the LocalService's
+	// ReadAttachment RPC.
+	LocalServiceReadAttachmentProcedure = "/aide.local.v1.LocalService/ReadAttachment"
 	// LocalServiceStartSessionProcedure is the fully-qualified name of the LocalService's StartSession
 	// RPC.
 	LocalServiceStartSessionProcedure = "/aide.local.v1.LocalService/StartSession"
@@ -487,6 +490,8 @@ type LocalServiceClient interface {
 	ListSessionEvents(context.Context, *v1.ListSessionEventsRequest) (*v1.ListSessionEventsResponse, error)
 	// A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest) (*connect.ServerStreamForClient[v12.ToolOutputChunk], error)
+	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
+	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -964,6 +969,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("ReadToolOutput")),
 			connect.WithClientOptions(opts...),
 		),
+		readAttachment: connect.NewClient[v12.ReadAttachmentRequest, v12.ReadAttachmentResponse](
+			httpClient,
+			baseURL+LocalServiceReadAttachmentProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ReadAttachment")),
+			connect.WithClientOptions(opts...),
+		),
 		startSession: connect.NewClient[v1.StartSessionRequest, v1.SessionResponse](
 			httpClient,
 			baseURL+LocalServiceStartSessionProcedure,
@@ -1301,6 +1312,7 @@ type localServiceClient struct {
 	streamSessionEvents            *connect.Client[v1.StreamSessionEventsRequest, v12.SessionEvent]
 	listSessionEvents              *connect.Client[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse]
 	readToolOutput                 *connect.Client[v1.ReadToolOutputRequest, v12.ToolOutputChunk]
+	readAttachment                 *connect.Client[v12.ReadAttachmentRequest, v12.ReadAttachmentResponse]
 	startSession                   *connect.Client[v1.StartSessionRequest, v1.SessionResponse]
 	sendMessage                    *connect.Client[v1.SendMessageRequest, v1.SessionResponse]
 	interruptSession               *connect.Client[v1.InterruptSessionRequest, v1.SessionResponse]
@@ -1890,6 +1902,15 @@ func (c *localServiceClient) ReadToolOutput(ctx context.Context, req *v1.ReadToo
 	return c.readToolOutput.CallServerStream(ctx, connect.NewRequest(req))
 }
 
+// ReadAttachment calls aide.local.v1.LocalService.ReadAttachment.
+func (c *localServiceClient) ReadAttachment(ctx context.Context, req *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error) {
+	response, err := c.readAttachment.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // StartSession calls aide.local.v1.LocalService.StartSession.
 func (c *localServiceClient) StartSession(ctx context.Context, req *v1.StartSessionRequest) (*v1.SessionResponse, error) {
 	response, err := c.startSession.CallUnary(ctx, connect.NewRequest(req))
@@ -2447,6 +2468,8 @@ type LocalServiceHandler interface {
 	ListSessionEvents(context.Context, *v1.ListSessionEventsRequest) (*v1.ListSessionEventsResponse, error)
 	// A tool's whole output (aide.session.v1.SessionService.ReadToolOutput).
 	ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v12.ToolOutputChunk]) error
+	// A file a session keeps (aide.session.v1.SessionService.ReadAttachment).
+	ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error)
 	// StartSession starts a session on one of the owner's machines as the
 	// owner (created_by "owner"): any project or GitHub repository and coding
 	// agent there, as aide.session.v1.SessionService.StartSession checks
@@ -2920,6 +2943,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("ReadToolOutput")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceReadAttachmentHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceReadAttachmentProcedure,
+		svc.ReadAttachment,
+		connect.WithSchema(localServiceMethods.ByName("ReadAttachment")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceStartSessionHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceStartSessionProcedure,
 		svc.StartSession,
@@ -3316,6 +3345,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListSessionEventsHandler.ServeHTTP(w, r)
 		case LocalServiceReadToolOutputProcedure:
 			localServiceReadToolOutputHandler.ServeHTTP(w, r)
+		case LocalServiceReadAttachmentProcedure:
+			localServiceReadAttachmentHandler.ServeHTTP(w, r)
 		case LocalServiceStartSessionProcedure:
 			localServiceStartSessionHandler.ServeHTTP(w, r)
 		case LocalServiceSendMessageProcedure:
@@ -3661,6 +3692,10 @@ func (UnimplementedLocalServiceHandler) ListSessionEvents(context.Context, *v1.L
 
 func (UnimplementedLocalServiceHandler) ReadToolOutput(context.Context, *v1.ReadToolOutputRequest, *connect.ServerStream[v12.ToolOutputChunk]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadToolOutput is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ReadAttachment(context.Context, *v12.ReadAttachmentRequest) (*v12.ReadAttachmentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadAttachment is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) StartSession(context.Context, *v1.StartSessionRequest) (*v1.SessionResponse, error) {

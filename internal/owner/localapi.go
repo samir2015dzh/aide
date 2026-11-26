@@ -895,6 +895,16 @@ func (l *localService) ListSessionEvents(ctx context.Context, req *localv1.ListS
 	return &localv1.ListSessionEventsResponse{Events: res.Events, HasMoreBefore: res.HasMoreBefore, HasMoreAfter: res.HasMoreAfter}, nil
 }
 
+func (l *localService) ReadAttachment(ctx context.Context, req *sessionv1.ReadAttachmentRequest) (*sessionv1.ReadAttachmentResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		return m.ReadAttachment(req)
+	}
+	return l.o().ReadAttachment(ctx, req)
+}
+
 func (l *localService) ReadToolOutput(ctx context.Context, req *localv1.ReadToolOutputRequest, stream *connect.ServerStream[sessionv1.ToolOutputChunk]) error {
 	if m, ok, err := l.o().onlyMachine(); ok {
 		if err != nil {
