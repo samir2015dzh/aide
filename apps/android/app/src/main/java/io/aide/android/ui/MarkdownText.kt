@@ -170,12 +170,15 @@ private fun MarkdownBlockView(block: MdBlock, textColor: Color) {
                                 modifier = Modifier.widthIn(min = 20.dp).padding(end = 6.dp),
                             )
                         }
-                        Text(
-                            text = buildInlineAnnotated(item.text, textColor, inlineCodeBg, linkColor),
-                            style = TextStyle(fontSize = 16.sp, lineHeight = 25.sp),
-                            color = textColor,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = buildInlineAnnotated(item.text, textColor, inlineCodeBg, linkColor),
+                                style = TextStyle(fontSize = 16.sp, lineHeight = 25.sp),
+                                color = textColor,
+                            )
+                            // Blocks nested in the item, e.g. an indented fenced code block (审计 A).
+                            item.blocks.forEach { child -> MarkdownBlockView(child, textColor) }
+                        }
                     }
                 }
             }
@@ -270,15 +273,24 @@ private fun MarkdownTableView(
             .horizontalScroll(rememberScrollState()),
     ) {
         val totalRows = allRows.size
+        // Children, in order: one background strip per row, then every cell, then the row and
+        // column dividers. Every measurable below is measured exactly once per measure pass —
+        // Compose throws IllegalStateException on a second measure() of the same child, which the
+        // previous "re-measure shorter cells to row height" pass did whenever one cell in a row
+        // wrapped and another did not (审计 A / #132). Row backgrounds are separate strips sized to
+        // the final row height, so cells never need a second measurement to fill their row.
         Layout(
             content = {
-                allRows.forEachIndexed { r, row ->
-                    val isHeader = r == 0
+                allRows.forEachIndexed { r, _ ->
                     val rowBg = when {
-                        isHeader -> headerBg
+                        r == 0 -> headerBg
                         r % 2 == 0 -> stripeBg
                         else -> Color.Transparent
                     }
+                    Box(Modifier.background(rowBg))
+                }
+                allRows.forEachIndexed { r, row ->
+                    val isHeader = r == 0
                     row.forEachIndexed { c, cell ->
                         val align = when (table.alignments.getOrElse(c) { MdAlign.Left }) {
                             MdAlign.Center -> TextAlign.Center
@@ -291,9 +303,7 @@ private fun MarkdownTableView(
                             MdAlign.Left -> Alignment.TopStart
                         }
                         Box(
-                            Modifier
-                                .background(rowBg)
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             contentAlignment = boxAlign,
                         ) {
                             Text(
@@ -318,66 +328,69 @@ private fun MarkdownTableView(
                     Box(Modifier.background(sepColor))
                 }
             },
-        ) { measurables, constraints ->
+        ) { measurables, _ ->
+            val cellStart = totalRows
             val cellCount = totalRows * cols
+            val hDivStart = cellStart + cellCount
             val hDivCount = (totalRows - 1).coerceAtLeast(0)
+            val vDivStart = hDivStart + hDivCount
             val minColPx = 72.dp.roundToPx()
             val maxColPx = 220.dp.roundToPx()
             val strokePx = 1.dp.roundToPx().coerceAtLeast(1)
             val headerStrokePx = 1.5.dp.roundToPx().coerceAtLeast(1)
 
-            // Pass 1: measure natural width of every cell up to maxColPx to determine each column's width.
+            // Pass 1 (intrinsics only, no measure): each column's width is its widest cell's natural
+            // width, clamped to [minColPx, maxColPx].
             val colWidths = IntArray(cols) { minColPx }
             for (r in 0 until totalRows) {
                 for (c in 0 until cols) {
-                    val m = measurables[r * cols + c]
+                    val m = measurables[cellStart + r * cols + c]
                     val natural = m.maxIntrinsicWidth(Constraints.Infinity).coerceIn(minColPx, maxColPx)
                     if (natural > colWidths[c]) colWidths[c] = natural
                 }
             }
             val totalWidth = colWidths.sum()
 
-            // Pass 2: measure every cell constrained to its exact column width, and compute each row height.
+            // Pass 2: measure every cell exactly once at its column width; a row is as tall as its
+            // tallest cell. Shorter cells keep their own height (content is top-aligned anyway) and
+            // the row background strip below fills the rest.
             val rowHeights = IntArray(totalRows)
-            val cellPlaceables = Array(cellCount) { idx ->
+            val cellPlaceables = List(cellCount) { idx ->
                 val c = idx % cols
-                val p = measurables[idx].measure(Constraints(minWidth = colWidths[c], maxWidth = colWidths[c]))
+                val p = measurables[cellStart + idx].measure(Constraints(minWidth = colWidths[c], maxWidth = colWidths[c]))
                 val r = idx / cols
                 if (p.height > rowHeights[r]) rowHeights[r] = p.height
                 p
             }
-            // Pass 3: re-measure cells shorter than their row so backgrounds fill full row height cleanly.
-            for (r in 0 until totalRows) {
-                val rh = rowHeights[r]
-                for (c in 0 until cols) {
-                    val idx = r * cols + c
-                    if (cellPlaceables[idx].height < rh) {
-                        cellPlaceables[idx] = measurables[idx].measure(Constraints.fixed(colWidths[c], rh))
-                    }
-                }
-            }
             val totalHeight = rowHeights.sum()
 
+            // Pass 3: row backgrounds and dividers, each measured once at its final size.
+            val rowBgs = List(totalRows) { r ->
+                measurables[r].measure(Constraints.fixed(totalWidth, rowHeights[r]))
+            }
             val hDivs = List(hDivCount) { r ->
                 val h = if (r == 0) headerStrokePx else strokePx
-                measurables[cellCount + r].measure(Constraints.fixed(totalWidth, h))
+                measurables[hDivStart + r].measure(Constraints.fixed(totalWidth, h))
             }
             val vDivs = List((cols - 1).coerceAtLeast(0)) { c ->
-                measurables[cellCount + hDivCount + c].measure(Constraints.fixed(strokePx, totalHeight))
+                measurables[vDivStart + c].measure(Constraints.fixed(strokePx, totalHeight))
             }
 
             layout(totalWidth, totalHeight) {
                 var y = 0
                 for (r in 0 until totalRows) {
+                    rowBgs[r].placeRelative(0, y)
                     var x = 0
                     for (c in 0 until cols) {
                         cellPlaceables[r * cols + c].placeRelative(x, y)
                         x += colWidths[c]
                     }
                     y += rowHeights[r]
-                    if (r < hDivs.size) {
-                        hDivs[r].placeRelative(0, y - hDivs[r].height)
-                    }
+                }
+                y = 0
+                for (r in 0 until hDivs.size) {
+                    y += rowHeights[r]
+                    hDivs[r].placeRelative(0, y - hDivs[r].height)
                 }
                 var vx = 0
                 for (c in 0 until vDivs.size) {
