@@ -21,9 +21,16 @@ import (
 // message shows twice there.
 
 // keyNotLoaded is the first turn's request when f, its failure, is a
-// missing key and none has been sent again yet; nil otherwise.
+// missing key, none has been sent again yet and the owner has not stopped
+// the turn; nil otherwise.
 func (s *session) keyNotLoaded(f *provider.Failure) map[string]any {
 	if !s.dsh || f == nil || f.Kind != sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS {
+		return nil
+	}
+	s.stopMu.Lock()
+	stopped := s.interrupted
+	s.stopMu.Unlock()
+	if stopped {
 		return nil
 	}
 	s.mu.Lock()
@@ -37,10 +44,19 @@ func (s *session) keyNotLoaded(f *provider.Failure) map[string]any {
 }
 
 // retryForKey sends the first turn's request again if DSH now has the key
-// its model needs; else it ends the turn as it failed (failed).
+// its model needs; else it ends the turn as it failed (failed), or as
+// interrupted when the owner stopped it meanwhile.
 func (s *session) retryForKey(params map[string]any, failed provider.Event) {
-	if s.keyLoaded() && s.request("session/prompt", params, s.turnDone) == nil {
+	loaded := s.keyLoaded()
+	s.stopMu.Lock()
+	stopped := s.interrupted
+	sent := loaded && !stopped && s.request("session/prompt", params, s.turnDone) == nil
+	s.stopMu.Unlock()
+	if sent {
 		return
+	}
+	if stopped {
+		failed.Text, failed.Failure = "interrupted", nil
 	}
 	s.prompting.Store(false)
 	s.emit(failed)

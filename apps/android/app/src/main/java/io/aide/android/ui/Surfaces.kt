@@ -242,11 +242,14 @@ fun HSpace(w: Int) = Spacer(Modifier.width(w.dp))
 /** One number of a page's overview: what it counts small above, the count large, on a Fluent card. */
 @Composable
 fun StatTile(label: String, value: String, modifier: Modifier = Modifier, of: String? = null, tone: Tone = Tone.Quiet, onClick: (() -> Unit)? = null) {
-    val barColor = if (tone == Tone.Warn) aide.orange else Color.Transparent
+    // A count that needs the owner: a warm wash over the card and a 3dp amber bar at its leading edge.
+    val warn = tone == Tone.Warn
+    val bar = aide.orange
+    val wash = aide.orangeSubtle
     val cardMod = modifier
         .aideCard()
         .then(if (onClick != null) Modifier.pressable(onClick) else Modifier)
-        .then(if (barColor != Color.Transparent) Modifier.drawBehind { drawRect(barColor, Offset.Zero, Size(3.dp.toPx(), size.height)) } else Modifier)
+        .then(if (warn) Modifier.drawBehind { drawRect(wash); drawRect(bar, Offset.Zero, Size(3.dp.toPx(), size.height)) } else Modifier)
         .padding(horizontal = 14.dp, vertical = 12.dp)
     androidx.compose.foundation.layout.Column(cardMod) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)

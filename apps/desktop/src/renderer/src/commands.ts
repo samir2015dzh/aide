@@ -12,12 +12,14 @@ import { useStore, type Store } from "./store";
 
 // The app menu's and the menu bar's commands (main/menu.ts, main/tray.ts,
 // notifications), and what the menus need to know about the window.
-// searchGrant: and searchMachine: are MainWindow's.
-export function useCommands() {
+// searchGrant: and searchMachine: are MainWindow's. listed: the list of
+// every session is beside the page (MainWindow), so the card docks only
+// in a wider window (layout.ts).
+export function useCommands(listed = false) {
   const st = useStore();
-  const latest = useRef(st);
-  latest.current = st;
-  useEffect(() => window.aide?.onCommand((c) => runCommand(latest.current, c)), []);
+  const latest = useRef({ st, listed });
+  latest.current = { st, listed };
+  useEffect(() => window.aide?.onCommand((c) => runCommand(latest.current.st, c, latest.current.listed)), []);
 
   const s = selected(st);
   const state: MenuState = {
@@ -28,13 +30,13 @@ export function useCommands() {
           answerable: pendingQuestion(s) !== undefined,
           archivable: isArchivable(s),
           archived: s.status === SessionStatus.ARCHIVED,
-          inspector: layoutOf(st).card !== "hidden",
+          inspector: layoutOf({ ...st, listed }).card !== "hidden",
           grant: s.createdBy,
           grantLabel: grantLabel(st, s),
           project: s.projectId,
         }
       : null,
-    sidebar: layoutOf(st).sidebar !== "hidden",
+    sidebar: layoutOf({ ...st, listed }).sidebar !== "hidden",
     undo: st.toast?.undo !== undefined,
   };
   const key = JSON.stringify(state);
@@ -47,7 +49,7 @@ function selected(st: Store): Session | undefined {
   return sel.kind === "session" ? st.sessions.find((s) => s.sessionId === sel.id) : undefined;
 }
 
-export function runCommand(st: Store, c: Command) {
+export function runCommand(st: Store, c: Command, listed = false) {
   const s = selected(st);
   // A room's notification (工单 #69): its page.
   if (c.startsWith("room:")) {
@@ -66,9 +68,9 @@ export function runCommand(st: Store, c: Command) {
     case "nextActive":
       return next(st, isActive);
     case "toggleInspector":
-      return s && setCard(st, layoutOf(st).card === "hidden");
+      return s && setCard(st, layoutOf({ ...st, listed }).card === "hidden", listed);
     case "toggleSidebar":
-      return setSidebar(st, layoutOf(st).sidebar === "hidden");
+      return setSidebar(st, layoutOf({ ...st, listed }).sidebar === "hidden");
     case "newGrant":
     case "newSession":
     case "addMachine":

@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Client } from "@aide/proto/local";
 import { FailureKind } from "@aide/proto/session";
@@ -44,6 +44,19 @@ export function Attention({ now }: { now: Date }) {
   const expiring = owner ? expiringClients(st, now) : [];
   const sick = st.machines.flatMap((m) => problemsOf(m).map((p) => ({ m, p })));
   const team = useTeam();
+  // A failed session being retried or archived: its buttons wait for the answer, so a second click sends nothing.
+  // inflight is checked at the click, before React shows busy.
+  const inflight = useRef(new Set<string>());
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+  const once = (id: string, action: () => Promise<unknown>) => {
+    if (inflight.current.has(id)) return;
+    inflight.current.add(id);
+    setBusy(new Set(inflight.current));
+    void action().finally(() => {
+      inflight.current.delete(id);
+      setBusy(new Set(inflight.current));
+    });
+  };
   const count = sick.length + team.waiting.length + team.failed.length + expiring.length;
   if (count === 0) return null;
   return (
@@ -71,15 +84,19 @@ export function Attention({ now }: { now: Date }) {
         })}
         {team.failed.map((s) => {
           const canRetry = s.createdBy === "owner" && (!s.progress?.lastFailure || retryableKinds.has(s.progress.lastFailure.kind));
+          const pending = busy.has(s.sessionId);
           return (
             <Row key={s.sessionId} icon="alert" tint="r" title={displayTitle(s)} detail={`${senderLine(st, s)} · ${failureLine(s) || i18n.t("common:team.lastTurnFailed")}`}>
               {canRetry && (
                 <button
                   className="btn"
+                  disabled={pending}
                   onClick={() =>
-                    void st.run(
-                      () => local.sendMessage({ sessionId: s.sessionId, text: t("attention.retryPrompt"), attachments: [] }),
-                      t("attention.retried", { title: displayTitle(s) }),
+                    once(s.sessionId, () =>
+                      st.run(
+                        () => local.sendMessage({ sessionId: s.sessionId, text: t("attention.retryPrompt"), attachments: [] }),
+                        t("attention.retried", { title: displayTitle(s) }),
+                      ),
                     )
                   }
                 >
@@ -88,7 +105,7 @@ export function Attention({ now }: { now: Date }) {
                 </button>
               )}
               {isArchivable(s) && (
-                <button className="btn" onClick={() => archive(st, s)}>
+                <button className="btn" disabled={pending} onClick={() => once(s.sessionId, () => archive(st, s))}>
                   {t("attention.archive")}
                 </button>
               )}

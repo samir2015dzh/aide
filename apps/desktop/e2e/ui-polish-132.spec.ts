@@ -730,6 +730,57 @@ test("UI Polish 批次（#1–#7）：高质感双色链路舞台与原版副官
   }
 });
 
+test("工单 #174: 检查器快捷键在 1280px 任务列旁可开、概览重试双击只发一次、全部对话浮层关闭交还焦点且 Esc 不越层", async () => {
+  const command = (c: string) =>
+    app.evaluate((_, c) => (globalThis as unknown as { aideTest: { mainWindow(): { webContents: { send(ch: string, c: string): void } } } }).aideTest.mainWindow().webContents.send("command", c), c);
+
+  // #2：1280px、左侧任务列展开时会话列表已退让；菜单与快捷键的「显示检查器」照样把它叫出来（覆层），再按一次收起
+  await sessionList(page);
+  await page.locator(".srow", { has: page.locator(".stitle", { hasText: titles.bigIdle }) }).first().click();
+  await expect(page.locator(".ctitle h2")).toHaveText(titles.bigIdle);
+  const infoBtn = page.locator(".ctool").getByRole("button", { name: "会话列表" });
+  await expect(infoBtn).toHaveAttribute("aria-pressed", "false");
+  await command("toggleInspector");
+  await expect(infoBtn).toHaveAttribute("aria-pressed", "true");
+  await command("toggleInspector");
+  await expect(infoBtn).toHaveAttribute("aria-pressed", "false");
+
+  // #3：概览「重试」双击，等回音期间按钮不可点，「继续」只发一次
+  await navTo(page, /^概览/);
+  const failRow = page.locator("#ov-attention .arow", { hasText: "速率限制重试验证" });
+  const retry = failRow.getByRole("button", { name: "重试" });
+  const before = daemon.sent.length;
+  await retry.dblclick();
+  await expect(retry).toBeEnabled({ timeout: 5_000 });
+  expect(daemon.sent.slice(before).map((m) => m.sessionId)).toEqual(["s-build-fail"]);
+
+  // #9：浮层用 × 关、选一条对话关，焦点都回到「全部对话」按钮；其上开着表单时 Esc 只关表单
+  const buildGroup = page.locator(".side-bots").getByRole("group", { name: "build-server" });
+  await buildGroup.locator(".bot-row", { hasText: "Claude Code" }).click();
+  const allBtn = page.locator(".conv-all-btn");
+  const flyout = page.locator(".conv-flyout");
+  await allBtn.click();
+  await expect(flyout).toBeVisible();
+  await flyout.getByRole("button", { name: "关闭对话列表" }).click();
+  await expect(flyout).toHaveCount(0);
+  await expect(allBtn).toBeFocused();
+  await allBtn.click();
+  await flyout.locator(".conv-main").first().click();
+  await expect(flyout).toHaveCount(0);
+  await expect(allBtn).toBeFocused();
+  await allBtn.click();
+  await expect(flyout).toBeVisible();
+  await command("newSession");
+  const sheet = page.locator(".sheet[aria-modal=true]");
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  await expect(flyout).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(flyout).toHaveCount(0);
+  await expect(allBtn).toBeFocused();
+});
+
 test("工单 #128 第二条: 连接后台服务屏等待图标持续动效且超时后显示已等待时长", async () => {
   const deadSocket = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "aide-dead-")), "missing.sock");
   const { app: deadApp, page: deadPage } = await launch(deadSocket, { args: extraArgs, start: true });

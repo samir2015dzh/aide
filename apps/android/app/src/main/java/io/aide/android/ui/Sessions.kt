@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +72,7 @@ import io.aide.android.model.isLive
 import io.aide.android.model.needsYou
 import io.aide.android.model.quietText
 import io.aide.android.model.stateLine
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -117,7 +119,7 @@ fun SessionsTab(model: AppModel, open: (String) -> Unit) {
         val needsStart = 1
         val unseenStart = needsStart + (if (b.needsYou.isEmpty()) 0 else 1 + b.needsYou.size)
         val inProgStart = unseenStart + (if (b.unseen.isEmpty()) 0 else 1 + b.unseen.size)
-        val quick: (Session, QuestionItem, String) -> Unit = { s, item, label ->
+        val quick: (Session, QuestionItem, String) -> Job = { s, item, label ->
             scope.launch { model.answer(s, listOf(Answer(item.id, listOf(label), "")), decline = false) }
         }
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
@@ -167,7 +169,7 @@ fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
     val sessions = world.buckets.needsYou
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    val quick: (Session, QuestionItem, String) -> Unit = { s, item, label ->
+    val quick: (Session, QuestionItem, String) -> Job = { s, item, label ->
         scope.launch { model.answer(s, listOf(Answer(item.id, listOf(label), "")), decline = false) }
     }
     Column(Modifier.fillMaxSize()) {
@@ -185,10 +187,10 @@ fun NeedsYouTab(model: AppModel, open: (String) -> Unit) {
     }
 }
 
-/** Single non-secret choice with up to 3 compact options that can be answered in one tap on the list card. */
-private fun quickChoiceItem(q: Question): QuestionItem? {
-    val items = if (q.items.size == 1) q.items else q.items.filter { !it.optional }
-    val item = items.singleOrNull() ?: return null
+/** A question of one item, a single non-secret choice with up to 3 compact options, answered in one tap on the list
+ *  card. One with more items, optional ones too, is answered on its page, where each shows. */
+internal fun quickChoiceItem(q: Question): QuestionItem? {
+    val item = q.items.singleOrNull() ?: return null
     return item.takeIf { !it.multiSelect && !it.secret && it.options.size in 1..3 && it.options.all { o -> o.label.length <= 18 } }
 }
 
@@ -200,7 +202,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(
     open: (String) -> Unit,
     tone: Tone,
     archive: ((Session) -> Unit)? = null,
-    quickAnswer: ((Session, QuestionItem, String) -> Unit)? = null,
+    quickAnswer: ((Session, QuestionItem, String) -> Job)? = null,
 ) {
     if (sessions.isEmpty()) return
     item(key = "h-$title", contentType = "heading") { SectionHeader(title, count = sessions.size, tone = tone) }
@@ -214,9 +216,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(
 @Composable
 /** archive: a long press offers it (工单 #165), when given; one that can't be archived now (a turn running) says so. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
-fun SessionRow(s: Session, world: World, archive: (() -> Unit)? = null, quickAnswer: ((QuestionItem, String) -> Unit)? = null, onClick: () -> Unit) {
+/** quickAnswer: answers the question's one item with an option; its job ends with the answer, the chips taking no tap meanwhile. */
+fun SessionRow(s: Session, world: World, archive: (() -> Unit)? = null, quickAnswer: ((QuestionItem, String) -> Job)? = null, onClick: () -> Unit) {
     val waits = needsYou(s)
     val quick = if (quickAnswer != null && s.status == SessionStatus.WAITING_INPUT) s.progress?.pendingQuestion?.let(::quickChoiceItem) else null
+    var answering by remember(s.progress?.pendingQuestion?.questionId) { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     val press = if (archive == null) Modifier.rowPress(onClick)
     else Modifier.combinedClickable(remember { MutableInteractionSource() }, Highlight(aide.pressed), onLongClickLabel = t("Archive", "归档"), onLongClick = { menu = true }, onClick = onClick)
@@ -252,11 +256,16 @@ fun SessionRow(s: Session, world: World, archive: (() -> Unit)? = null, quickAns
                     if (prompt.isNotEmpty()) {
                         Text(prompt, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                     }
-                    FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(Modifier.padding(top = 6.dp).alpha(if (answering) 0.5f else 1f), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         quick.options.forEach { o ->
                             Box(
                                 Modifier.clip(RoundedCornerShape(Radius.Md)).background(aide.card).border(1.dp, aide.controlBorder, RoundedCornerShape(Radius.Md))
-                                    .pressable { quickAnswer(quick, o.label) }.padding(horizontal = 11.dp, vertical = 5.dp),
+                                    .pressable {
+                                        if (!answering) {
+                                            answering = true
+                                            quickAnswer(quick, o.label).invokeOnCompletion { answering = false }
+                                        }
+                                    }.padding(horizontal = 11.dp, vertical = 5.dp),
                             ) {
                                 Text(o.label, style = IosType.Footnote, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                             }

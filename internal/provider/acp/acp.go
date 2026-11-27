@@ -990,9 +990,13 @@ type session struct {
 	// dsh: DeepSeek Harness, whose process's first turn is sent again once
 	// if it failed for a key DSH had not loaded yet (dshkeys.go); sent:
 	// turns sent in this process; firstPrompt: the first one's request.
+	// stopMu orders Interrupt against that sending again: interrupted is set
+	// by Interrupt until the next Send, and a stopped turn is not sent again.
 	dsh         bool
 	sent        int
 	firstPrompt map[string]any
+	stopMu      sync.Mutex
+	interrupted bool
 	cfgMu       sync.Mutex
 	cfg         *sessionConfig
 	// closeMu orders emits from Start against the reader closing events.
@@ -1299,6 +1303,9 @@ func (s *session) call(ctx context.Context, method string, params any) (json.Raw
 
 func (s *session) Send(ctx context.Context, in provider.Input) error {
 	s.flush() // what the agent said by itself since its last turn
+	s.stopMu.Lock()
+	s.interrupted = false
+	s.stopMu.Unlock()
 	s.mu.Lock()
 	if s.wake != nil {
 		s.wake.Stop()
@@ -1375,6 +1382,9 @@ func (s *session) Steer(context.Context, provider.Input) error {
 }
 
 func (s *session) Interrupt(ctx context.Context) error {
+	s.stopMu.Lock()
+	defer s.stopMu.Unlock()
+	s.interrupted = true
 	return s.write(map[string]any{"jsonrpc": "2.0", "method": "session/cancel", "params": map[string]any{"sessionId": s.sessionID}})
 }
 

@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
@@ -17,8 +18,9 @@ import (
 // fakeDSH answers ACP as DSH does around its credentials store (工单 #172):
 // its first turn fails for DeepSeek's key; asked again, its model's
 // provider offers three models when the key has loaded meanwhile ("late"),
-// that one alone when there is none ("missing"). Each method is written to
-// $FAKE_DSH_LOG, a line each.
+// that one alone when there is none ("missing"). "stop" is "late" with the
+// owner stopping the turn while Aide asks: the answer waits for the
+// session/cancel. Each method is written to $FAKE_DSH_LOG, a line each.
 func fakeDSH(mode string) {
 	if slices.Contains(os.Args, "--dump-config") {
 		return
@@ -37,6 +39,7 @@ func fakeDSH(mode string) {
 			"options": []any{map[string]any{"group": "deepseek-official", "name": "DeepSeek", "options": choices}}}}
 	}
 	prompts := 0
+	var held json.RawMessage // stop: the set_config_option answered at the cancel
 	in := bufio.NewScanner(os.Stdin)
 	for in.Scan() {
 		var m struct {
@@ -53,6 +56,10 @@ func fakeDSH(mode string) {
 		case "session/new":
 			reply(m.ID, map[string]any{"sessionId": "dsh-1", "configOptions": options("flash")})
 		case "session/set_config_option":
+			if mode == "stop" && prompts == 1 {
+				held = m.ID
+				continue
+			}
 			if mode == "late" {
 				reply(m.ID, map[string]any{"configOptions": options("flash", "pro", "chat")})
 			} else {
@@ -67,6 +74,11 @@ func fakeDSH(mode string) {
 			out.Encode(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{"sessionId": "dsh-1",
 				"update": map[string]any{"sessionUpdate": "agent_message_chunk", "content": map[string]any{"type": "text", "text": "done"}}}})
 			reply(m.ID, map[string]any{"stopReason": "end_turn"})
+		case "session/cancel":
+			if held != nil {
+				reply(held, map[string]any{"configOptions": options("flash", "pro", "chat")})
+				held = nil
+			}
 		default:
 			reply(m.ID, map[string]any{})
 		}
@@ -81,7 +93,7 @@ func TestDSHKeyNotLoadedYet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, mode := range []string{"late", "missing"} {
+	for _, mode := range []string{"late", "missing", "stop"} {
 		t.Run(mode, func(t *testing.T) {
 			log := t.TempDir() + "/calls"
 			p := &Provider{Agent: Agent{Name: "deepseek", Command: "dsh", DSHPresets: true}, Binary: self}
@@ -91,6 +103,19 @@ func TestDSHKeyNotLoadedYet(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { s.Close() })
+			if mode == "stop" { // the owner stops the turn as Aide asks whether the key has loaded
+				for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+					if b, _ := os.ReadFile(log); strings.Contains(string(b), "session/prompt\nsession/set_config_option\n") {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatal("not asked whether the key has loaded")
+					}
+				}
+				if err := s.Interrupt(context.Background()); err != nil {
+					t.Fatal(err)
+				}
+			}
 			_, done := collect(t, s)
 			b, _ := os.ReadFile(log)
 			prompts := strings.Count(string(b), "session/prompt")
@@ -98,6 +123,10 @@ func TestDSHKeyNotLoadedYet(t *testing.T) {
 			case "late":
 				if done.IsError || done.Text != "done" || prompts != 2 {
 					t.Fatalf("sent again once and ran: %+v, %d prompts", done, prompts)
+				}
+			case "stop":
+				if !done.IsError || done.Text != "interrupted" || done.Failure != nil || prompts != 1 {
+					t.Fatalf("stopped, not sent again: %+v, %d prompts", done, prompts)
 				}
 			case "missing":
 				if !done.IsError || done.Failure == nil || done.Failure.Kind != sessionv1.FailureKind_FAILURE_KIND_MISSING_CREDENTIALS || prompts != 1 {

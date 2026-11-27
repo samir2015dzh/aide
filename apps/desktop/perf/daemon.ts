@@ -15,7 +15,8 @@ import { ids, smallConversation, world, type World } from "./world";
 // grows: for 5 s by an event every 250 ms, then for 5 s by a reply written
 // as drafts every 100 ms (docs/reply-streaming.md), stored when it is done.
 
-export type Daemon = { socket: string; world: World; live: (on: boolean) => void; close: () => Promise<void> };
+// sent: every message sent to a session, in order (answered after 300 ms, as a busy machine does; the session unchanged).
+export type Daemon = { socket: string; world: World; sent: { sessionId: string; text: string }[]; live: (on: boolean) => void; close: () => Promise<void> };
 
 const tsMs = (s: Session) => (s.updatedAt ? timestampDate(s.updatedAt).getTime() : 0);
 const newestFirst = (a: Session, b: Session) => tsMs(b) - tsMs(a) || (a.sessionId < b.sessionId ? 1 : -1);
@@ -44,6 +45,7 @@ function channel<T>(signal: AbortSignal) {
 
 export async function startDaemon(socket: string): Promise<Daemon> {
   const w = world();
+  const sent: Daemon["sent"] = [];
   const watchers = new Set<(m: WatchSessionsResponse) => void>();
   const screens = new Set<(m: WatchResponse) => void>();
   const followers = new Map<string, Set<(e: SessionEvent) => void>>();
@@ -71,6 +73,11 @@ export async function startDaemon(socket: string): Promise<Daemon> {
       listDevices: () => ({ devices: w.devices }),
       listSessions: (req) => page(req.limit, req.before),
       listHeldMessages: () => ({ messages: [], unreachable: [] }),
+      sendMessage: async (req) => {
+        sent.push({ sessionId: req.sessionId, text: req.text });
+        await new Promise((r) => setTimeout(r, 300));
+        return { session: w.sessions.get(req.sessionId) };
+      },
       listExecLog: () => ({ entries: w.execLog, unreachable: [] }),
       listPersonas: () => ({ personas: [] }),
       openDirectRoom: (req) => {
@@ -203,6 +210,7 @@ export async function startDaemon(socket: string): Promise<Daemon> {
   return {
     socket,
     world: w,
+    sent,
     live,
     close: () => {
       live(false);
