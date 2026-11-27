@@ -134,7 +134,7 @@
     "needServerOk": "{{machine}} 上已装好 Google 官方的 Antigravity ACP 服务。",
     "needSignIn": "你的 Google 账号登录：只能你本人在浏览器里完成，Aide 替不了你。",
     "needSignInMissing": "还没登录：这一步只能你本人完成。在终端运行一次 aide agent login antigravity，在打开的浏览器里用 Google 账号授权。",
-    "needSignInUnconfirmed": "登录状态要跑一轮才知道：点下面的「运行测试」。如果说没登录，在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
+    "needSignInUnconfirmed": "登录状态要跑一轮才知道：已在 Antigravity 应用里登录过的，不用再登录——直接点下面的「开始测试任务」（或「运行测试」），跑通就会显示已登录。只有它回答没登录时，才在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
     "needSignInOk": "已用你的 Google 账号登录。",
     "needSignInLater": "服务装好后再登录：这一步只能你本人完成，在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
     "install": "安装 Antigravity ACP 服务",

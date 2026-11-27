@@ -222,11 +222,14 @@ test("a new server set up with its setup code: welcome, authorize, set up this M
   // Each opens its own page, as in settings; Codex's says how to log in. The steps' buttons stay below.
   const agentPage = (name: string) => page.getByRole("region", { name });
   const back = () => page.getByRole("button", { name: "所有 Agent" }).click();
+  // Antigravity with no ACP sign-in on file is unconfirmed, never "not signed in" (工单 #180 B: its app's sign-in
+  // leaves none): its page sends no one to log in first.
   const antigravity = agents.getByRole("listitem", { name: "Antigravity" });
-  await expect(antigravity).toContainText("还没登录");
+  await expect(antigravity).toContainText("未确认");
+  await expect(antigravity).not.toContainText("还没登录");
   await antigravity.getByRole("button", { name: /^Antigravity/ }).click();
-  await expect(agentPage("Antigravity").getByText("aide agent login antigravity")).toBeVisible();
-  await expect(agentPage("Antigravity").getByRole("button", { name: "在终端运行" })).toBeVisible();
+  await expect(agentPage("Antigravity")).toContainText("登录状态未确认");
+  await expect(agentPage("Antigravity").getByRole("button", { name: "在终端运行" })).toHaveCount(0);
   await back();
   await codex.getByRole("button", { name: /^Codex/ }).click();
   await expect(agentPage("Codex").getByText("codex login")).toBeVisible();

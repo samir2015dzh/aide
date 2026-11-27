@@ -34,8 +34,20 @@
 .ag-add:disabled{opacity:.5}
 .ag-group{margin:18px 14px 6px;font-size:12px;color:var(--l2)}
 .ag-missing{flex:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 12px}
-.ag-missing>div{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--l3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ag-missing>div>*:first-child{filter:grayscale(1);opacity:.45;flex:none}
+.ag-missing>div{display:flex;min-width:0}
+/* Every row is a button (工单 #180 A): it opens the Connect guide or the panel under the list. */
+.ag-miss{display:flex;align-items:center;gap:7px;flex:1;min-width:0;border:0;border-radius:var(--r-ctl);padding:3px 6px;background:none;color:var(--l3);font:inherit;font-size:12px;text-align:left;cursor:pointer}
+.ag-miss>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-miss>span:not(:last-child){flex:none}
+.ag-miss>em{font-style:normal;color:var(--accent-t);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ag-miss:hover,.ag-miss[aria-expanded="true"]{background:var(--btn);color:var(--l1)}
+.ag-miss>*:first-child{filter:grayscale(1);opacity:.45;flex:none}
+.ag-miss:hover>*:first-child,.ag-miss[aria-expanded="true"]>*:first-child{filter:none;opacity:1}
+.ag-miss-panel{display:flex;flex-direction:column;gap:6px;margin-top:8px;padding:10px 12px;border-radius:var(--r-ctl);background:var(--btn);box-shadow:var(--btn-sh);font-size:12.5px;color:var(--l1)}
+.ag-miss-panel p{margin:0}
+.ag-miss-h{display:flex;align-items:center;gap:8px}
+.ag-miss-h b{flex:1}
+.ag-miss-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .ag-page{display:flex;flex-direction:column;gap:13px}
 .ag-page .ag-group{margin:8px 14px 6px}
 .ag-page .ag-add{margin-top:8px}

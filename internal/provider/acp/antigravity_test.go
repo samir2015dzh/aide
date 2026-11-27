@@ -29,8 +29,15 @@ func TestAntigravityDiscovery(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("GEMINI_HOME", dir)
 	p := &Provider{Agent: antigravityAgent("darwin"), Binary: fakeBin}
-	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn || i.LoginUnconfirmed {
-		t.Fatalf("installed without settings.json must be confirmed signed out: %+v", i)
+	// No settings.json: signed in inside the app, or never: unconfirmed,
+	// never a confirmed sign-out (工单 #180).
+	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn || !i.LoginUnconfirmed {
+		t.Fatalf("installed without settings.json must be unconfirmed: %+v", i)
+	}
+	// The app's own data there is no sign-out either.
+	os.MkdirAll(filepath.Join(dir, "antigravity", "conversations"), 0o700)
+	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn || !i.LoginUnconfirmed {
+		t.Fatalf("app data without ACP settings must be unconfirmed: %+v", i)
 	}
 	os.Mkdir(filepath.Join(dir, "antigravity-acp"), 0o700)
 	file := filepath.Join(dir, "antigravity-acp", "settings.json")
@@ -50,10 +57,15 @@ func TestAntigravityDiscovery(t *testing.T) {
 			t.Fatalf("%s: %+v", c.config, i)
 		}
 	}
-	// Removing settings.json after login falls back to signed out (not unconfirmed).
-	os.Remove(file)
+	// Its auth emptied after login is a sign-out (工单 #111) ...
+	os.WriteFile(file, []byte(`{"auth":{"type":""}}`), 0o600)
 	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn || i.LoginUnconfirmed {
-		t.Fatalf("after logout (settings removed): %+v", i)
+		t.Fatalf("after logout (auth emptied): %+v", i)
+	}
+	// ... settings.json gone is not: unconfirmed (工单 #180).
+	os.Remove(file)
+	if i := p.Discover(context.Background()); !i.Available || i.LoggedIn || !i.LoginUnconfirmed {
+		t.Fatalf("settings removed: %+v", i)
 	}
 }
 

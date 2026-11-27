@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
@@ -303,7 +304,20 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	if len(info.Models) == 0 {
 		info.Models = Models
 	}
+	// Its permission modes, as Aide's gate enforces them (工单 #180 C): it
+	// runs with --dangerously-skip-permissions and Aide's PreToolUse hook
+	// decides each tool, so no mode chosen is what it always was here.
+	info.Modes, info.Own.Mode = provider.PresetModes(), DefaultMode
 	return info
+}
+
+// DefaultMode is a Claude Code session's mode when none is chosen: full
+// access, as its sessions always ran here (工单 #180 C keeps them so).
+const DefaultMode = provider.PresetFullAccess
+
+// ValidMode: one of the presets, or none (DefaultMode).
+func ValidMode(mode string) bool {
+	return mode == "" || slices.ContainsFunc(provider.PresetModes(), func(m provider.Mode) bool { return m.ID == mode })
 }
 
 // Models are the aliases Claude Code takes for its latest models, for one
@@ -366,11 +380,20 @@ func (p *Provider) Start(ctx context.Context, spec provider.StartSpec) (provider
 	if bin == "" {
 		return nil, errors.New("claude not found")
 	}
+	// Its mode is enforced by Aide's gate, for each call with the mode it has
+	// then (SetMode, 工单 #170 / #180 C).
+	if !ValidMode(spec.Mode) {
+		return nil, provider.Fail(sessionv1.FailureKind_FAILURE_KIND_INVALID_REQUEST,
+			fmt.Sprintf("claude: mode %q: not offered (available: read-only, workspace-write, danger-full-access)", spec.Mode))
+	}
+	mode := &atomic.Value{}
+	mode.Store(cmp.Or(spec.Mode, DefaultMode))
+	gate := provider.LivePresetGate(func() string { return mode.Load().(string) }, spec.WorkDir, spec.Gate)
 	proc, err := provider.StartProc(ctx, bin, Args(spec), spec.WorkDir, spec.Env)
 	if err != nil {
 		return nil, err
 	}
-	s := &session{proc: proc, events: make(chan provider.Event, 256), gate: spec.Gate, ctx: ctx, log: cmp.Or(p.Log, slog.Default())}
+	s := &session{proc: proc, events: make(chan provider.Event, 256), gate: gate, mode: mode, ctx: ctx, log: cmp.Or(p.Log, slog.Default())}
 	if spec.NewRef != "" {
 		s.desktop = &desktopEntry{id: spec.NewRef, workDir: spec.WorkDir, title: desktopTitle(spec.Project, spec.Requester, spec.Title)}
 	}
@@ -420,6 +443,7 @@ type session struct {
 	proc   *provider.Proc
 	events chan provider.Event
 	gate   provider.Gate
+	mode   *atomic.Value // string: the preset its gate enforces now
 	ctx    context.Context
 	log    *slog.Logger
 	// desktop is how the Claude desktop app is to list a new session, once
@@ -439,6 +463,16 @@ type session struct {
 	// question is the event).
 	asks     map[string]askRequest
 	askCalls map[string]bool
+}
+
+// SetMode changes the preset its gate enforces from its next tool call on
+// (工单 #180 C): Aide's gate, not Claude Code, holds the mode.
+func (s *session) SetMode(_ context.Context, mode string) error {
+	if mode == "" || !ValidMode(mode) {
+		return fmt.Errorf("mode %q: not offered (available: read-only, workspace-write, danger-full-access)", mode)
+	}
+	s.mode.Store(mode)
+	return nil
 }
 
 type askRequest struct {

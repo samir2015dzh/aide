@@ -8,6 +8,8 @@ describe("DSH's permission presets (工单 #89)", () => {
   test("named as DSH names them; another agent's modes and DSH's other presets by their own names", () => {
     expect(modes.map((m) => modeLabel("deepseek", m))).toEqual(["仅可查看", "工作区内修改", "完全权限", "Plan"]);
     expect(modeLabel("codex", { id: "read-only", name: "Read Only" })).toBe("Read Only");
+    // 工单 #180 C: Claude Code offers the presets too.
+    expect(modeLabel("claude", { id: "workspace-write", name: "workspace-write" })).toBe("工作区内修改");
   });
 
   test("a project's preset is its DSH sessions' default, for DSH alone", () => {

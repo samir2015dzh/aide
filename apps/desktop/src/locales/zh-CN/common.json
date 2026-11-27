@@ -690,7 +690,11 @@
     "notChosen": "{{agent}} 不让在 Aide 里选这一项：按它自己的设置",
     "dropTitle": "松手添加附件",
     "dropHint": "文件或图片",
-    "sentFiles": "随消息发送的附件"
+    "sentFiles": "随消息发送的附件",
+    "notChosenHow": "{{agent}} 不让在 Aide 里选{{what}}：这里按它自己的设置运行；要改，请在 {{agent}} 自己的设置里改",
+    "effortNotThisModel": "所选模型不分推理强度：要调强度，先在「模型」里换一个分强度的模型",
+    "claudeAskMode": "Claude Code 自带的「逐项询问」Aide 代批不了：要逐条批准，请直接在 Claude Code 里用",
+    "defaultModeIs": "默认 · {{mode}}"
   },
   "conv": {
     "list": "对话",

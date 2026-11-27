@@ -158,7 +158,8 @@ func TestAntigravityACP(t *testing.T) {
 				for _, p := range acp.Providers("") {
 					if p.Name() == "antigravity" {
 						i := p.Discover(context.Background())
-						if !i.Available || !i.LoggedIn {
+						// Unconfirmed is no sign-out (工单 #180): its session says.
+						if !i.Available || !i.LoggedIn && !i.LoginUnconfirmed {
 							t.Skipf("Antigravity ACP not ready: %+v", i)
 						}
 						env = append(env, "AIDE_ANTIGRAVITY_BIN="+i.Binary)

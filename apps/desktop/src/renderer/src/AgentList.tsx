@@ -1,11 +1,12 @@
-import { ConnectLink } from "./components";
 import { shortPath } from "./agentPath";
 import { lines } from "./connectGuideLogic";
-import { useState, type ReactNode } from "react";
+import { missingAction, missingAgents } from "./missingAgents";
+import { needsUpdate } from "./skew";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { AgentSpeed, Workspace } from "@aide/proto/identity";
-import { AgentProblem, type AgentStatus } from "@aide/proto/machine";
+import { AgentProblem, type ACPRegistryEntry, type AgentStatus } from "@aide/proto/machine";
 import type { Machine, Project } from "@aide/proto/local";
 import { agentEntry, agoText, codingAgentIds, codingBotState, codingAgentTitle, defaultProjectName, dshAgent, modeLabel, modelChoices, modelTitle, projectIdFromFolder, projectTitle, type MachineConnections } from "@aide/core";
 import { AgentLogo, AgentTile, Mark } from "@aide/ui";
@@ -16,7 +17,7 @@ import { local } from "./api";
 import { ClaudeLogin, claudeLoginWaiting, ConnRowView } from "./Connections";
 import { presenceDot } from "./presence";
 import { Icon } from "./icons";
-import { useNow, useStore } from "./store";
+import { errorText, useNow, useStore } from "./store";
 import "./agentlist.css";
 
 // A machine's coding agents, as the first run's "Check and Manage Available
@@ -97,6 +98,7 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
   const st = useStore();
   const projects = st.projects.filter((p) => p.machineId === m.machineId);
   const { installed, troubled, checking, missing, hidden, known } = agents;
+  const [missingOpen, setMissingOpen] = useState<string>();
   const others = projects.filter((p) => !installed.some((a) => projectsFor([p], a.name).length > 0));
   const othersTitle = known ? t("prepare.otherProjects") : t("prepare.allProjects");
   // With the machine's connections (工单 #53, the machine page), each agent is one entry: its one state is the
@@ -230,17 +232,113 @@ export function AgentList({ m, agents, unknown, onOpen, connections }: { m: Mach
         <>
           <div className="ag-group">{t("prepare.notInstalled")}</div>
           <div className="ag-missing" role="list" aria-label={t("prepare.missing")}>
-            {missing.map((name) => (
-              <div key={name} role="listitem" aria-label={codingAgentTitle(name)}>
-                <AgentLogo agent={name} size={16} />
-                {codingAgentTitle(name)}
-                {(lines as readonly string[]).includes(name) && <ConnectLink line={name}>{t("prepare.howToConnect")}</ConnectLink>}
-              </div>
-            ))}
+            {/* Every row does something (工单 #180 A): a Connect guide line opens it, any other says in place what to do. */}
+            {missing.map((name) => {
+              const act = missingAction(name, lines);
+              const guide = act && "guide" in act;
+              return (
+                <div key={name} role="listitem" aria-label={codingAgentTitle(name)}>
+                  <button
+                    type="button"
+                    className="ag-miss"
+                    aria-expanded={guide ? undefined : missingOpen === name}
+                    title={guide ? t("prepare.howToConnect") : t("prepare.missingHow", { agent: codingAgentTitle(name) })}
+                    onClick={() => (guide ? window.aide?.openSettings(`connect/${name}`) : setMissingOpen(missingOpen === name ? undefined : name))}
+                  >
+                    <AgentLogo agent={name} size={16} />
+                    <span>{codingAgentTitle(name)}</span>
+                    {guide && <em>{t("prepare.howToConnect")}</em>}
+                  </button>
+                </div>
+              );
+            })}
           </div>
+          {missingOpen && missing.includes(missingOpen) && <MissingPanel key={missingOpen} m={m} name={missingOpen} recheck={recheck} onClose={() => setMissingOpen(undefined)} />}
         </>
       )}
     </>
+  );
+}
+
+/**
+ * A not-installed agent opened in place (工单 #180 A): what it is, where to install it for the machine to find it, its
+ * official page, and its entry in the official ACP registry, installed from here as one of the machine's own agents
+ * (or why it can't be on this machine). Never a row that does nothing.
+ */
+function MissingPanel({ m, name, recheck, onClose }: { m: Machine; name: string; recheck: () => void; onClose: () => void }) {
+  const { t } = useTranslation("firstrun");
+  const st = useStore();
+  const info = missingAgents[name];
+  const [entry, setEntry] = useState<ACPRegistryEntry | null>();
+  const [error, setError] = useState("");
+  const [installing, setInstalling] = useState(false);
+  const title = codingAgentTitle(name);
+  const load = useCallback(() => {
+    if (!info) return;
+    local.listMachineACPRegistry({ machineId: m.machineId, refresh: false }).then(
+      (res) => setEntry(res.entries.find((e) => e.id === info.registryId) ?? null),
+      (e) => {
+        setEntry(null);
+        setError(needsUpdate(e) ? t("prepare.missingUpdate", { machine: m.machineName }) : errorText(e));
+      },
+    );
+  }, [info, m.machineId, m.machineName, t]);
+  useEffect(load, [load]);
+  if (!info) return null;
+  const install = async () => {
+    setInstalling(true);
+    setError("");
+    try {
+      const res = await local.installMachineACPRegistryAgent({ machineId: m.machineId, registryId: info.registryId });
+      st.show(t("prepare.missingInstalled", { agent: title, name: res.agent?.name || info.registryId, machine: m.machineName }));
+      load();
+      recheck();
+    } catch (e) {
+      setError(needsUpdate(e) ? t("prepare.missingUpdate", { machine: m.machineName }) : errorText(e));
+    } finally {
+      setInstalling(false);
+    }
+  };
+  return (
+    <section className="ag-miss-panel" aria-label={title}>
+      <div className="ag-miss-h">
+        <AgentLogo agent={name} size={18} />
+        <b>{title}</b>
+        <button className="tb" aria-label={t("prepare.missingClose")} title={t("prepare.missingClose")} onClick={onClose}>
+          <Icon name="x" />
+        </button>
+      </div>
+      <p>{t(`prepare.missingWhat.${name}` as never)}</p>
+      <p>
+        {t("prepare.missingWhere", { machine: m.machineName, command: info.command })}
+        {info.app && ` ${t("prepare.missingApp", { app: info.app, command: info.command })}`}
+      </p>
+      {entry === undefined && !error && <p className="ag-note">{t("prepare.missingRegistryLoading")}</p>}
+      {entry && entry.installed && <p className="ag-note">{t("prepare.missingRegistryHas", { name: entry.installedAs || entry.id })}</p>}
+      {entry && !entry.installed && entry.supported && (
+        <p className="ag-note">{t("prepare.missingRegistryCan", { machine: m.machineName, how: entry.distribution + (entry.sha256Verified ? " · SHA-256" : "") })}</p>
+      )}
+      {entry && !entry.installed && !entry.supported && <p className="ag-note">{t("prepare.missingRegistryCant", { reason: entry.unsupportedReason || "—" })}</p>}
+      {entry === null && !error && <p className="ag-note">{t("prepare.missingRegistryNone")}</p>}
+      {error && (
+        <p className="sheet-err" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="ag-miss-acts">
+        {entry && !entry.installed && entry.supported && (
+          <button className="btn sm primary" disabled={installing} onClick={() => void install()}>
+            {installing ? t("prepare.missingInstalling") : t("prepare.missingInstall")}
+          </button>
+        )}
+        <button className="btn sm" onClick={() => window.aide?.openExternal(info.site)}>
+          {t("prepare.missingSite")} <Icon name="ext" />
+        </button>
+        <button className="btn sm" onClick={recheck}>
+          {t("prepare.missingCheck")}
+        </button>
+      </div>
+    </section>
   );
 }
 

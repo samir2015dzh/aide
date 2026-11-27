@@ -162,11 +162,15 @@ test("Antigravity's line installs its ACP server with one button, and says what 
 
     const install = main.getByRole("group", { name: "安装 Antigravity ACP 服务" });
     await install.getByRole("button", { name: "安装 Antigravity ACP 服务" }).click();
-    await expect(status).toContainText("找到了，但还没登录", { timeout: 60_000 });
+    // Installed, with no ACP sign-in on file: unconfirmed, not "not signed in" (工单 #180 B: one signed in inside the
+    // Antigravity app has none), and a test run comes before any login command.
+    await expect(status).toContainText("登录状态未确认", { timeout: 60_000 });
+    await expect(status).not.toContainText("还没登录");
     await expect(install).toHaveCount(0);
     await expect(before).toContainText("已装好 Google 官方的 Antigravity ACP 服务");
-    await expect(before).toContainText("还没登录：这一步只能你本人完成");
-    await expect(main.getByText("aide agent login antigravity").first()).toBeVisible();
+    await expect(before).toContainText("已在 Antigravity 应用里登录过的，不用再登录");
+    await expect(before).toContainText("开始测试任务");
+    await expect(main.getByRole("button", { name: "在终端运行" })).toHaveCount(0);
     await snap(settings, "connect-133-antigravity-installed");
   } finally {
     await app.close();

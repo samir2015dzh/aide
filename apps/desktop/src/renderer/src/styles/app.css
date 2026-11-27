@@ -709,8 +709,6 @@ html.blurred .nav-i.sel .ic{color:var(--l2)}
 /* What a chip picks, before its value (工单 #140 P11); one Aide cannot choose, a quiet label of the same shape. */
 .picker .picker-k{color:var(--l2);margin-right:4px}
 .picker .picker-k::after{content:" ·"}
-.picker.picker-fixed{display:inline-flex;align-items:center;cursor:default;background:none;border-style:dashed;color:var(--l2)}
-.picker.picker-fixed:hover{background:none}
 .picker-menu{max-height:min(360px,70vh);overflow-y:auto}
 .picker-menu .mi{height:auto;min-height:var(--size-row)}
 .picker-menu .picker-l{display:flex;flex-direction:column;padding:4px 0}
