@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/samir2015dzh/aide/internal/provider"
@@ -118,13 +120,51 @@ func (p *Provider) Handshake(ctx context.Context, env []string, dir string) (Gre
 	return g, nil
 }
 
-// discoverByHandshake is Discover for an agent that may have no --version:
-// available once it answers initialize, its version the one it gives.
+// greeting is a handshake a check had answered, for the program file it ran.
+type greeting struct {
+	mu   sync.Mutex
+	file string // fileKey of the program
+	g    *Greeting
+}
+
+// fileKey names a program file as it is now: its path, size and time
+// changed, it is another program (an update, a reinstall).
+func fileKey(bin string) string {
+	fi, err := os.Stat(bin)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%s\x00%d\x00%d", bin, fi.Size(), fi.ModTime().UnixNano())
+}
+
+// discoverByHandshake is Discover by ACP's handshake (every ACP agent's,
+// 工单 #176: one need not take --version): available once it answers
+// initialize, its version the one it gives. As checks are passive (工单
+// #112), one not on purpose keeps what the last handshake found while its
+// program is the same file; one that failed is tried again at every check.
 func (p *Provider) discoverByHandshake(ctx context.Context, info provider.Info) provider.Info {
-	g, err := p.Handshake(ctx, provider.ProbeEnv(p.PathEnv), "")
+	key := fileKey(info.Binary)
+	p.greeted.mu.Lock()
+	kept := p.greeted.g
+	if p.greeted.file != key || key == "" {
+		kept = nil
+	}
+	p.greeted.mu.Unlock()
+	g, err := Greeting{}, error(nil)
+	if kept != nil && !provider.IsOnPurpose(ctx) {
+		g = *kept
+	} else {
+		g, err = p.Handshake(ctx, provider.ProbeEnv(p.PathEnv), "")
+		p.greeted.mu.Lock()
+		p.greeted.file, p.greeted.g = key, nil
+		if err == nil {
+			p.greeted.g = &g
+		}
+		p.greeted.mu.Unlock()
+	}
 	switch {
-	case errors.Is(ctx.Err(), context.DeadlineExceeded):
-		info.Problem = provider.ProblemTimedOut
+	case err != nil && errors.Is(ctx.Err(), context.DeadlineExceeded):
+		info.Problem = provider.ProblemTimedOut // the check had no answer: not that it fails
 	case err != nil:
 		info.Problem, info.Detail = provider.ProblemFailed, err.Error()
 	default:

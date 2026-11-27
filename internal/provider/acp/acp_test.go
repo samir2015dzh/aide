@@ -452,6 +452,65 @@ func TestDiscover(t *testing.T) {
 	}
 }
 
+// An ACP server is found by its handshake, not by --version (工单 #175/#176):
+// one that ends at once on --version, as Antigravity's does, is available,
+// its version the one initialize gives. A check not on purpose keeps the
+// last handshake while the program is the same file; on purpose, or the
+// file changed, it is asked again. One that does not start, or does not
+// answer, says which.
+func TestDiscoverByHandshake(t *testing.T) {
+	log := filepath.Join(t.TempDir(), "methods")
+	t.Setenv("FAKE_ACP_LOG", log)
+	t.Setenv("FAKE_ACP_NO_VERSION_FLAG", "1")
+	bin := filepath.Join(t.TempDir(), filepath.Base(fakeBin))
+	b, err := os.ReadFile(fakeBin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bin, b, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(bin, "--version").CombinedOutput(); err == nil || !strings.Contains(string(out), "Unknown command line flag") {
+		t.Fatalf("the stand-in takes --version: %v %s", err, out)
+	}
+	p := &Provider{Agent: Agent{Name: "fake", Command: "fakeacp"}, Binary: bin}
+	handshakes := func() int { b, _ := os.ReadFile(log); return strings.Count(string(b), "initialize") }
+	if info := p.Discover(context.Background()); !info.Available || info.Version != "1.2.3" || info.Problem != provider.ProblemNone {
+		t.Fatalf("found by its handshake: %+v", info)
+	}
+	if info := p.Discover(context.Background()); !info.Available || info.Version != "1.2.3" || handshakes() != 1 {
+		t.Fatalf("a passive check keeps it: %+v, %d handshakes", info, handshakes())
+	}
+	if info := p.Discover(provider.OnPurpose(context.Background())); !info.Available || handshakes() != 2 {
+		t.Fatalf("on purpose, asked again: %+v, %d handshakes", info, handshakes())
+	}
+	later := time.Now().Add(time.Minute)
+	os.Chtimes(bin, later, later) // another program in its place
+	if info := p.Discover(context.Background()); !info.Available || handshakes() != 3 {
+		t.Fatalf("a changed file, asked again: %+v, %d handshakes", info, handshakes())
+	}
+
+	if runtime.GOOS == "windows" {
+		return // the rest stands in with shell scripts
+	}
+	dir := t.TempDir()
+	script := func(name, body string) string {
+		path := filepath.Join(dir, name)
+		os.WriteFile(path, []byte("#!/bin/sh\n"+body+"\n"), 0o755)
+		return path
+	}
+	broken := &Provider{Agent: Agent{Name: "fake", Command: "broken"}, Binary: script("broken", "echo 'cannot open its library' >&2; exit 3")}
+	if info := broken.Discover(context.Background()); info.Available || info.Problem != provider.ProblemFailed || !strings.Contains(info.Detail, "cannot open its library") {
+		t.Fatalf("one that does not start: %+v", info)
+	}
+	silent := &Provider{Agent: Agent{Name: "fake", Command: "silent"}, Binary: script("silent", "exec sleep 30")}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if info := silent.Discover(ctx); info.Available || info.Problem != provider.ProblemTimedOut {
+		t.Fatalf("one that does not answer: %+v", info)
+	}
+}
+
 // Images go as image blocks only to agents that declare they take them;
 // the text lists the files either way.
 func TestImagesOnlyWhenTheAgentTakesThem(t *testing.T) {

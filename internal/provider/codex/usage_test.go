@@ -60,6 +60,20 @@ func TestRateLimitsRead(t *testing.T) {
 	}
 }
 
+// Its --version failing is no verdict (工单 #176): found, its version unknown,
+// signed in as `codex login status` says.
+func TestVersionProbeIsNoVerdict(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a shell script stands in for codex")
+	}
+	bin := filepath.Join(t.TempDir(), "codex")
+	os.WriteFile(bin, []byte("#!/bin/sh\ncase \"$1\" in --version) echo 'error: unexpected argument' >&2; exit 2;; login) echo 'Logged in using ChatGPT';; esac\n"), 0o755)
+	info := (&Provider{Binary: bin}).Discover(context.Background())
+	if !info.Available || info.Version != "" || info.Problem != provider.ProblemNone || !info.LoggedIn {
+		t.Fatalf("version unknown, found: %+v", info)
+	}
+}
+
 // TestDiscoverAsksRateLimits: a check on purpose that may ask asks a
 // signed-in Codex its limits on the app-server that lists its models; one
 // that may not ask does not.

@@ -90,6 +90,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
@@ -583,10 +584,14 @@ fun IosMenu(expanded: Boolean, onDismissRequest: () -> Unit, entries: List<MenuE
             val shape = RoundedCornerShape(Radius.Lg)
             val rowShape = RoundedCornerShape(Radius.Md)
             val ticks = entries.any { it.checked }
+            // A long list (a DSH gateway's models, 工单 #174) scrolls inside the menu, which stays within the screen,
+            // its last entry reachable: it was cut off at the window's edge.
+            val tallest = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
             Column(
                 Modifier.padding(12.dp).widthIn(min = 200.dp, max = 290.dp)
                     .shadow(20.dp, shape, ambientColor = Color.Black.copy(alpha = 0.24f), spotColor = Color.Black.copy(alpha = 0.24f))
-                    .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape).padding(6.dp),
+                    .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape)
+                    .heightIn(max = tallest).verticalScroll(rememberScrollState()).padding(6.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 entries.forEach { e ->

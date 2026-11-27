@@ -94,6 +94,9 @@ type Provider struct {
 	lastProtoVer uint32
 	// probe: what DSH's sessions here offer, found before any (工单 #166).
 	probe dshProbe
+	// greeted: the last handshake a check had answered (工单 #176), kept
+	// for passive checks while its program is the same file.
+	greeted greeting
 }
 
 // ObservedCapabilities returns the latest negotiated ACP capabilities and protocol
@@ -327,16 +330,20 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	env = append(provider.ProbeEnv(p.PathEnv), env...)
-	if p.Custom {
-		return p.discoverByHandshake(ctx, info)
-	}
-	out, problem, detail := provider.Probe(ctx, env, bin, append(pre, "--version")...)
-	if problem != provider.ProblemNone {
-		info.Problem, info.Detail = problem, detail
+	// Here and runs: it answers ACP's initialize, which names its version
+	// (工单 #176). An ACP server need not take --version: Antigravity's ends
+	// at once on a flag it does not know (工单 #175), one that reads stdin
+	// waits until the check gives up. Its --version is read only for a
+	// version the handshake did not give, and what it does is no verdict.
+	info = p.discoverByHandshake(ctx, info)
+	if p.Custom || !info.Available {
 		return info
 	}
-	info.Available = true
-	info.Version = versionRE.FindString(string(out))
+	if info.Version == "" {
+		if out, problem, _ := provider.Probe(ctx, env, bin, append(pre, "--version")...); problem == provider.ProblemNone {
+			info.Version = versionRE.FindString(string(out))
+		}
+	}
 	// ACP has no way to ask for the login state before a session: not
 	// confirmed (工单 #112, #108's rule for every agent), never a guess. A
 	// session that runs a turn says it is signed in, one that fails "not

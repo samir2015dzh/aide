@@ -63,13 +63,21 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	env := provider.ProbeEnv(p.PathEnv)
+	// Its --version is a reading of its version, no verdict on whether it
+	// runs (工单 #176): one that fails as a program does (an exit, what it
+	// printed) leaves its version unknown, and what its sessions do says
+	// the rest. What tells why it can't run is kept: a runtime missing, no
+	// processes left, a launcher with no agent, no answer.
 	out, problem, detail := provider.Probe(ctx, env, bin, "--version")
-	if problem != provider.ProblemNone {
+	switch problem {
+	case provider.ProblemNone:
+		info.Version = versionRE.FindString(string(out))
+	case provider.ProblemFailed:
+	default:
 		info.Problem, info.Detail = problem, detail
 		return info
 	}
 	info.Available = true
-	info.Version = versionRE.FindString(string(out))
 	login := provider.Command(ctx, bin, "login", "status")
 	login.Env = env
 	if out, err := login.CombinedOutput(); err == nil && strings.Contains(string(out), "Logged in") {

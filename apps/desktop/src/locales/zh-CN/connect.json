@@ -22,10 +22,12 @@
     "checking": "正在检查 {{machine}}…",
     "ready": "已在 {{machine}} 上检测到",
     "readyVersion": "已在 {{machine}} 上检测到 · 版本 {{version}}",
+    "readyNoVersion": "已在 {{machine}} 上检测到 · 版本未知",
     "signIn": "在 {{machine}} 上找到了，但还没登录",
     "unconfirmed": "已在 {{machine}} 上检测到，登录状态未确认（可发一轮测试任务自动验证）",
     "appOnly": "{{machine}} 上只有 {{app}} 应用，还没有 Aide 要运行的那部分",
-    "broken": "在 {{machine}} 上找到了，但运行不了",
+    "broken": "在 {{machine}} 上找到了，但启动失败",
+    "noAnswer": "在 {{machine}} 上找到了，但检查时它没有回应",
     "missing": "在 {{machine}} 上没有检测到",
     "signInClaude": "在 {{machine}} 上找到了 Claude Code 命令行，但它还没登录（Claude Desktop 的登录不会续给它）"
   },
@@ -34,7 +36,7 @@
   "checking": "正在检查…",
   "fix": {
     "checkAgain": "然后点「重新检查」。每点一次 Aide 都会重新找，不用重启任何东西。",
-    "broken": "Aide 找到了它，但运行时出错：{{reason}}",
+    "broken": "Aide 检查到的情况：{{reason}}",
     "offline": "在 {{machine}} 上打开 Aide，或者唤醒它。它一上线，状态就会回来。",
     "customMissing": "检查命令：这个程序装在 {{machine}} 上了吗？名字或完整路径对不对？在下面编辑这个 Agent，点「测试连接」看看结果。"
   },

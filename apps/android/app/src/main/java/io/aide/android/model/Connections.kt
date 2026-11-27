@@ -41,6 +41,25 @@ data class MachineConnections(val reachable: Boolean, val rows: List<ConnRow>, v
 
 private const val NOT_FOUND = "AGENT_PROBLEM_NOT_FOUND"
 private const val APP_WITHOUT_CLI = "AGENT_PROBLEM_APP_WITHOUT_CLI"
+private const val TIMED_OUT = "AGENT_PROBLEM_TIMED_OUT"
+
+/** A found agent's state with its version, or that its check could not read one (工单 #176: --version is no verdict). */
+private fun versioned(en: String, zh: String, version: String) =
+    if (version.isNotEmpty()) t("$en · $version", "$zh · $version") else t("$en · version unknown", "$zh · 版本未知")
+
+/** Why an agent is not available, in a word or two: a check with no answer is not a program that fails (工单 #175). */
+private fun unavailableLabel(a: AgentStatus) = when (a.problem) {
+    NOT_FOUND -> t("Not installed", "未安装")
+    TIMED_OUT -> t("No answer to the check", "检查无回应")
+    else -> t("Can't run", "运行不了")
+}
+
+/** What a check with no answer means, else what the machine said. */
+private fun unavailableDetail(a: AgentStatus): String? =
+    if (a.problem == TIMED_OUT) t(
+        "Found, but it didn't answer Aide's check within 20 seconds: the check got no answer, which doesn't mean it's broken. Check again.",
+        "找到了，但 Aide 检查时它 20 秒内没有回应：这是检查没得到回答，不一定是它坏了。可以再检查一次。",
+    ) else a.detail.ifEmpty { null }
 
 enum class BridgeView { UNPREPARED, PREPARED, INSTALLED, NOT_RUNNING, OUTDATED, UNKNOWN, INSTALLING, INSTALL_FAILED, INSTALL_RESTART }
 
@@ -119,7 +138,7 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
         )
     }
     rows += when {
-        a.available && a.loggedIn -> ConnRow("claude-cli", "claude", cliTitle, ConnState.OK, if (a.version.isNotEmpty()) t("Signed in · ${a.version}", "已登录 · ${a.version}") else t("Signed in", "已登录"), null, at)
+        a.available && a.loggedIn -> ConnRow("claude-cli", "claude", cliTitle, ConnState.OK, versioned("Signed in", "已登录", a.version), null, at)
         a.available && a.login?.state == "AGENT_LOGIN_STATE_WAITING" -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.CHECKING, t("Signing in…", "正在登录…"),
             // 工单 #118: no browser is claimed; its address, once printed, is opened on any device.
@@ -163,8 +182,8 @@ private fun claudeRows(a: AgentStatus): List<ConnRow> {
         )
         else -> ConnRow(
             "claude-cli", "claude", cliTitle, ConnState.MISSING,
-            if (a.problem == NOT_FOUND) t("Not installed", "未安装") else t("Can't run", "运行不了"),
-            if (a.problem == NOT_FOUND) t("Tasks for Claude run with the Claude Code command line, which is not on this machine.", "派给 Claude 的任务要用 Claude Code 命令行跑，这台机器上没有。") else a.detail.ifEmpty { null },
+            unavailableLabel(a),
+            if (a.problem == NOT_FOUND) t("Tasks for Claude run with the Claude Code command line, which is not on this machine.", "派给 Claude 的任务要用 Claude Code 命令行跑，这台机器上没有。") else unavailableDetail(a),
             at,
         )
     }
@@ -175,7 +194,7 @@ private fun dshRows(a: AgentStatus): List<ConnRow> {
     val at = checked(a)
     if (a.checking && at == null) return listOf(ConnRow("deepseek", "deepseek", "DSH", ConnState.CHECKING, t("Checking…", "正在检测…")))
     if (!a.available) {
-        return listOf(ConnRow("deepseek", "deepseek", "DSH", ConnState.MISSING, if (a.problem == NOT_FOUND) t("Not installed", "未安装") else t("Can't run", "运行不了"), if (a.problem == NOT_FOUND) null else a.detail.ifEmpty { null }, at))
+        return listOf(ConnRow("deepseek", "deepseek", "DSH", ConnState.MISSING, unavailableLabel(a), if (a.problem == NOT_FOUND) null else unavailableDetail(a), at))
     }
     val b = a.dshBridge
     val v = bridgeView(b)
@@ -197,9 +216,9 @@ private fun dshRows(a: AgentStatus): List<ConnRow> {
     }
     val dshUnconfirmed = !a.loggedIn && a.loginUnconfirmed
     val dshText = when {
-        a.loggedIn -> if (a.version.isNotEmpty()) t("Signed in · ${a.version}", "已登录 · ${a.version}") else t("Signed in", "已登录")
-        dshUnconfirmed -> if (a.version.isNotEmpty()) t("Unconfirmed · ${a.version}", "未确认 · ${a.version}") else t("Unconfirmed", "未确认")
-        else -> if (a.version.isNotEmpty()) t("Detected · ${a.version}", "已检测到 · ${a.version}") else t("Detected", "已检测到")
+        a.loggedIn -> versioned("Signed in", "已登录", a.version)
+        dshUnconfirmed -> versioned("Unconfirmed", "未确认", a.version)
+        else -> versioned("Detected", "已检测到", a.version)
     }
     val dsh = ConnRow(
         "deepseek", "deepseek", "DSH",
@@ -219,7 +238,7 @@ private fun agentRow(a: AgentStatus): ConnRow {
     val title = agentTitle(a.name)
     return when {
         a.checking && at == null -> ConnRow(a.name, a.name, title, ConnState.CHECKING, t("Checking…", "正在检测…"))
-        !a.available -> ConnRow(a.name, a.name, title, ConnState.MISSING, if (a.problem == NOT_FOUND) t("Not installed", "未安装") else t("Can't run", "运行不了"), a.detail.ifEmpty { null }, at)
+        !a.available -> ConnRow(a.name, a.name, title, ConnState.MISSING, unavailableLabel(a), unavailableDetail(a), at)
         // Its check cannot tell (工单 #112: an ACP agent's sign-in shows only in a session): unconfirmed, never a guess.
         !a.loggedIn && a.loginUnconfirmed -> ConnRow(
             a.name, a.name, title, ConnState.UNKNOWN, t("Unconfirmed", "未确认"),
@@ -230,7 +249,7 @@ private fun agentRow(a: AgentStatus): ConnRow {
             at, presence = Presence.UNCONFIRMED,
         )
         !a.loggedIn -> ConnRow(a.name, a.name, title, ConnState.MISSING, t("Not signed in", "未登录"), t("$title is installed but not signed in: no task can go to it here.", "$title 装了但没登录：这台机器上暂时不能把任务派给它。"), at)
-        else -> ConnRow(a.name, a.name, title, ConnState.OK, if (a.version.isNotEmpty()) t("Ready · ${a.version}", "可以用 · ${a.version}") else t("Ready", "可以用"), null, at)
+        else -> ConnRow(a.name, a.name, title, ConnState.OK, versioned("Ready", "可以用", a.version), null, at)
     }
 }
 

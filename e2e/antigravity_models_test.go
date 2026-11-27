@@ -74,7 +74,8 @@ func TestAntigravityModelCatalogs(t *testing.T) {
 			}
 			list()
 			methods, _ := os.ReadFile(log)
-			want := "initialize\n"
+			// Its check's handshake (工单 #176), then its models' own; listed again, neither again.
+			want := "initialize\ninitialize\n"
 			if tc.options == "1" {
 				want += "session/options\n"
 			}

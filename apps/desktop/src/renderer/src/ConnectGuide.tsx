@@ -8,7 +8,7 @@ import { AgentTile, Mark } from "@aide/ui";
 import { projectsFor, whyBroken } from "./AgentList";
 import { ConnectionsCard } from "./Connections";
 import { local } from "./api";
-import { agentOf, detect, fixes, formOf, formProblem, installs, lines, looksSecret, needs, notLoggedIn, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
+import { agentOf, detect, fixes, formOf, formProblem, installs, lines, looksSecret, needs, notLoggedIn, stateKey, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
 import { Icon } from "./icons";
 import { needsUpdate } from "./skew";
 import { errorText, useStore } from "./store";
@@ -130,7 +130,7 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
   // Claude Code signs in from Aide (工单 #51: Connection details below); Codex and Antigravity in a terminal.
   const login = agent === "codex" ? "login" : undefined;
   const antigravityLoginCmd = agent === "antigravity" ? "aide agent login antigravity" : undefined;
-  const state = d === "ready" && a?.version ? t("state.readyVersion", v) : d === "signIn" && agent === "claude" ? t("state.signInClaude", v) : t(`state.${d}`, v);
+  const state = t(stateKey(d, a, line) as never, v);
   return (
     <>
       <section className="cg-sec" aria-label={t("status")}>
@@ -384,7 +384,7 @@ function KnownAgents({ m }: { m: Machine }) {
           const d = detect(a, m.online || m.local, !!m.status?.agents.length);
           const name = alsoKnownAs[id] ? `${codingAgentTitle(id)}（${alsoKnownAs[id]}）` : codingAgentTitle(id);
           const v = { machine: m.machineName, agent: name, version: a?.version ?? "", app: a?.detail.replace(/\.app$/, "") ?? "" };
-          const state = d === "ready" && a?.version ? t("state.readyVersion", v) : t(`state.${d}`, v);
+          const state = t(stateKey(d, a) as never, v);
           const hint = d === "missing" ? t("known.installHint", v) : d === "broken" && a ? whyBroken(a, tf) : d === "signIn" ? t("known.signInHint", v) : "";
           return (
             <div key={id} className="frow cg-known" role="group" aria-label={name} data-state={d}>
