@@ -1,10 +1,11 @@
 {
   "0.2.16": {
     "improvements": [
-      "DSH model lists are complete from a cold start: the probe now waits for DSH's credential store to finish loading before it reads, the fresher list wins over a stale one, and every model picker — new session, contacts, bot dialogs, switching models mid-session and the default-model setting — refreshes the machine's list when opened. Providers whose keys live in DSH's credential store, such as magpie, now appear everywhere and can actually be picked."
+      "Agents that are not installed yet are no longer dead rows on the setup page: every entry opens and shows how to install or connect it, or explains what it is and on which machine it would be detected."
     ],
     "fixes": [
-      "Bridge sessions tell the truth about stopped turns: a turn you stopped in DSH itself now reads 'This turn was stopped'; a turn cut off because the DSH process exited says so, and notes when work continued after a restart; and interrupting a turn that already ended answers 'This turn has already ended' instead of surfacing an internal error."
+      "Antigravity no longer claims you are signed out when you are signed in inside the Antigravity app: when Aide cannot confirm the sign-in state it now says 'not confirmed' instead of 'not signed in'.",
+      "Claude Code's reasoning effort and permission mode can now be changed even when the model is left on Default, and the choices take effect in new sessions."
     ]
   },
   "0.2.15": {
