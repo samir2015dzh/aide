@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Check } from "./Picker";
 import { useTranslation } from "react-i18next";
-import type { ACPRegistryEntry, CustomAgent, ListACPRegistryResponse } from "@aide/proto/machine";
+import { AgentUpdateState, type ACPRegistryEntry, type AgentStatus, type CustomAgent, type ListACPRegistryResponse, type UpdateAgentResponse } from "@aide/proto/machine";
 import type { Machine } from "@aide/proto/local";
 import { codingAgentIds, codingAgentTitle, projectIdFromFolder, projectTitle } from "@aide/core";
 import { AgentTile, Mark } from "@aide/ui";
@@ -144,6 +144,7 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
             </button>
           )}
         </div>
+        {a?.available && a.update && <AgentUpdateLine m={m} a={a} />}
         {installs[line] && (d === "missing" || d === "appOnly" || d === "broken") && <Install m={m} line={line} registryId={installs[line]} />}
         {fixes(line, d).length > 0 && (
           <div className="cg-fix">
@@ -216,6 +217,55 @@ function Install({ m, line, registryId }: { m: Machine; line: Line; registryId: 
         {state.busy ? t(`${line}.installing` as never) : t(`${line}.install` as never)}
       </button>
       {state.error && <p className="cg-err" role="alert">{t("installFailed", { reason: state.error })}</p>}
+    </div>
+  );
+}
+
+/**
+ * Its CLI's own update check (工单 #178): the newest release against the version here, unknown when that can't be told
+ * (never "up to date" then), and, with one out, the CLI's own updater run on the machine, what it printed shown as it
+ * printed it, what came of it said with its reach: new sessions run the new version, those running keep theirs.
+ */
+function AgentUpdateLine({ m, a }: { m: Machine; a: AgentStatus }) {
+  const { t } = useTranslation("connect");
+  const u = a.update!;
+  const [run, setRun] = useState<{ busy: boolean; res?: UpdateAgentResponse; error?: string }>({ busy: false });
+  const update = async () => {
+    setRun({ busy: true });
+    try {
+      const res = await local.updateMachineAgent({ machineId: m.machineId, name: a.name });
+      setRun({ busy: false, res });
+      await recheck(m).catch(() => {}); // the next status says what is out now
+    } catch (e) {
+      setRun({ busy: false, error: errorText(e) });
+    }
+  };
+  const said =
+    u.state === AgentUpdateState.AVAILABLE
+      ? t("update.available", { latest: u.latest, version: a.version })
+      : u.state === AgentUpdateState.CURRENT
+        ? t("update.current", { version: a.version })
+        : t("update.unknown", { detail: u.detail });
+  return (
+    <div className={`cg-update ${u.state === AgentUpdateState.AVAILABLE ? "on" : ""}`} role="group" aria-label={t("update.title")}>
+      <p>{said}</p>
+      {u.state === AgentUpdateState.AVAILABLE && (
+        <button className="btn primary sm" disabled={run.busy} onClick={update}>
+          {run.busy ? <Mark size={12} variant="seq" /> : <Icon name="arrowDown" />}
+          {run.busy ? t("update.running") : t("update.run")}
+        </button>
+      )}
+      {run.res && (
+        <p className={run.res.succeeded ? "cg-ok" : "cg-err"} role={run.res.succeeded ? "status" : "alert"}>
+          {run.res.succeeded ? t("update.done", { version: run.res.version || "?" }) : t("update.failed", { reason: run.res.message })}
+        </p>
+      )}
+      {run.error && <p className="cg-err" role="alert">{t("update.failed", { reason: run.error })}</p>}
+      {run.res?.output && (
+        <pre className="cg-out sel-text" aria-label={t("update.output", { command: run.res.command })}>
+          {run.res.output}
+        </pre>
+      )}
     </div>
   );
 }

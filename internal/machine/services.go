@@ -353,6 +353,13 @@ func (s *adminService) InstallACPRegistryAgent(ctx context.Context, req *machine
 	return s.n.InstallACPRegistryAgent(ctx, req)
 }
 
+func (s *adminService) UpdateAgent(ctx context.Context, req *machinev1.UpdateAgentRequest) (*machinev1.UpdateAgentResponse, error) {
+	if principalFrom(ctx).Kind != PrincipalOwner {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("owner only"))
+	}
+	return s.n.UpdateAgent(ctx, req.GetName())
+}
+
 // ApplyAdminCommand verifies a root-signed command and executes it.
 func (n *Machine) ApplyAdminCommand(ctx context.Context, signed *identityv1.Signed) (string, error) {
 	cmd, err := n.trust.VerifyAdminCommand(signed, n.machineID, time.Now())

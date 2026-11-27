@@ -180,6 +180,10 @@ class LocalApi(port: Long, token: String) {
     suspend fun installDSHBridge(machineId: String): InstallDSHBridgeResponse =
         call("InstallDSHBridge", MachineIdRequest(machineId), timeoutSeconds = 60)
 
+    /** Runs a built-in agent's CLI updater on machineId (工单 #178): up to ten minutes, then its re-check. */
+    suspend fun updateAgent(machineId: String, name: String): UpdateAgentResponse =
+        call("UpdateMachineAgent", UpdateMachineAgentRequest(machineId, name), timeoutSeconds = 700)
+
     suspend fun setAgentCategory(machineId: String, agent: String, category: String) {
         call<SetAgentCategoryRequest, JsonElement>("SetAgentCategory", SetAgentCategoryRequest(machineId, agent, category))
     }

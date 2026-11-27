@@ -1031,3 +1031,13 @@ var skipNotifications = [][]byte{
 	[]byte(`"method":"account/rateLimits/updated"`),
 	[]byte(`"method":"mcpServer/startupStatus/updated"`),
 }
+
+// LatestRelease is Codex's newest release, as npm tags it latest (工单 #178).
+func (p *Provider) LatestRelease(ctx context.Context) (string, error) {
+	return provider.NPMLatest(ctx, "@openai/codex")
+}
+
+// UpdateCommand is `codex update`, Codex's own updater (工单 #178).
+func (p *Provider) UpdateCommand() (string, []string) { return p.binary(), []string{"update"} }
+
+var _ provider.Updater = (*Provider)(nil)

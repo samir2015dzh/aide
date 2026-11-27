@@ -56,3 +56,11 @@
 .cg-reg-row .ft{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .cg-known{gap:10px;align-items:flex-start}
 .cg-known .ft{display:flex;flex-direction:column;gap:2px;min-width:0}
+/* Its CLI's update (工单 #178): one line, its updater's output under it when run. */
+.cg-update{margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 14px;background:var(--win2);border-radius:var(--r-card);font-size:12.5px;color:var(--l2)}
+.cg-update.on{color:var(--l1)}
+.cg-update>p{margin:0;flex:1;min-width:200px}
+.cg-update>.cg-ok,.cg-update>.cg-err{flex-basis:100%}
+.cg-ok{color:var(--green)}
+.cg-update .cg-err{color:var(--red-t)}
+.cg-out{flex-basis:100%;margin:0;max-height:220px;overflow:auto;padding:8px 10px;background:var(--win);border:1px solid var(--sep);border-radius:var(--radius-control);font:11.5px/1.45 var(--mono);white-space:pre-wrap;color:var(--l1)}

@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { DeviceSchema, ExecLogEntrySchema } from "@aide/proto/local";
-import { AgentStatusSchema, DSHBridgeSchema, DSHBridgeState, ExecOutcome, ExecRecordSchema, RoomDeliverySchema, RoomDeliveryState, RoomMemberSchema, RoomMessageSchema, RoomMode, RoomSchema } from "@aide/proto/machine";
+import { AgentStatusSchema, AgentUpdateState, DSHBridgeSchema, DSHBridgeState, ExecOutcome, ExecRecordSchema, RoomDeliverySchema, RoomDeliveryState, RoomMemberSchema, RoomMessageSchema, RoomMode, RoomSchema } from "@aide/proto/machine";
 import { FailureKind, SessionEventSchema, SessionSchema, SessionStatus } from "@aide/proto/session";
 import { expect, test, type ElectronApplication, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs";
@@ -73,7 +73,11 @@ test.beforeAll(async () => {
       checkedAt: timestampFromMs(now - 10_000),
       dshBridge: create(DSHBridgeSchema, { state: DSHBridgeState.DSH_BRIDGE_STATE_RUNNING, version: "0.3.0", latestVersion: "0.3.0" }),
     }),
-    create(AgentStatusSchema, { name: "codex", available: true, loggedIn: false, version: "1.0.0", checkedAt: timestampFromMs(now - 10_000) }),
+    // 工单 #178：Codex 的发布渠道说有新版
+    create(AgentStatusSchema, {
+      name: "codex", available: true, loggedIn: false, version: "1.0.0", checkedAt: timestampFromMs(now - 10_000),
+      update: { state: AgentUpdateState.AVAILABLE, latest: "1.1.0", checkedAt: timestampFromMs(now - 10_000) },
+    }),
     // 审计 B（P25）：ACP agent 的「未确认」与 DSH 同色
     create(AgentStatusSchema, { name: "gemini", available: true, loggedIn: false, loginUnconfirmed: true, version: "0.9.0", checkedAt: timestampFromMs(now - 10_000) }),
   ];
@@ -779,6 +783,24 @@ test("工单 #177: 检查器快捷键在 1280px 任务列旁可开、概览重�
   await page.keyboard.press("Escape");
   await expect(flyout).toHaveCount(0);
   await expect(allBtn).toBeFocused();
+});
+
+test("工单 #178: 连接页显示 Codex 有新版，点「更新」跑它自己的更新命令、原样显示输出，并写明新开会话才用新版", async () => {
+  const [settingsWin] = await Promise.all([app.waitForEvent("window"), page.evaluate(() => window.aide?.openSettings("connect"))]);
+  try {
+    await settingsWin.waitForLoadState();
+    const main = settingsWin.getByRole("main", { name: "连接" });
+    await main.getByRole("tab", { name: "Codex", exact: true }).click();
+    const line = main.getByRole("group", { name: "更新" });
+    await expect(line).toContainText("有新版 1.1.0（这台机器上是 1.0.0）");
+    await line.getByRole("button", { name: "更新" }).click();
+    await expect(line.getByRole("status")).toHaveText("已更新到 1.1.0：新开的会话用新版；正在跑的会话保持旧版，重启后生效。");
+    await expect(line.locator("pre.cg-out")).toHaveText(/Updating Codex…\nnpm warn: a deprecated dependency\nUpdated to 1\.1\.0/);
+    expect(daemon.updated).toEqual([{ machineId: "m-local", name: "codex" }]);
+    await snap(settingsWin, "update-178-codex");
+  } finally {
+    await settingsWin.close();
+  }
 });
 
 test("工单 #128 第二条: 连接后台服务屏等待图标持续动效且超时后显示已等待时长", async () => {

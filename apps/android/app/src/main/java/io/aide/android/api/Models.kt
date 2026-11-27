@@ -84,6 +84,8 @@ data class AgentStatus(
     val autoResumedAt: String = "",
     /** Claude plan usage read on that machine (Claude Code only). */
     val usage: ClaudeUsage? = null,
+    /** Its CLI's own update check (工单 #178): null for one with no updater, or not checked yet. */
+    val update: AgentUpdate? = null,
     /** Why it is not available: an AgentProblem name ("AGENT_PROBLEM_NOT_FOUND", …); "" when it is. */
     val problem: String = "",
     /** When the check the rest says came from ended (RFC 3339); "" never checked. */
@@ -542,6 +544,16 @@ data class SessionEvent(
 @Serializable data class MarkSessionSeenRequest(val sessionId: String, val opened: Boolean = false, val questionId: String = "", val present: Boolean = false)
 @Serializable data class AnswerQuestionResponse(val session: Session? = null)
 @Serializable data class MachineIdRequest(val machineId: String)
+
+/** What its release channel says (工单 #178): state an AgentUpdateState name; never "current" when it can't tell. */
+@Serializable
+data class AgentUpdate(val state: String = "", val latest: String = "", val detail: String = "")
+
+@Serializable data class UpdateMachineAgentRequest(val machineId: String, val name: String)
+
+/** Its CLI's updater ran: succeeded by exit code 0; what it printed, as it printed it; the version read back after. */
+@Serializable
+data class UpdateAgentResponse(val succeeded: Boolean = false, val command: String = "", val message: String = "", val output: String = "", val version: String = "")
 
 /** resumeAt (RFC 3339), with paused: when it resumes by itself; null: when the owner resumes it. */
 @Serializable data class SetAgentHiddenRequest(val machineId: String, val agent: String, val hidden: Boolean)

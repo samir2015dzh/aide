@@ -927,3 +927,14 @@ func (p *Provider) LoginCommand(ctx context.Context) *exec.Cmd {
 	cmd.Env = provider.ProbeEnv(p.PathEnv)
 	return cmd
 }
+
+// LatestRelease is Claude Code's newest release, as npm tags it latest:
+// the channel its own updater reads (工单 #178).
+func (p *Provider) LatestRelease(ctx context.Context) (string, error) {
+	return provider.NPMLatest(ctx, "@anthropic-ai/claude-code")
+}
+
+// UpdateCommand is `claude update`, Claude Code's own updater (工单 #178).
+func (p *Provider) UpdateCommand() (string, []string) { return p.binary(), []string{"update"} }
+
+var _ provider.Updater = (*Provider)(nil)

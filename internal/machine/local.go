@@ -88,6 +88,11 @@ func (l *Local) InstallACPRegistryAgent(ctx context.Context, req *machinev1.Inst
 	return l.n.InstallACPRegistryAgent(ctx, req)
 }
 
+// UpdateAgent runs a built-in agent's CLI updater on this device (工单 #178).
+func (l *Local) UpdateAgent(ctx context.Context, name string) (*machinev1.UpdateAgentResponse, error) {
+	return l.n.UpdateAgent(ctx, name)
+}
+
 // FindRepos lists the repositories for Add a Project, within the workspace roots.
 func (l *Local) FindRepos(ctx context.Context) []*machinev1.Repo {
 	return FindRepos(ctx, l.n.WorkspaceRoots())

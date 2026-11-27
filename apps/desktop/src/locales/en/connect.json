@@ -250,5 +250,16 @@
     "note": "These need no form: installed on {{machine}}, Aide detects them and you can choose them in projects and access. How each stands now:",
     "installHint": "Install {{agent}}’s command-line tool, then click Check Again.",
     "signInHint": "Sign {{agent}} in once in a terminal, as its own instructions say."
+  },
+  "update": {
+    "title": "Update",
+    "available": "{{latest}} is out ({{version}} on this machine)",
+    "current": "Up to date ({{version}})",
+    "unknown": "Latest version unknown: {{detail}}",
+    "run": "Update",
+    "running": "Updating…",
+    "done": "Updated to {{version}}: new sessions use the new version; running sessions keep theirs until they restart.",
+    "failed": "The update didn’t succeed: {{reason}}",
+    "output": "What {{command}} printed"
   }
 }

@@ -168,6 +168,9 @@ const (
 	// MachineAdminServiceInstallACPRegistryAgentProcedure is the fully-qualified name of the
 	// MachineAdminService's InstallACPRegistryAgent RPC.
 	MachineAdminServiceInstallACPRegistryAgentProcedure = "/aide.machine.v1.MachineAdminService/InstallACPRegistryAgent"
+	// MachineAdminServiceUpdateAgentProcedure is the fully-qualified name of the MachineAdminService's
+	// UpdateAgent RPC.
+	MachineAdminServiceUpdateAgentProcedure = "/aide.machine.v1.MachineAdminService/UpdateAgent"
 )
 
 // MachineServiceClient is a client for the aide.machine.v1.MachineService service.
@@ -734,6 +737,10 @@ type MachineAdminServiceClient interface {
 	// machine-isolated directory, and registers an official ACP Registry agent
 	// as a custom ACP agent on this machine (工单 #110).
 	InstallACPRegistryAgent(context.Context, *v1.InstallACPRegistryAgentRequest) (*v1.InstallACPRegistryAgentResponse, error)
+	// Runs a built-in agent's CLI's own updater (工单 #178), its output passed
+	// through unchanged, then checks the agent again: never Aide replacing
+	// the program itself.
+	UpdateAgent(context.Context, *v1.UpdateAgentRequest) (*v1.UpdateAgentResponse, error)
 }
 
 // NewMachineAdminServiceClient constructs a client for the aide.machine.v1.MachineAdminService
@@ -958,6 +965,12 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(machineAdminServiceMethods.ByName("InstallACPRegistryAgent")),
 			connect.WithClientOptions(opts...),
 		),
+		updateAgent: connect.NewClient[v1.UpdateAgentRequest, v1.UpdateAgentResponse](
+			httpClient,
+			baseURL+MachineAdminServiceUpdateAgentProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("UpdateAgent")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -998,6 +1011,7 @@ type machineAdminServiceClient struct {
 	testCustomAgent         *connect.Client[v1.TestCustomAgentRequest, v1.TestCustomAgentResponse]
 	listACPRegistry         *connect.Client[v1.ListACPRegistryRequest, v1.ListACPRegistryResponse]
 	installACPRegistryAgent *connect.Client[v1.InstallACPRegistryAgentRequest, v1.InstallACPRegistryAgentResponse]
+	updateAgent             *connect.Client[v1.UpdateAgentRequest, v1.UpdateAgentResponse]
 }
 
 // ListRooms calls aide.machine.v1.MachineAdminService.ListRooms.
@@ -1315,6 +1329,15 @@ func (c *machineAdminServiceClient) InstallACPRegistryAgent(ctx context.Context,
 	return nil, err
 }
 
+// UpdateAgent calls aide.machine.v1.MachineAdminService.UpdateAgent.
+func (c *machineAdminServiceClient) UpdateAgent(ctx context.Context, req *v1.UpdateAgentRequest) (*v1.UpdateAgentResponse, error) {
+	response, err := c.updateAgent.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // MachineAdminServiceHandler is an implementation of the aide.machine.v1.MachineAdminService
 // service.
 type MachineAdminServiceHandler interface {
@@ -1444,6 +1467,10 @@ type MachineAdminServiceHandler interface {
 	// machine-isolated directory, and registers an official ACP Registry agent
 	// as a custom ACP agent on this machine (工单 #110).
 	InstallACPRegistryAgent(context.Context, *v1.InstallACPRegistryAgentRequest) (*v1.InstallACPRegistryAgentResponse, error)
+	// Runs a built-in agent's CLI's own updater (工单 #178), its output passed
+	// through unchanged, then checks the agent again: never Aide replacing
+	// the program itself.
+	UpdateAgent(context.Context, *v1.UpdateAgentRequest) (*v1.UpdateAgentResponse, error)
 }
 
 // NewMachineAdminServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -1664,6 +1691,12 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		connect.WithSchema(machineAdminServiceMethods.ByName("InstallACPRegistryAgent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineAdminServiceUpdateAgentHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceUpdateAgentProcedure,
+		svc.UpdateAgent,
+		connect.WithSchema(machineAdminServiceMethods.ByName("UpdateAgent")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/aide.machine.v1.MachineAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MachineAdminServiceListRoomsProcedure:
@@ -1736,6 +1769,8 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceListACPRegistryHandler.ServeHTTP(w, r)
 		case MachineAdminServiceInstallACPRegistryAgentProcedure:
 			machineAdminServiceInstallACPRegistryAgentHandler.ServeHTTP(w, r)
+		case MachineAdminServiceUpdateAgentProcedure:
+			machineAdminServiceUpdateAgentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1883,4 +1918,8 @@ func (UnimplementedMachineAdminServiceHandler) ListACPRegistry(context.Context, 
 
 func (UnimplementedMachineAdminServiceHandler) InstallACPRegistryAgent(context.Context, *v1.InstallACPRegistryAgentRequest) (*v1.InstallACPRegistryAgentResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.InstallACPRegistryAgent is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) UpdateAgent(context.Context, *v1.UpdateAgentRequest) (*v1.UpdateAgentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.UpdateAgent is not implemented"))
 }

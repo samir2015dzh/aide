@@ -249,5 +249,16 @@
     "note": "这些 Agent 不用填表：装在 {{machine}} 上，Aide 就会检测到，可以直接在项目和授权里选。下面是它们现在的状态。",
     "installHint": "装好 {{agent}} 的命令行后点「重新检查」。",
     "signInHint": "按 {{agent}} 自己的说明，在终端里登录一次。"
+  },
+  "update": {
+    "title": "更新",
+    "available": "有新版 {{latest}}（这台机器上是 {{version}}）",
+    "current": "已是最新版（{{version}}）",
+    "unknown": "最新版未知：{{detail}}",
+    "run": "更新",
+    "running": "正在更新…",
+    "done": "已更新到 {{version}}：新开的会话用新版；正在跑的会话保持旧版，重启后生效。",
+    "failed": "没有更新成功：{{reason}}",
+    "output": "{{command}} 的输出"
   }
 }
