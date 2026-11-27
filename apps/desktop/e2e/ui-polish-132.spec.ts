@@ -730,7 +730,7 @@ test("UI Polish 批次（#1–#7）：高质感双色链路舞台与原版副官
   }
 });
 
-test("工单 #174: 检查器快捷键在 1280px 任务列旁可开、概览重试双击只发一次、全部对话浮层关闭交还焦点且 Esc 不越层", async () => {
+test("工单 #177: 检查器快捷键在 1280px 任务列旁可开、概览重试双击只发一次、全部对话浮层关闭交还焦点且 Esc 不越层", async () => {
   const command = (c: string) =>
     app.evaluate((_, c) => (globalThis as unknown as { aideTest: { mainWindow(): { webContents: { send(ch: string, c: string): void } } } }).aideTest.mainWindow().webContents.send("command", c), c);
 

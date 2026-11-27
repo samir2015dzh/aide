@@ -20,7 +20,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 工单 #174: an alert closed by its Cancel scales and fades out first (工单 #173 said so; it vanished at once), and
+ * 工单 #177: an alert closed by its Cancel scales and fades out first (工单 #173 said so; it vanished at once), and
  * is told only then; an action that does something is told at once, as it may keep the alert open while it works.
  */
 @RunWith(RobolectricTestRunner::class)
