@@ -2,7 +2,6 @@ package machine
 
 import (
 	"context"
-	"slices"
 	"strings"
 	"time"
 
@@ -267,9 +266,40 @@ type agentUsages = map[string]*machinev1.ClaudeUsage
 // kAgentUsage keeps an agent's last good reading but Claude Code's.
 const kAgentUsage = "agent_usage/"
 
-// checkedUsage are the agents but Claude Code whose checks are asked their
-// plan usage.
-var checkedUsage = []string{"codex"}
+// agentUsageSource is where one agent's plan usage comes from (工单 #86, after
+// paseo's usage-source plugins, Apache License 2.0): one registration per
+// agent whose plan usage this machine reads. Adding an agent is adding one
+// to usageSources.
+type agentUsageSource struct {
+	agent string
+	// checked takes what the agent's check answered of it (工单 #143).
+	checked func(n *Machine, u provider.PlanUsage)
+	// load reads its last good reading kept, as stale until a new one.
+	load func(n *Machine)
+}
+
+// usageSources: Claude Code's reading has its sources in turn, read in the
+// background every usageEvery (refreshUsage), its check's answer taken
+// into the same reading; Codex's is what its checks answer.
+var usageSources = []agentUsageSource{
+	{agent: "claude", checked: (*Machine).noteClaudeChecked, load: (*Machine).loadUsage},
+	{agent: "codex", checked: checkedOnly("codex"), load: loadChecked("codex")},
+}
+
+func checkedOnly(name string) func(*Machine, provider.PlanUsage) {
+	return func(n *Machine, u provider.PlanUsage) { n.noteAgentChecked(name, u) }
+}
+
+func loadChecked(name string) func(*Machine) {
+	return func(n *Machine) { n.loadAgentUsage(name) }
+}
+
+// loadUsageSources reads every agent's last good reading kept.
+func (n *Machine) loadUsageSources() {
+	for _, src := range usageSources {
+		src.load(n)
+	}
+}
 
 // usageOn: this machine reads plan usage (Config.ClaudeUsage).
 func (n *Machine) usageOn() bool {
@@ -278,15 +308,16 @@ func (n *Machine) usageOn() bool {
 	return n.usageSrc != nil || n.usageCLI != nil || n.usageCache != nil
 }
 
-// noteCheckedUsage takes what an agent's check answered of its plan usage.
+// noteCheckedUsage takes what an agent's check answered of its plan usage,
+// into the reading of its usage source.
 func (n *Machine) noteCheckedUsage(name string, i provider.Info) {
-	u := i.PlanUsage
-	switch {
-	case u == nil:
-	case name == "claude":
-		n.noteClaudeChecked(*u)
-	case slices.Contains(checkedUsage, name):
-		n.noteAgentChecked(name, *u)
+	if i.PlanUsage == nil {
+		return
+	}
+	for _, src := range usageSources {
+		if src.agent == name {
+			src.checked(n, *i.PlanUsage)
+		}
 	}
 }
 
@@ -343,18 +374,16 @@ func (n *Machine) noteAgentChecked(name string, u provider.PlanUsage) {
 	n.kickStatus()
 }
 
-// loadAgentUsage reads the agents' last good readings kept, as stale until
+// loadAgentUsage reads an agent's last good reading kept, as stale until
 // a check asks again.
-func (n *Machine) loadAgentUsage() {
-	for _, name := range checkedUsage {
-		b, err := n.st.Get(kAgentUsage + name)
-		if err != nil || len(b) == 0 {
-			continue
-		}
-		u := &machinev1.ClaudeUsage{}
-		if proto.Unmarshal(b, u) == nil && len(u.Windows) > 0 {
-			u.Stale = true
-			n.agentUsage[name] = u
-		}
+func (n *Machine) loadAgentUsage(name string) {
+	b, err := n.st.Get(kAgentUsage + name)
+	if err != nil || len(b) == 0 {
+		return
+	}
+	u := &machinev1.ClaudeUsage{}
+	if proto.Unmarshal(b, u) == nil && len(u.Windows) > 0 {
+		u.Stale = true
+		n.agentUsage[name] = u
 	}
 }

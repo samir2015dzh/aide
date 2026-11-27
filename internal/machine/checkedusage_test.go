@@ -2,6 +2,7 @@ package machine
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -148,5 +149,26 @@ func TestCheckAsksUsageOnlyWhenRead(t *testing.T) {
 	}
 	if u := agentRow(n.Status(), "codex").GetUsage(); u != nil {
 		t.Fatalf("usage = %+v", u)
+	}
+}
+
+// Plan usage is read for the agents with a usage source (工单 #86): what
+// another agent's check answers of it is not kept.
+func TestUsageSources(t *testing.T) {
+	var names []string
+	for _, s := range usageSources {
+		names = append(names, s.agent)
+	}
+	if !slices.Equal(names, []string{"claude", "codex"}) {
+		t.Fatalf("usage sources: %v", names)
+	}
+	n, err := Open(Config{DataDir: t.TempDir(), ClaudeUsage: true, Providers: map[string]provider.Provider{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer n.Close()
+	n.noteCheckedUsage("gemini", provider.Info{PlanUsage: &provider.PlanUsage{At: time.Now(), Windows: []provider.UsageWindow{{Key: "five_hour", Utilization: 9}}}})
+	if u := n.agentUsage["gemini"]; u != nil {
+		t.Fatalf("kept for an agent with no usage source: %+v", u)
 	}
 }

@@ -306,8 +306,7 @@ func Open(cfg Config) (*Machine, error) {
 		n.usageSrc = &claude.UsageReader{AutoRenew: true, HTTP: cfg.HTTPClient, Log: n.log}
 		n.usageCLI = &claude.CLIUsage{}
 		n.usageCache = &claude.CacheUsage{}
-		n.loadUsage()
-		n.loadAgentUsage()
+		n.loadUsageSources()
 	}
 	n.sessions.offered = n.offered
 	n.sessions.signedIn = n.agentSignedIn
