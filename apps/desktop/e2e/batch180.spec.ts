@@ -1,7 +1,7 @@
 import { expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { launch, pick, snap } from "./app";
 
-// 工单 #180, as the owner met it on alexwork: no row or chip that does nothing when clicked.
+// 工单 #180, as the owner met it on a real machine: no row or chip that does nothing when clicked.
 // A: every agent the "not installed" list shows opens something: its Connect guide, or in place what it is, which
 // command the machine looks for, its official page and its official ACP registry entry.
 // C: on a Claude Code bot's page, with the model left at its default, reasoning effort and mode both open, and a new
