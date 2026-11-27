@@ -14,6 +14,7 @@ export const lines: readonly Line[] = ["deepseek", "claude", "codex", "antigravi
 // AgentProblem's values (its enum is not loaded by the tests).
 const notFound = 1 as AgentProblem;
 const appWithoutCli = 2 as AgentProblem;
+const timedOut = 4 as AgentProblem;
 
 /** What the machine's checks say of an agent, for the guide's status line. */
 export type Detected =
@@ -46,6 +47,18 @@ export function detect(a: AgentStatus | undefined, online: boolean, known: boole
   if (a.problem === appWithoutCli) return "appOnly";
   if (a.problem === notFound || a.problem === (0 as AgentProblem)) return "missing";
   return "broken";
+}
+
+/**
+ * The status line's text, as a key of the connect texts (state.*): a found agent's version, or that it is unknown
+ * (工单 #176: its --version is no verdict); a broken one's check that had no answer kept apart from a program that
+ * fails to start (工单 #175).
+ */
+export function stateKey(d: Detected, a: AgentStatus | undefined, line?: Line): string {
+  if (d === "ready") return a?.version ? "state.readyVersion" : "state.readyNoVersion";
+  if (d === "signIn" && line === "claude") return "state.signInClaude";
+  if (d === "broken" && a?.problem === timedOut) return "state.noAnswer";
+  return `state.${d}`;
 }
 
 /**

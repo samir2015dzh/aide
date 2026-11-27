@@ -42,7 +42,7 @@ test("a coding agent's conversations: on in the current one, a new one, back to 
   const box = composer.getByRole("textbox", { name: "给 Gemini CLI 发消息" });
   const send = composer.getByRole("button", { name: "发送" });
   const stream = bot.locator(".bot-stream");
-  const current = stream.locator(".conv-row.cur");
+  const current = stream.locator(".conv-current-card");
   const allBtn = bot.locator(".conv-all-btn");
   const flyout = bot.locator(".conv-flyout");
   // The box (工单 #92): + at its foot on the left, the project as a chip under it, the send button lit only with something to send.

@@ -1554,6 +1554,18 @@ func (o *Owner) InstallMachineACPRegistryAgent(ctx context.Context, machineID, r
 	return n.Admin.InstallACPRegistryAgent(ctx, req)
 }
 
+// UpdateMachineAgent runs a built-in agent's CLI updater on machineID (工单 #178).
+func (o *Owner) UpdateMachineAgent(ctx context.Context, machineID, name string) (*machinev1.UpdateAgentResponse, error) {
+	if l := o.local(); l != nil && l.MachineID() == machineID {
+		return l.UpdateAgent(ctx, name)
+	}
+	n, err := o.machineClient(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.UpdateAgent(ctx, &machinev1.UpdateAgentRequest{Name: name})
+}
+
 // ListExecLog gathers the machines' ops logs (docs/machine-ops.md): the
 // commands agents ran, or were refused, on each, newest first.
 func (o *Owner) ListExecLog(ctx context.Context, machineID string) (*localv1.ListExecLogResponse, error) {

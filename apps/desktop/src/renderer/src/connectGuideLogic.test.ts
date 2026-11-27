@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AgentStatus, CustomAgent } from "@aide/proto/machine";
-import { agentOf, detect, fixes, formOf, formProblem, installs, joinArgs, looksSecret, needs, splitArgs, terminalCommand } from "./connectGuideLogic.ts";
+import { agentOf, detect, fixes, formOf, formProblem, installs, joinArgs, looksSecret, needs, splitArgs, stateKey, terminalCommand } from "./connectGuideLogic.ts";
 
 const status = (o: Partial<AgentStatus>) => ({ name: "x", available: false, loggedIn: false, checking: false, problem: 0, detail: "", ...o }) as AgentStatus;
 
@@ -19,6 +19,17 @@ test("the status says what the machine's check found", () => {
   assert.equal(detect(status({ problem: 2, detail: "Claude" }), true, true), "appOnly");
   assert.equal(detect(status({ problem: 4 }), true, true), "broken");
   assert.equal(detect(status({ problem: 6, detail: "boom" }), true, true), "broken");
+});
+
+// 工单 #175/#176: a check with no answer is said apart from a program that fails to start; a found agent whose version
+// its check could not read says its version is unknown.
+test("the status line says which went wrong, and an unknown version", () => {
+  assert.equal(stateKey("broken", status({ problem: 4 })), "state.noAnswer");
+  assert.equal(stateKey("broken", status({ problem: 6, detail: "boom" })), "state.broken");
+  assert.equal(stateKey("ready", status({ available: true, loggedIn: true, version: "1.2.3" })), "state.readyVersion");
+  assert.equal(stateKey("ready", status({ available: true, loggedIn: true })), "state.readyNoVersion");
+  assert.equal(stateKey("signIn", status({ available: true }), "claude"), "state.signInClaude");
+  assert.equal(stateKey("signIn", status({ available: true }), "codex"), "state.signIn");
 });
 
 test("what to try follows the line and what is wrong", () => {

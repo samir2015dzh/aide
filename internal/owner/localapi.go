@@ -452,6 +452,10 @@ func (l *localService) InstallMachineACPRegistryAgent(ctx context.Context, req *
 	return l.o().InstallMachineACPRegistryAgent(ctx, req.MachineId, req.RegistryId, req.Name)
 }
 
+func (l *localService) UpdateMachineAgent(ctx context.Context, req *localv1.UpdateMachineAgentRequest) (*machinev1.UpdateAgentResponse, error) {
+	return l.o().UpdateMachineAgent(ctx, req.MachineId, req.Name)
+}
+
 func (l *localService) ListExecLog(ctx context.Context, req *localv1.ListExecLogRequest) (*localv1.ListExecLogResponse, error) {
 	return l.o().ListExecLog(ctx, req.MachineId)
 }

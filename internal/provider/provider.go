@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -229,14 +230,41 @@ type Reply struct {
 	Message  string
 }
 
-// Value is an answer as one string: the chosen labels and the text,
-// comma-separated.
+// Value is an answer as one string (工单 #179): the chosen labels in the
+// order they were chosen, then the typed text, joined with ", ". It is the
+// one encoding for an answer sent as text, and SplitAnswer reads it back.
 func (a Answer) Value() string {
 	v := append([]string{}, a.Selected...)
 	if t := strings.TrimSpace(a.Text); t != "" {
 		v = append(v, t)
 	}
 	return strings.Join(v, ", ")
+}
+
+// SplitAnswer reads an answer in Value's encoding back against the item's
+// option labels (工单 #179): it takes exact labels from the front, the
+// longest first, so a label that contains ", " wins over one it begins
+// with; what is left is the typed text.
+//
+// Adapted from paseo's splitMultiSelectAnswer
+// (packages/server/src/server/agent/providers/question-card-answer.ts,
+// https://github.com/getpaseo/paseo), Apache License 2.0.
+func SplitAnswer(answer string, labels []string) (selected []string, text string) {
+	byLength := slices.Clone(labels)
+	slices.SortStableFunc(byLength, func(a, b string) int { return len(b) - len(a) })
+	rest := answer
+	for rest != "" {
+		i := slices.IndexFunc(byLength, func(l string) bool {
+			return l != "" && !slices.Contains(selected, l) && (rest == l || strings.HasPrefix(rest, l+", "))
+		})
+		if i < 0 {
+			break
+		}
+		l := byLength[i]
+		selected = append(selected, l)
+		rest = strings.TrimPrefix(strings.TrimPrefix(rest, l), ", ")
+	}
+	return selected, rest
 }
 
 type Usage struct {

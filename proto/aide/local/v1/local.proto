@@ -265,6 +265,8 @@ service LocalService {
   rpc TestMachineCustomAgent(TestMachineCustomAgentRequest) returns (aide.machine.v1.TestCustomAgentResponse);
   rpc ListMachineACPRegistry(ListMachineACPRegistryRequest) returns (aide.machine.v1.ListACPRegistryResponse);
   rpc InstallMachineACPRegistryAgent(InstallMachineACPRegistryAgentRequest) returns (aide.machine.v1.InstallACPRegistryAgentResponse);
+  // Runs a machine's built-in agent's CLI updater (工单 #178).
+  rpc UpdateMachineAgent(UpdateMachineAgentRequest) returns (aide.machine.v1.UpdateAgentResponse);
   // QueryWork counts the work done over a range, by hour or day, from what
   // this device holds of every machine's counts: no machine is asked
   // (docs/work-stats.md §7).
@@ -829,6 +831,11 @@ message InstallMachineACPRegistryAgentRequest {
   string machine_id = 1;
   string registry_id = 2;
   string name = 3;
+}
+
+message UpdateMachineAgentRequest {
+  string machine_id = 1;
+  string name = 2;
 }
 
 message GetDiagnosticsRequest {}

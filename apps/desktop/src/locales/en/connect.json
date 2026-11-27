@@ -22,10 +22,12 @@
     "checking": "Checking {{machine}}…",
     "ready": "Detected on {{machine}}",
     "readyVersion": "Detected on {{machine}} · version {{version}}",
+    "readyNoVersion": "Detected on {{machine}} · version unknown",
     "signIn": "Found on {{machine}}, but not signed in",
     "unconfirmed": "Detected on {{machine}}, sign-in unconfirmed (run a test task below to verify automatically)",
     "appOnly": "Only the {{app}} app is on {{machine}}, not the part Aide runs",
-    "broken": "Found on {{machine}}, but it can’t run",
+    "broken": "Found on {{machine}}, but it fails to start",
+    "noAnswer": "Found on {{machine}}, but it didn’t answer the check",
     "missing": "Not detected on {{machine}}",
     "signInClaude": "Claude Code's command line is on {{machine}}, but not signed in (the Claude desktop app's sign-in does not carry over)"
   },
@@ -34,7 +36,7 @@
   "checking": "Checking…",
   "fix": {
     "checkAgain": "Then click Check Again. Aide looks for it every time you do; there is no need to restart anything.",
-    "broken": "Aide found it, but running it failed: {{reason}}",
+    "broken": "What Aide’s check found: {{reason}}",
     "offline": "Open Aide on {{machine}}, or wake it up. Its status comes back as soon as it is online.",
     "customMissing": "Check the command: is the program installed on {{machine}}, under that name or at that full path? Edit the agent below and click Test Connection to see what happens."
   },
@@ -248,5 +250,16 @@
     "note": "These need no form: installed on {{machine}}, Aide detects them and you can choose them in projects and access. How each stands now:",
     "installHint": "Install {{agent}}’s command-line tool, then click Check Again.",
     "signInHint": "Sign {{agent}} in once in a terminal, as its own instructions say."
+  },
+  "update": {
+    "title": "Update",
+    "available": "{{latest}} is out ({{version}} on this machine)",
+    "current": "Up to date ({{version}})",
+    "unknown": "Latest version unknown: {{detail}}",
+    "run": "Update",
+    "running": "Updating…",
+    "done": "Updated to {{version}}: new sessions use the new version; running sessions keep theirs until they restart.",
+    "failed": "The update didn’t succeed: {{reason}}",
+    "output": "What {{command}} printed"
   }
 }

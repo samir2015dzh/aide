@@ -736,6 +736,12 @@ func buildAnswers(q *sessionv1.Question, choose []string, text string, items []s
 			a := &sessionv1.Answer{ItemId: it.Id}
 			if l, ok := pick(it, v); ok {
 				a.Selected = []string{l}
+			} else if it.MultiSelect { // "A, B, typed text" (工单 #179)
+				var options []string
+				for _, o := range it.Options {
+					options = append(options, o.Label)
+				}
+				a.Selected, a.Text = provider.SplitAnswer(strings.TrimSpace(v), options)
 			} else {
 				a.Text = v
 			}

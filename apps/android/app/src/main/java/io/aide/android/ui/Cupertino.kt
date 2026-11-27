@@ -67,8 +67,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,6 +90,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
@@ -490,15 +494,27 @@ private fun BlurBehind() {
  */
 @Composable
 fun IosAlert(onDismissRequest: () -> Unit, title: String, actions: List<AlertAction>, message: String? = null, content: (@Composable ColumnScope.() -> Unit)? = null) {
-    Dialog(onDismissRequest, DialogProperties(usePlatformDefaultWidth = false)) {
+    val shown = remember { MutableTransitionState(false).apply { targetState = true } }
+    // Closed by back, a tap outside or its Cancel, it scales and fades out first, then says so (then); an action that
+    // does something runs at once, as it may keep the alert open while it works (a busy Delete).
+    var then by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val leave = { f: () -> Unit -> if (then == null) { then = f; shown.targetState = false } }
+    val gone = shown.isIdle && !shown.currentState
+    LaunchedEffect(gone) {
+        if (!gone) return@LaunchedEffect
+        then?.invoke()
+        then = null
+        shown.targetState = true // still asked for: it shows again
+    }
+    Dialog({ leave(onDismissRequest) }, DialogProperties(usePlatformDefaultWidth = false)) {
         BlurBehind()
-        val shown = remember { MutableTransitionState(false).apply { targetState = true } }
         val k = aide.elevated(isSystemInDarkTheme())
         val shape = RoundedCornerShape(Radius.Xl)
         CompositionLocalProvider(LocalAideTokens provides k) {
             AnimatedVisibility(
                 shown,
                 enter = scaleIn(tween(Motion.Medium, easing = Motion.EaseOut), initialScale = 0.96f) + fadeIn(tween(Motion.Short)),
+                exit = scaleOut(tween(Motion.Short), targetScale = 0.96f) + fadeOut(tween(Motion.Short)),
             ) {
                 Column(Modifier.widthIn(min = 296.dp, max = 340.dp).clip(shape).background(k.menu).border(1.dp, k.cardEdge, shape).padding(20.dp)) {
                     Column(
@@ -517,7 +533,8 @@ fun IosAlert(onDismissRequest: () -> Unit, title: String, actions: List<AlertAct
                         when (a.role) {
                             AlertRole.Preferred -> FilledButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
                             AlertRole.Destructive -> FilledButton(a.onClick, m, enabled = a.enabled, destructive = true) { Text(a.text) }
-                            AlertRole.Cancel, AlertRole.Default -> TintedButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
+                            AlertRole.Cancel -> TintedButton({ leave(a.onClick) }, m, enabled = a.enabled) { Text(a.text) }
+                            AlertRole.Default -> TintedButton(a.onClick, m, enabled = a.enabled) { Text(a.text) }
                         }
                     }
                     if (actions.size == 2) {
@@ -567,10 +584,14 @@ fun IosMenu(expanded: Boolean, onDismissRequest: () -> Unit, entries: List<MenuE
             val shape = RoundedCornerShape(Radius.Lg)
             val rowShape = RoundedCornerShape(Radius.Md)
             val ticks = entries.any { it.checked }
+            // A long list (a DSH gateway's models, 工单 #174) scrolls inside the menu, which stays within the screen,
+            // its last entry reachable: it was cut off at the window's edge.
+            val tallest = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
             Column(
                 Modifier.padding(12.dp).widthIn(min = 200.dp, max = 290.dp)
                     .shadow(20.dp, shape, ambientColor = Color.Black.copy(alpha = 0.24f), spotColor = Color.Black.copy(alpha = 0.24f))
-                    .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape).padding(6.dp),
+                    .clip(shape).background(aide.menu).border(1.dp, aide.cardEdge, shape)
+                    .heightIn(max = tallest).verticalScroll(rememberScrollState()).padding(6.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 entries.forEach { e ->

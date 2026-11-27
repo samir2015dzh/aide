@@ -94,6 +94,9 @@ type Provider struct {
 	lastProtoVer uint32
 	// probe: what DSH's sessions here offer, found before any (工单 #166).
 	probe dshProbe
+	// greeted: the last handshake a check had answered (工单 #176), kept
+	// for passive checks while its program is the same file.
+	greeted greeting
 }
 
 // ObservedCapabilities returns the latest negotiated ACP capabilities and protocol
@@ -327,16 +330,20 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	env = append(provider.ProbeEnv(p.PathEnv), env...)
-	if p.Custom {
-		return p.discoverByHandshake(ctx, info)
-	}
-	out, problem, detail := provider.Probe(ctx, env, bin, append(pre, "--version")...)
-	if problem != provider.ProblemNone {
-		info.Problem, info.Detail = problem, detail
+	// Here and runs: it answers ACP's initialize, which names its version
+	// (工单 #176). An ACP server need not take --version: Antigravity's ends
+	// at once on a flag it does not know (工单 #175), one that reads stdin
+	// waits until the check gives up. Its --version is read only for a
+	// version the handshake did not give, and what it does is no verdict.
+	info = p.discoverByHandshake(ctx, info)
+	if p.Custom || !info.Available {
 		return info
 	}
-	info.Available = true
-	info.Version = versionRE.FindString(string(out))
+	if info.Version == "" {
+		if out, problem, _ := provider.Probe(ctx, env, bin, append(pre, "--version")...); problem == provider.ProblemNone {
+			info.Version = versionRE.FindString(string(out))
+		}
+	}
 	// ACP has no way to ask for the login state before a session: not
 	// confirmed (工单 #112, #108's rule for every agent), never a guess. A
 	// session that runs a turn says it is signed in, one that fails "not
@@ -990,9 +997,13 @@ type session struct {
 	// dsh: DeepSeek Harness, whose process's first turn is sent again once
 	// if it failed for a key DSH had not loaded yet (dshkeys.go); sent:
 	// turns sent in this process; firstPrompt: the first one's request.
+	// stopMu orders Interrupt against that sending again: interrupted is set
+	// by Interrupt until the next Send, and a stopped turn is not sent again.
 	dsh         bool
 	sent        int
 	firstPrompt map[string]any
+	stopMu      sync.Mutex
+	interrupted bool
 	cfgMu       sync.Mutex
 	cfg         *sessionConfig
 	// closeMu orders emits from Start against the reader closing events.
@@ -1299,6 +1310,9 @@ func (s *session) call(ctx context.Context, method string, params any) (json.Raw
 
 func (s *session) Send(ctx context.Context, in provider.Input) error {
 	s.flush() // what the agent said by itself since its last turn
+	s.stopMu.Lock()
+	s.interrupted = false
+	s.stopMu.Unlock()
 	s.mu.Lock()
 	if s.wake != nil {
 		s.wake.Stop()
@@ -1375,6 +1389,9 @@ func (s *session) Steer(context.Context, provider.Input) error {
 }
 
 func (s *session) Interrupt(ctx context.Context) error {
+	s.stopMu.Lock()
+	defer s.stopMu.Unlock()
+	s.interrupted = true
 	return s.write(map[string]any{"jsonrpc": "2.0", "method": "session/cancel", "params": map[string]any{"sessionId": s.sessionID}})
 }
 

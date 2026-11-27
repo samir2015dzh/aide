@@ -214,6 +214,15 @@ func (s *Sessions) answerWithText(l *live, by, text string, clientIDs []string) 
 				a.Selected, a.Text = []string{o.Label}, ""
 			}
 		}
+		if it.MultiSelect && a.Selected == nil { // several, then any typed text (工单 #179)
+			var labels []string
+			for _, o := range it.Options {
+				labels = append(labels, o.Label)
+			}
+			if sel, rest := provider.SplitAnswer(strings.TrimSpace(text), labels); len(sel) > 0 {
+				a.Selected, a.Text = sel, rest
+			}
+		}
 		answers = append(answers, a)
 	}
 	s.reply(l, w, provider.Reply{Answers: providerAnswers(answers)}, sessionv1.QuestionResolution_QUESTION_RESOLUTION_ANSWERED, by, answers, clientIDs...)

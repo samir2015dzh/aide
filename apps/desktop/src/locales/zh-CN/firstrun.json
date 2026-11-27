@@ -137,13 +137,14 @@
     "projectsHead": "项目",
     "backToAgents": "所有 Agent",
     "cannotRun": "运行不了",
+    "noAnswer": "检查无回应",
     "needsCli": "还差命令行工具",
     "why": {
       "appWithoutCli": "装了 {{app}}，但还没装 {{agent}} 的命令行工具，Aide 用的是它。按 {{agent}} 的文档装好后，Aide 会自己发现。",
       "noProcesses": "找到了，但启动不了：这台机器开不了新程序了（进程数已满）。",
-      "timedOut": "找到了 {{binary}}，但它 20 秒内没有响应。在终端里运行它，看看是不是卡住了。",
+      "timedOut": "找到了 {{binary}}，但 Aide 检查时它 20 秒内没有回应：这说明检查没得到回答，不一定是它坏了。点「重新检查」再试；还是这样，就在终端里运行它，看看是不是卡住了。",
       "missingRuntime": "找到了 {{binary}}，但运行它需要的 {{runtime}} 找不到。确认它在终端里能运行。",
-      "failed": "找到了 {{binary}}，但运行时报错：{{detail}}"
+      "failed": "找到了 {{binary}}，但它启动失败：{{detail}}"
     },
     "howToConnect": "怎么连接…",
     "usageLabel": "套餐",

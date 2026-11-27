@@ -85,6 +85,9 @@
 //	                                  "name"}]}]}; the first model current
 //	FAKE_ACP_LOG=<path>               append method names only, for no-prompt assertions
 //	FAKE_ACP_PROTOCOL=<n>             the ACP protocol version it answers (default 1)
+//	FAKE_ACP_NO_VERSION_FLAG=1        no --version flag: it ends at once on it, as a
+//	                                  gflags server does on a flag it does not know
+//	                                  (Antigravity's, 工单 #175)
 //	FAKE_ACP_PRESETS=<default>        DSH's permission presets (read-only,
 //	                                  workspace-write, danger-full-access;
 //	                                  <default> is "" or one of them): its
@@ -258,6 +261,10 @@ func save(sid string, h *history) {
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		if os.Getenv("FAKE_ACP_NO_VERSION_FLAG") == "1" {
+			fmt.Fprintln(os.Stderr, "FATAL Flags parsing error: Unknown command line flag 'version'")
+			os.Exit(1)
+		}
 		fmt.Println("fakeacp 1.2.3")
 		return
 	}

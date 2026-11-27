@@ -394,6 +394,31 @@ message AgentStatus {
   string registry_version = 29;
   // Negotiated ACP protocol version (e.g. 2 or 1) from the latest handshake/session; 0 if unknown/non-ACP.
   uint32 protocol_version = 30;
+  // Its CLI's own update check (工单 #178), for an agent whose CLI updates
+  // itself (UpdateAgent); unset for one that does not, or not checked yet.
+  AgentUpdate update = 31;
+}
+
+// AgentUpdate is what an agent's release channel says against the version
+// here (工单 #178). Never "current" when it cannot tell: unknown, and why.
+message AgentUpdate {
+  AgentUpdateState state = 1;
+  // The newest release its channel offers ("" when it could not be read).
+  string latest = 2;
+  // Why it is unknown, in one line.
+  string detail = 3;
+  // When the channel was last asked.
+  google.protobuf.Timestamp checked_at = 4;
+}
+
+enum AgentUpdateState {
+  AGENT_UPDATE_STATE_UNSPECIFIED = 0;
+  // The version here is the newest, or newer.
+  AGENT_UPDATE_STATE_CURRENT = 1;
+  // A newer release is out (latest).
+  AGENT_UPDATE_STATE_AVAILABLE = 2;
+  // It cannot tell: the channel did not answer, or the versions do not compare.
+  AGENT_UPDATE_STATE_UNKNOWN = 3;
 }
 
 // AgentCapabilities declares what a provider truly supports on this machine
@@ -884,6 +909,12 @@ service MachineAdminService {
   rpc InstallACPRegistryAgent(InstallACPRegistryAgentRequest) returns (InstallACPRegistryAgentResponse) {
     option (aide.options.v1.access) = ACCESS_WRITE;
   }
+  // Runs a built-in agent's CLI's own updater (工单 #178), its output passed
+  // through unchanged, then checks the agent again: never Aide replacing
+  // the program itself.
+  rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
+  }
 }
 
 // CustomAgent is a coding agent the owner added on a machine: an ACP agent
@@ -1010,6 +1041,24 @@ message InstallACPRegistryAgentResponse {
   CustomAgent agent = 1;
   string install_dir = 2;
   string sha256 = 3;
+}
+
+message UpdateAgentRequest {
+  // The built-in agent ("claude", "codex").
+  string name = 1;
+}
+
+message UpdateAgentResponse {
+  // Its updater exited 0. New sessions run the new version; those running
+  // keep theirs until they restart.
+  bool succeeded = 1;
+  // The command it ran, and why it failed ("exited with code 3").
+  string command = 2;
+  string message = 3;
+  // What it printed, as it printed it (its end, when long).
+  string output = 4;
+  // The version the agent's check reads after it.
+  string version = 5;
 }
 
 message ListDSHSessionsRequest {}

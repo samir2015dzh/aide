@@ -568,7 +568,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
     const why = stuckWhy(s, st.projects, m);
     return (
       <div key={s.sessionId} className={`conv-row ${isCur ? "cur" : ""}`} role="listitem" aria-current={isCur || undefined}>
-        <button className="conv-main" onClick={() => (choose(s.sessionId), setListOpen(false))} title={t("conv.goOnTip")}>
+        <button className="conv-main" onClick={() => (choose(s.sessionId), closeList())} title={t("conv.goOnTip")}>
           <StatusDot s={s} />
           <span className="conv-t">
             <b>{displayTitle(s)}</b>
@@ -600,6 +600,11 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
   const flyout = useLeaving(listOpen ? true : null);
   const flyoutRef = useRef<HTMLDivElement>(null);
   const allBtnRef = useRef<HTMLButtonElement>(null);
+  // Closed from inside (×, a conversation chosen), focus goes back to the button that opened it, not to the page.
+  const closeList = () => {
+    if (flyoutRef.current?.contains(document.activeElement)) allBtnRef.current?.focus();
+    setListOpen(false);
+  };
   useEffect(() => {
     if (!listOpen) return;
     const outside = (e: MouseEvent) => {
@@ -608,6 +613,9 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
     };
     const esc = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
+      // Esc in a sheet or dialog opened over the page closes that, not this too.
+      const dialog = (e.target as Element | null)?.closest?.('[role="dialog"], [role="alertdialog"]');
+      if ((dialog && dialog !== flyoutRef.current) || document.querySelector('[aria-modal="true"]')) return;
       e.preventDefault();
       setListOpen(false);
       allBtnRef.current?.focus();
@@ -662,7 +670,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
         <div ref={flyoutRef} className={`conv-flyout ${flyout.leaving ? "leaving" : ""}`} inert={flyout.leaving} role="dialog" aria-label={t("bots.allConvs")} onKeyDown={onFlyoutKey}>
           <div className="conv-flyout-h">
             <span>{totalConvs > 0 ? t("bots.allConvsCount", { count: totalConvs }) : t("bots.allConvs")}</span>
-            <button className="tb" aria-label={t("bots.closeList")} onClick={() => setListOpen(false)}>
+            <button className="tb" aria-label={t("bots.closeList")} onClick={closeList}>
               <Icon name="x" className="sm" />
             </button>
           </div>

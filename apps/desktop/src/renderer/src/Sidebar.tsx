@@ -40,7 +40,7 @@ export function machineName(st: Store, id: string): string {
 
 export function archive(st: Store, s: Session) {
   let kept = false; // the machine kept its worktree: it has changes no turn's snapshot has
-  st.run(async () => {
+  return st.run(async () => {
     kept = (await local.archiveSession({ sessionId: s.sessionId })).session?.workspaceKept ?? false;
   }).then((ok) => {
     if (ok) st.show(i18n.t(kept ? "common:sidebar.archivedKept" : "common:sidebar.archived", { title: displayTitle(s) }), () => unarchive(st, s));

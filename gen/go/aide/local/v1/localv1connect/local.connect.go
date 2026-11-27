@@ -337,6 +337,9 @@ const (
 	// LocalServiceInstallMachineACPRegistryAgentProcedure is the fully-qualified name of the
 	// LocalService's InstallMachineACPRegistryAgent RPC.
 	LocalServiceInstallMachineACPRegistryAgentProcedure = "/aide.local.v1.LocalService/InstallMachineACPRegistryAgent"
+	// LocalServiceUpdateMachineAgentProcedure is the fully-qualified name of the LocalService's
+	// UpdateMachineAgent RPC.
+	LocalServiceUpdateMachineAgentProcedure = "/aide.local.v1.LocalService/UpdateMachineAgent"
 	// LocalServiceQueryWorkProcedure is the fully-qualified name of the LocalService's QueryWork RPC.
 	LocalServiceQueryWorkProcedure = "/aide.local.v1.LocalService/QueryWork"
 	// LocalServiceRegisterPushProcedure is the fully-qualified name of the LocalService's RegisterPush
@@ -589,6 +592,8 @@ type LocalServiceClient interface {
 	TestMachineCustomAgent(context.Context, *v1.TestMachineCustomAgentRequest) (*v11.TestCustomAgentResponse, error)
 	ListMachineACPRegistry(context.Context, *v1.ListMachineACPRegistryRequest) (*v11.ListACPRegistryResponse, error)
 	InstallMachineACPRegistryAgent(context.Context, *v1.InstallMachineACPRegistryAgentRequest) (*v11.InstallACPRegistryAgentResponse, error)
+	// Runs a machine's built-in agent's CLI updater (工单 #178).
+	UpdateMachineAgent(context.Context, *v1.UpdateMachineAgentRequest) (*v11.UpdateAgentResponse, error)
 	// QueryWork counts the work done over a range, by hour or day, from what
 	// this device holds of every machine's counts: no machine is asked
 	// (docs/work-stats.md §7).
@@ -1258,6 +1263,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("InstallMachineACPRegistryAgent")),
 			connect.WithClientOptions(opts...),
 		),
+		updateMachineAgent: connect.NewClient[v1.UpdateMachineAgentRequest, v11.UpdateAgentResponse](
+			httpClient,
+			baseURL+LocalServiceUpdateMachineAgentProcedure,
+			connect.WithSchema(localServiceMethods.ByName("UpdateMachineAgent")),
+			connect.WithClientOptions(opts...),
+		),
 		queryWork: connect.NewClient[v1.QueryWorkRequest, v1.QueryWorkResponse](
 			httpClient,
 			baseURL+LocalServiceQueryWorkProcedure,
@@ -1383,6 +1394,7 @@ type localServiceClient struct {
 	testMachineCustomAgent         *connect.Client[v1.TestMachineCustomAgentRequest, v11.TestCustomAgentResponse]
 	listMachineACPRegistry         *connect.Client[v1.ListMachineACPRegistryRequest, v11.ListACPRegistryResponse]
 	installMachineACPRegistryAgent *connect.Client[v1.InstallMachineACPRegistryAgentRequest, v11.InstallACPRegistryAgentResponse]
+	updateMachineAgent             *connect.Client[v1.UpdateMachineAgentRequest, v11.UpdateAgentResponse]
 	queryWork                      *connect.Client[v1.QueryWorkRequest, v1.QueryWorkResponse]
 	registerPush                   *connect.Client[v1.RegisterPushRequest, v1.RegisterPushResponse]
 }
@@ -2343,6 +2355,15 @@ func (c *localServiceClient) InstallMachineACPRegistryAgent(ctx context.Context,
 	return nil, err
 }
 
+// UpdateMachineAgent calls aide.local.v1.LocalService.UpdateMachineAgent.
+func (c *localServiceClient) UpdateMachineAgent(ctx context.Context, req *v1.UpdateMachineAgentRequest) (*v11.UpdateAgentResponse, error) {
+	response, err := c.updateMachineAgent.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // QueryWork calls aide.local.v1.LocalService.QueryWork.
 func (c *localServiceClient) QueryWork(ctx context.Context, req *v1.QueryWorkRequest) (*v1.QueryWorkResponse, error) {
 	response, err := c.queryWork.CallUnary(ctx, connect.NewRequest(req))
@@ -2606,6 +2627,8 @@ type LocalServiceHandler interface {
 	TestMachineCustomAgent(context.Context, *v1.TestMachineCustomAgentRequest) (*v11.TestCustomAgentResponse, error)
 	ListMachineACPRegistry(context.Context, *v1.ListMachineACPRegistryRequest) (*v11.ListACPRegistryResponse, error)
 	InstallMachineACPRegistryAgent(context.Context, *v1.InstallMachineACPRegistryAgentRequest) (*v11.InstallACPRegistryAgentResponse, error)
+	// Runs a machine's built-in agent's CLI updater (工单 #178).
+	UpdateMachineAgent(context.Context, *v1.UpdateMachineAgentRequest) (*v11.UpdateAgentResponse, error)
 	// QueryWork counts the work done over a range, by hour or day, from what
 	// this device holds of every machine's counts: no machine is asked
 	// (docs/work-stats.md §7).
@@ -3271,6 +3294,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("InstallMachineACPRegistryAgent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceUpdateMachineAgentHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceUpdateMachineAgentProcedure,
+		svc.UpdateMachineAgent,
+		connect.WithSchema(localServiceMethods.ByName("UpdateMachineAgent")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceQueryWorkHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceQueryWorkProcedure,
 		svc.QueryWork,
@@ -3501,6 +3530,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListMachineACPRegistryHandler.ServeHTTP(w, r)
 		case LocalServiceInstallMachineACPRegistryAgentProcedure:
 			localServiceInstallMachineACPRegistryAgentHandler.ServeHTTP(w, r)
+		case LocalServiceUpdateMachineAgentProcedure:
+			localServiceUpdateMachineAgentHandler.ServeHTTP(w, r)
 		case LocalServiceQueryWorkProcedure:
 			localServiceQueryWorkHandler.ServeHTTP(w, r)
 		case LocalServiceRegisterPushProcedure:
@@ -3944,6 +3975,10 @@ func (UnimplementedLocalServiceHandler) ListMachineACPRegistry(context.Context, 
 
 func (UnimplementedLocalServiceHandler) InstallMachineACPRegistryAgent(context.Context, *v1.InstallMachineACPRegistryAgentRequest) (*v11.InstallACPRegistryAgentResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.InstallMachineACPRegistryAgent is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) UpdateMachineAgent(context.Context, *v1.UpdateMachineAgentRequest) (*v11.UpdateAgentResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.UpdateMachineAgent is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) QueryWork(context.Context, *v1.QueryWorkRequest) (*v1.QueryWorkResponse, error) {

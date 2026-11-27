@@ -56,10 +56,12 @@ export function whyBroken(a: AgentStatus, t: TFunction<"firstrun">): string {
 function BrokenState({ a }: { a: AgentStatus }) {
   const { t } = useTranslation("firstrun");
   const cli = a.problem === AgentProblem.APP_WITHOUT_CLI;
+  // A check with no answer is not a program that fails (工单 #175): said apart.
+  const silent = a.problem === AgentProblem.TIMED_OUT;
   return (
-    <span className={cli ? "warn" : "bad"}>
+    <span className={cli || silent ? "warn" : "bad"}>
       <i />
-      {t(cli ? "prepare.needsCli" : "prepare.cannotRun")}
+      {t(cli ? "prepare.needsCli" : silent ? "prepare.noAnswer" : "prepare.cannotRun")}
     </span>
   );
 }

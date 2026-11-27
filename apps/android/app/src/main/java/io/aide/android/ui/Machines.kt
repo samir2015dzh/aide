@@ -3,6 +3,7 @@ package io.aide.android.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
@@ -29,8 +32,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.aide.android.api.AgentStatus
+import io.aide.android.api.AgentUpdate
 import io.aide.android.api.Device
 import io.aide.android.api.Machine
+import io.aide.android.api.UpdateAgentResponse
 import io.aide.android.model.AgentEntry
 import io.aide.android.model.AppModel
 import io.aide.android.model.ConnState
@@ -144,12 +149,49 @@ internal fun AgentWorkbench(model: AppModel, m: Machine, e: AgentEntry, openSess
             }
         }
         e.status?.let { a -> PauseLine(a) }
+        e.status?.let { a -> if (a.available && a.update != null) AgentUpdateLine(model, m, a, a.update) }
         if (e.login) ClaudeLogin(model, m)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(e.checkedAt?.let { t("Checked ${agoText(it, now)}", "${agoText(it, now)}检测") } ?: "", style = MaterialTheme.typography.labelSmall, color = aide.faint, modifier = Modifier.weight(1f))
             if (m.online) PlainButton(onClick = { scope.launch { model.recheck(m.machineId) } }) { Text(t("Check again", "重新检测")) }
             e.status?.let { a -> if (m.online) ManageMenu(model, m, a) }
         }
+    }
+}
+
+/**
+ * Its CLI's own update check (工单 #178), as the desktop's Connect page says it: the newest release against the version
+ * here, unknown when that can't be told; with one out, its own updater run on that machine, what it printed shown as it
+ * printed it, what came of it said with its reach — new sessions use the new version, those running keep theirs.
+ */
+@Composable
+internal fun AgentUpdateLine(model: AppModel, m: Machine, a: AgentStatus, u: AgentUpdate) {
+    val scope = rememberCoroutineScope()
+    var busy by remember(a.name) { mutableStateOf(false) }
+    var res by remember(a.name) { mutableStateOf<UpdateAgentResponse?>(null) }
+    val available = u.state == "AGENT_UPDATE_STATE_AVAILABLE"
+    Text(
+        when (u.state) {
+            "AGENT_UPDATE_STATE_AVAILABLE" -> t("${u.latest} is out (${a.version} on this machine)", "有新版 ${u.latest}（这台机器上是 ${a.version}）")
+            "AGENT_UPDATE_STATE_CURRENT" -> t("Up to date (${a.version})", "已是最新版（${a.version}）")
+            else -> t("Latest version unknown: ${u.detail}", "最新版未知：${u.detail}")
+        },
+        style = MaterialTheme.typography.bodySmall, color = if (available) MaterialTheme.colorScheme.onSurface else aide.faint,
+    )
+    if (available && m.online && m.unreachable.isEmpty()) PlainButton(
+        enabled = !busy, contentPadding = PaddingValues(end = 10.dp, top = 8.dp, bottom = 8.dp),
+        onClick = { busy = true; scope.launch { res = model.updateAgent(m.machineId, a.name); busy = false } },
+    ) { Text(if (busy) t("Updating…", "正在更新…") else t("Update", "更新")) }
+    res?.let { r ->
+        Text(
+            if (r.succeeded) t("Updated to ${r.version.ifEmpty { "?" }}: new sessions use the new version; running sessions keep theirs until they restart.", "已更新到 ${r.version.ifEmpty { "?" }}：新开的会话用新版；正在跑的会话保持旧版，重启后生效。")
+            else t("The update didn't succeed: ${r.message}", "没有更新成功：${r.message}"),
+            style = MaterialTheme.typography.bodySmall, color = if (r.succeeded) aide.greenText else aide.redText,
+        )
+        if (r.output.isNotEmpty()) Text(
+            r.output.trimEnd(), style = MaterialTheme.typography.labelSmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.Md)).background(aide.fill).padding(8.dp),
+        )
     }
 }
 

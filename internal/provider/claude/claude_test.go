@@ -588,6 +588,24 @@ func TestLoginStateIsTheCLIs(t *testing.T) {
 	}
 }
 
+// Its --version failing is no verdict (工单 #176): one that exits on it as a
+// program does is found, its version unknown, and signed in as it says; a
+// runtime missing still says why it can't run.
+func TestVersionProbeIsNoVerdict(t *testing.T) {
+	scripted(t)
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	bin := filepath.Join(t.TempDir(), "claude")
+	os.WriteFile(bin, []byte("#!/bin/sh\ncase \"$1\" in --version) echo 'error: unknown option --version' >&2; exit 2;; auth) echo '{\"loggedIn\":true}';; esac\n"), 0o755)
+	info := (&Provider{Binary: bin}).Discover(context.Background())
+	if !info.Available || info.Version != "" || info.Problem != provider.ProblemNone || !info.LoggedIn {
+		t.Fatalf("version unknown, found: %+v", info)
+	}
+	os.WriteFile(bin, []byte("#!/usr/bin/env aide-no-such-runtime\n"), 0o755)
+	if info := (&Provider{Binary: bin}).Discover(context.Background()); info.Available || info.Problem != provider.ProblemMissingRuntime {
+		t.Fatalf("a runtime missing: %+v", info)
+	}
+}
+
 // TestStartEarlyExitPreservesAuthFailure (工单 #126): when a Claude Code
 // process rejects startup (e.g. "Not logged in") and exits before aided writes
 // the second stdin line (or even the first), Start must not discard the

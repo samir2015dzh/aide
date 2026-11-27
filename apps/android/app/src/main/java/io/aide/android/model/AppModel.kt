@@ -20,6 +20,7 @@ import io.aide.android.api.ReadAttachmentResponse
 import io.aide.android.api.Session
 import io.aide.android.api.SessionStatus
 import io.aide.android.api.SetLoginRequest
+import io.aide.android.api.UpdateAgentResponse
 import io.aide.android.connection.ConnectionService
 import io.aide.android.connection.Keepalive
 import io.aide.android.connection.Link
@@ -495,6 +496,9 @@ class AppModel(private val context: Context) {
 
     /** Hands installing the DSH bridge plugin to DSH there (工单 #59); the bridge's row follows by itself. */
     suspend fun installDSHBridge(machineId: String): Boolean = report { api!!.installDSHBridge(machineId) } != null
+
+    /** Updates a built-in agent's CLI on machineId (工单 #178); null when it could not be asked (said). */
+    suspend fun updateAgent(machineId: String, name: String): UpdateAgentResponse? = report { api!!.updateAgent(machineId, name) }
 
     /** Asks each machine whose findings are old to check its agents again, quietly: nothing is said if one can't. */
     suspend fun checkStaleAgents(now: java.time.Instant) {

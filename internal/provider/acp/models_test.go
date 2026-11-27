@@ -53,7 +53,8 @@ func TestAntigravityModelDiscovery(t *testing.T) {
 			if string(before) != string(after) {
 				t.Fatalf("fresh catalog re-probed: %s", after)
 			}
-			want := "initialize\n"
+			// Its check's handshake (工单 #176), then its models' own.
+			want := "initialize\ninitialize\n"
 			if tc.options == "1" {
 				want += "session/options\n"
 			}

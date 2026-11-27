@@ -30,3 +30,12 @@ strictly excluded.
   Design reference for hidden-ref git checkpoints that never pollute user branches.
 - **K9i-0/ccpocket** (MIT) — https://github.com/K9i-0/ccpocket
   Design reference for offline outgoing queues, idempotency keys, and reconnect catch-up.
+
+## Question answers and agent CLI updates (#179, #178)
+
+- **getpaseo/paseo** (Apache-2.0) — https://github.com/getpaseo/paseo
+  `provider.SplitAnswer` is adapted from its `splitMultiSelectAnswer`
+  (`packages/server/src/server/agent/providers/question-card-answer.ts`) and
+  its tests; the agent CLI update check follows its `release-check.ts` and
+  `update-command.ts`.
+  Copyright (c) paseo contributors — Apache License 2.0.

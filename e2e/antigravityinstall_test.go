@@ -25,7 +25,9 @@ import (
 // fetches it from the official ACP registry's entry — here a stand-in
 // registry serving a stand-in server — checks it, puts it where the
 // built-in antigravity agent looks, and the agent is detected and runs a
-// task: nothing left for the owner but signing in.
+// task: nothing left for the owner but signing in. The stand-in server ends
+// at once on --version, as Google's gflags server does (工单 #175): found
+// by its ACP handshake all the same (工单 #176).
 func TestInstallAntigravityFromAide(t *testing.T) {
 	if testing.Short() {
 		t.Skip("e2e")
@@ -36,7 +38,7 @@ func TestInstallAntigravityFromAide(t *testing.T) {
 	os.Mkdir(filepath.Join(gemini, "antigravity-acp"), 0o700)
 	os.WriteFile(filepath.Join(gemini, "antigravity-acp", "settings.json"), []byte(`{"auth":{"type":"oauth-personal"}}`), 0o600)
 	w := newOwnerMac(t, []string{"HOME=" + home, "USERPROFILE=" + home, "PATH=/usr/bin:/bin", "GEMINI_HOME=" + gemini,
-		"AIDE_ACP_REGISTRY_URL=" + url, "FAKE_ACP_STATE=" + t.TempDir()}, &localv1.GrantSpec{Agents: []string{"antigravity"}})
+		"AIDE_ACP_REGISTRY_URL=" + url, "FAKE_ACP_STATE=" + t.TempDir(), "FAKE_ACP_NO_VERSION_FLAG=1"}, &localv1.GrantSpec{Agents: []string{"antigravity"}})
 	ctx := context.Background()
 	antigravity := func() (machineID string, available bool) {
 		res, err := w.app.client.ListMachines(ctx, &localv1.ListMachinesRequest{})

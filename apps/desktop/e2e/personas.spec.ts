@@ -40,7 +40,7 @@ test("handing work to a detected agent from its page; a contact made there, writ
   const box = named.getByRole("textbox", { name: "给 前端助手 发消息" });
   const rows = named.getByRole("list", { name: "对话" }).getByRole("listitem");
   const count = await rows.count();
-  await expect(named.locator(".conv-row.cur")).not.toContainText("进行中", { timeout: 60_000 });
+  await expect(named.locator(".conv-current-card")).not.toContainText("进行中", { timeout: 60_000 });
   await box.fill("say 联系人第一句");
   await box.press("Enter");
   await expect(named.locator(".composer-state")).toContainText("已发到", { timeout: 30_000 });
