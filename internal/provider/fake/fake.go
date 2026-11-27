@@ -36,6 +36,10 @@
 //	                    then agent message "answer: <value>" or
 //	                    "declined: <message>"
 //	ask-secret <h>|<q>  the same, a secret free-text question
+//	ask-multi <h>|<q>|<a;b>  the same, a multiple choice with typed text
+//	                    besides, its options ";"-separated (a label may
+//	                    hold ", "); then agent message "picked: <JSON
+//	                    {selected, text}>", what it was given
 //	message <to>|<text> call the session's message_send tool (Aide's MCP
 //	                    server) to write text to agent to ("" for the
 //	                    session's creator); its result is the turn's
@@ -461,13 +465,17 @@ func (s *session) script(ctx context.Context, prompt string) (last string, ended
 				last = "notice: yes"
 			}
 			s.emit(provider.Event{Kind: provider.EventAgentMessage, Text: last})
-		case "ask", "ask-secret":
+		case "ask", "ask-secret", "ask-multi":
 			parts := strings.SplitN(arg, "|", 3)
 			for len(parts) < 3 {
 				parts = append(parts, "")
 			}
-			item := provider.QuestionItem{ID: "q1", Header: parts[0], Text: parts[1], AllowOther: true, Secret: cmd == "ask-secret"}
-			for _, o := range strings.Split(parts[2], ",") {
+			item := provider.QuestionItem{ID: "q1", Header: parts[0], Text: parts[1], AllowOther: true, Secret: cmd == "ask-secret", MultiSelect: cmd == "ask-multi"}
+			sep := ","
+			if item.MultiSelect {
+				sep = ";"
+			}
+			for _, o := range strings.Split(parts[2], sep) {
 				if o != "" {
 					item.Options = append(item.Options, provider.Option{Label: o})
 				}
@@ -490,6 +498,10 @@ func (s *session) script(ctx context.Context, prompt string) (last string, ended
 				} else {
 					for _, a := range r.Answers {
 						last = "answer: " + a.Value()
+						if item.MultiSelect {
+							b, _ := json.Marshal(map[string]any{"selected": a.Selected, "text": a.Text})
+							last = "picked: " + string(b)
+						}
 					}
 				}
 				s.emit(provider.Event{Kind: provider.EventAgentMessage, Text: last})
