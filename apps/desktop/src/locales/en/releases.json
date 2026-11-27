@@ -1,4 +1,12 @@
 {
+  "0.2.15": {
+    "improvements": [
+      "DSH model lists are complete from a cold start: the probe now waits for DSH's credential store to finish loading before it reads, the fresher list wins over a stale one, and every model picker — new session, contacts, bot dialogs, switching models mid-session and the default-model setting — refreshes the machine's list when opened. Providers whose keys live in DSH's credential store, such as magpie, now appear everywhere and can actually be picked."
+    ],
+    "fixes": [
+      "Bridge sessions tell the truth about stopped turns: a turn you stopped in DSH itself now reads 'This turn was stopped'; a turn cut off because the DSH process exited says so, and notes when work continued after a restart; and interrupting a turn that already ended answers 'This turn has already ended' instead of surfacing an internal error."
+    ]
+  },
   "0.2.14": {
     "improvements": [
       "DSH model lists are complete from a cold start: the probe now waits for DSH's credential store to finish loading before it reads, the fresher list wins over a stale one, and every model picker — new session, contacts, bot dialogs, switching models mid-session and the default-model setting — refreshes the machine's list when opened. Providers whose keys live in DSH's credential store, such as magpie, now appear everywhere and can actually be picked."
