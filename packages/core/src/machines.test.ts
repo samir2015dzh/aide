@@ -113,14 +113,17 @@ describe("modelGroups (工单 #136 P18)", () => {
 // 工单 #180 C: with the model left at its default, the efforts are the default model's, not none.
 describe("modelEfforts", () => {
   const e = ["low", "medium", "high", "xhigh", "max"];
-  const claude = create(AgentStatusSchema, {
-    name: "claude",
-    models: [
-      { id: "opus", resolved: "claude-opus-5-5", efforts: e },
-      { id: "haiku", resolved: "claude-haiku-5-5", efforts: [] },
-    ],
-    own: { model: "claude-opus-5-5" },
-  });
+  const agent = (own: string, defaults = "") =>
+    create(AgentStatusSchema, {
+      name: "claude",
+      models: [
+        { id: "opus", resolved: "claude-opus-5-5", efforts: e },
+        { id: "haiku", resolved: "claude-haiku-5-5", efforts: [] },
+      ],
+      own: { model: own },
+      defaults: { model: defaults },
+    });
+  const claude = agent("claude-opus-5-5");
   test("a chosen model's own", () => {
     expect(modelEfforts(claude, "opus")).toEqual(e);
     expect(modelEfforts(claude, "haiku")).toEqual([]);
@@ -128,10 +131,10 @@ describe("modelEfforts", () => {
   });
   test("the default: the machine's, else the agent's own, by alias or by the model it resolves to", () => {
     expect(modelEfforts(claude)).toEqual(e);
-    expect(modelEfforts(create(AgentStatusSchema, { ...claude, defaults: { model: "haiku" } }))).toEqual([]);
+    expect(modelEfforts(agent("claude-opus-5-5", "haiku"))).toEqual([]);
   });
   test("a default not listed: any listed model's", () => {
-    expect(modelEfforts(create(AgentStatusSchema, { ...claude, own: {} }))).toEqual(e);
+    expect(modelEfforts(agent(""))).toEqual(e);
     expect(modelEfforts(undefined)).toEqual([]);
   });
 });
