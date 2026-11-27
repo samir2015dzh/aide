@@ -707,7 +707,11 @@
     "notChosen": "{{agent}} doesn’t let Aide choose this: its own setting applies",
     "dropTitle": "Drop to attach",
     "dropHint": "Files or pictures",
-    "sentFiles": "Files sent with it"
+    "sentFiles": "Files sent with it",
+    "notChosenHow": "{{agent}} doesn’t let Aide choose {{what}}: it runs as its own settings say; to change it, change it in {{agent}}’s own settings",
+    "effortNotThisModel": "The chosen model takes no reasoning effort: to set one, first pick a model under Model that takes it",
+    "claudeAskMode": "Claude Code’s own ask-each-time mode isn’t one Aide can approve for: to approve each step, use it in Claude Code itself",
+    "defaultModeIs": "Default · {{mode}}"
   },
   "conv": {
     "list": "Conversations",

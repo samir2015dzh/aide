@@ -350,9 +350,10 @@ func (p *Provider) Discover(ctx context.Context) provider.Info {
 	// logged in" that it is not (the machine keeps what they showed).
 	info.LoginUnconfirmed = true
 	if p.Name() == "antigravity" {
-		// Its settings name how it signs in: configured -> signed in, absent or
-		// empty -> signed out (never resurrected by stale agent_signin cache),
-		// unreadable/corrupt -> unconfirmed (工单 #111 / #108).
+		// Its settings name how it signs in: configured -> signed in, emptied
+		// -> signed out (never resurrected by stale agent_signin cache, 工单
+		// #111), absent/unreadable/corrupt -> unconfirmed: a session decides
+		// (工单 #180 / #108).
 		switch antigravityAuthState(env) {
 		case antigravityAuthConfigured:
 			info.LoggedIn, info.LoginUnconfirmed = true, false

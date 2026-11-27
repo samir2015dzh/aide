@@ -7,7 +7,7 @@ import type { Machine } from "@aide/proto/local";
 import { RoomDeliveryState, RoomMode, type Room, type RoomMessage } from "@aide/proto/machine";
 import { RoomTimeline, SidebarRooms } from "./Rooms";
 import {
-  allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, isActive, listTime, modeChoice, modeLabel, paramsChanged, paramsOf, projectTitle, roster, stateDetail, stuckWhy, updatedDate, whileReconnecting, withContext,
+  allBots, botConversations, changedParams, codingAgentTitle, currentConversation, displayTitle, dshAgent, isActive, listTime, modeChoice, modeLabel, modelEfforts, paramsChanged, paramsOf, projectTitle, roster, stateDetail, stuckWhy, updatedDate, whileReconnecting, withContext,
   type Bot, type ConvParams, type Roster,
 } from "@aide/core";
 import { botLook, botMood, botSeed, botSessions, personaLook, reactMs, type BotMood } from "@aide/core/avatar";
@@ -534,16 +534,25 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
     ? t(st.sessions.some((s) => s.machineId === m.machineId && s.agent === b.agent) ? "composer.modelsNone" : "composer.modelsAfterFirst", { agent: codingAgentTitle(b.agent) })
     : undefined;
   const models: PickerOption<string>[] = [...modelOptions(t, a, params.model), ...(modelsLater ? [{ value: "\0later", label: modelsLater, disabled: true }] : [])];
-  const efforts = a?.models.find((x) => x.id === params.model)?.efforts ?? [];
-  const modes: PickerOption<string>[] = [{ value: "", label: permission.defaultLabel ?? t("composer.defaultMode") }, ...(a?.modes ?? []).map((x) => ({ value: x.id, label: modeLabel(b.agent, x) }))];
+  // The model left at its default takes its default model's efforts (工单 #180 C), not none.
+  const efforts = modelEfforts(a, params.model);
+  // The default names the mode it is (工单 #180 C: Claude Code's is full access), as the model's default names its model.
+  const ownMode = a?.own?.mode ? modeLabel(b.agent, a.modes.find((x) => x.id === a.own?.mode) ?? { id: a.own.mode }) : "";
+  const modes: PickerOption<string>[] = [
+    { value: "", label: permission.defaultLabel ?? (ownMode ? t("composer.defaultModeIs", { mode: ownMode }) : t("composer.defaultMode")) },
+    ...(a?.modes ?? []).map((x) => ({ value: x.id, label: modeLabel(b.agent, x) })),
+    // Claude Code's own ask-each-time mode is not one Aide offers (工单 #180 C): said where the modes are, with where to get it.
+    ...(b.agent === "claude" ? [{ value: "\0ask", label: t("composer.claudeAskMode"), disabled: true }] : []),
+  ];
   // The same four, in the same order, for every coding agent (工单 #140 P11: three on one page, four on another), each
   // saying what it is; what an agent does not let Aide choose shows as its own default, not as a missing slot.
-  const fixed = (label: string) => (
-    <span className="picker chip sm picker-fixed" title={t("composer.notChosen", { agent: codingAgentTitle(b.agent) })}>
-      <span className="picker-k">{label}</span>
-      <span className="picker-v">{t("composer.agentsOwn", { agent: codingAgentTitle(b.agent) })}</span>
-    </span>
+  // What Aide can't choose opens too (工单 #180 C): its agent's own setting, and in place why and where to change it.
+  const fixed = (label: string, why = t("composer.notChosenHow", { agent: codingAgentTitle(b.agent), what: label })) => (
+    <Picker chip showLabel size="sm" label={label} value="" onChange={() => {}}
+      options={[{ value: "", label: t("composer.agentsOwn", { agent: codingAgentTitle(b.agent) }) }, { value: "\0why", label: why, disabled: true }]} />
   );
+  // A model that takes no effort while others do: choosing one of them is the way (工单 #180 C).
+  const effortWhy = params.model && (a?.models.some((x) => x.efforts.length > 0) ?? false) ? t("composer.effortNotThisModel") : undefined;
   const modeLabelText = t(b.agent === dshAgent ? "composer.permission" : "composer.param.mode");
   const chips = (
     <>
@@ -557,7 +566,7 @@ function Conversations({ b, m }: { b: Bot; m: Machine }) {
       {efforts.length > 0 ? (
         <Picker chip showLabel size="sm" label={t("composer.param.effort")} value={params.effort} onChange={(v) => setParams({ ...params, effort: v })}
           options={[{ value: "", label: t("composer.defaultEffort") }, ...efforts.map((e) => ({ value: e, label: t(`firstrun:prepare.efforts.${e}`, { defaultValue: e }) }))]} />
-      ) : fixed(t("composer.param.effort"))}
+      ) : fixed(t("composer.param.effort"), effortWhy)}
       {(a?.modes.length ?? 0) > 0
         ? <Picker chip showLabel size="sm" label={modeLabelText} value={params.mode} options={modes} onChange={(v) => setParams({ ...params, mode: v })} />
         : fixed(modeLabelText)}

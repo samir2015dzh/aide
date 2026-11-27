@@ -135,7 +135,7 @@
     "needServerOk": "Google’s official Antigravity ACP server is installed on {{machine}}.",
     "needSignIn": "Your Google account’s sign-in: only you can give it, in a browser; Aide can’t do it for you.",
     "needSignInMissing": "Not signed in yet, which only you can do: run aide agent login antigravity once in a terminal, and allow it with your Google account in the browser that opens.",
-    "needSignInUnconfirmed": "Whether it is signed in shows once it runs: click Run Test below. If it says it isn’t, run aide agent login antigravity once in a terminal and allow it with your Google account.",
+    "needSignInUnconfirmed": "Whether it is signed in shows once it runs: if you already signed in inside the Antigravity app, you don’t need to sign in again — click Start Test Task (or Run Test) below, and once it runs it shows as signed in. Only if it answers that it isn’t, run aide agent login antigravity once in a terminal and allow it with your Google account.",
     "needSignInOk": "Signed in with your Google account.",
     "needSignInLater": "Sign in once the server is installed, which only you can do: run aide agent login antigravity once in a terminal and allow it with your Google account.",
     "install": "Install Antigravity ACP Server",

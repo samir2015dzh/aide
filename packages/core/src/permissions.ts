@@ -17,7 +17,8 @@ const isDSHPreset = (id: string): id is DSHPreset => (dshPresets as readonly str
 
 /** A mode as people call it: a DSH preset by the name DSH gives it ("仅可查看"), else its agent's name for it, else its id. */
 export function modeLabel(agent: string, m: { id: string; name?: string }): string {
-  if (usesPermissionPresets(agent) && isDSHPreset(m.id)) return t(`dshPreset.${m.id}`);
+  // Claude Code's modes are these presets too (工单 #180 C), as Aide's gate enforces them; its projects' presets are not.
+  if ((usesPermissionPresets(agent) || agent === "claude") && isDSHPreset(m.id)) return t(`dshPreset.${m.id}`);
   return m.name || m.id;
 }
 

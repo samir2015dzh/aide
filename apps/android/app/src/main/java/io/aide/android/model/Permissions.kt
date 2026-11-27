@@ -19,7 +19,8 @@ fun usesPermissionPresets(agent: String): Boolean = agent == DSH_AGENT || agent 
 private val dshPresets = listOf("read-only", "workspace-write", "danger-full-access")
 
 /** A mode as people call it: a DSH preset by the name DSH gives it ("仅可查看"), else its agent's name for it, else its id. */
-fun modeLabel(agent: String, m: AgentMode): String = if (usesPermissionPresets(agent)) when (m.id) {
+// Claude Code's modes are these presets too (工单 #180 C), as Aide's gate enforces them; its projects' presets are not.
+fun modeLabel(agent: String, m: AgentMode): String = if (usesPermissionPresets(agent) || agent == "claude") when (m.id) {
     "read-only" -> t("Read only", "仅可查看")
     "workspace-write" -> t("Changes in the workspace", "工作区内修改")
     "danger-full-access" -> t("Full access", "完全权限")

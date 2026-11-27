@@ -121,6 +121,20 @@ export function defaultModelChoice(a: Pick<AgentStatus, "name" | "models" | "def
   return m ? choiceOf(a.name, m) : modelChoices(a.name, [], id)[0];
 }
 
+/**
+ * The reasoning efforts a session of the agent can take with model ("": the model it runs when none is chosen, 工单
+ * #180 C: the machine's default for it, else the agent's own — an alias or the specific model it resolves to). When
+ * the default is not among its models, any listed model's (as aided checks a session's effort then); a chosen model
+ * not listed, none.
+ */
+export function modelEfforts(a: Pick<AgentStatus, "models" | "defaults" | "own"> | undefined, model = ""): string[] {
+  if (!a) return [];
+  const id = model || a.defaults?.model || a.own?.model;
+  const m = id ? a.models.find((x) => x.id === id || x.resolved === id) : undefined;
+  if (m) return m.efforts;
+  return model ? [] : [...new Set(a.models.flatMap((x) => x.efforts))];
+}
+
 /** A model a conversation runs, as its model list has it: the alias that resolves to it here, else itself. */
 export function listedModel(id: string, models: AgentModel[]): string {
   if (!id || models.some((m) => m.id === id)) return id;

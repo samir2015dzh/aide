@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	machinev1 "github.com/samir2015dzh/aide/gen/go/aide/machine/v1"
+	sessionv1 "github.com/samir2015dzh/aide/gen/go/aide/session/v1"
 	"github.com/samir2015dzh/aide/internal/provider"
 	"github.com/samir2015dzh/aide/internal/shellenv"
 )
@@ -254,6 +255,7 @@ func (n *Machine) TestAgent(ctx context.Context, name string) (*machinev1.TestAg
 			return provider.Decision{Reason: "a test turn uses no tools"}
 		}})
 	if err != nil {
+		n.testSawSignIn(name, provider.FailureOf(err, sessionv1.FailureKind_FAILURE_KIND_UNKNOWN))
 		return &machinev1.TestAgentResponse{Reply: err.Error(), Millis: uint32(time.Since(start).Milliseconds())}, nil
 	}
 	defer sess.Close()
@@ -273,6 +275,7 @@ func (n *Machine) TestAgent(ctx context.Context, name string) (*machinev1.TestAg
 			case provider.EventAgentMessage:
 				reply = strings.TrimSpace(e.Text)
 			case provider.EventError:
+				n.testSawSignIn(name, eventFailure(e))
 				return &machinev1.TestAgentResponse{Reply: e.Text, Millis: uint32(time.Since(start).Milliseconds())}, nil
 			case provider.EventTurnCompleted:
 				if reply == "" {
@@ -281,8 +284,36 @@ func (n *Machine) TestAgent(ctx context.Context, name string) (*machinev1.TestAg
 				// Claude Code answers "Not logged in · Please run /login" as a
 				// message: that is no answer (工单 #44).
 				ok := !e.IsError && reply != "" && !notSignedInReply.MatchString(reply)
+				switch {
+				case ok:
+					n.agentSignedIn(name, true)
+				case notSignedInReply.MatchString(reply):
+					n.agentSignedIn(name, false)
+				case e.IsError:
+					n.testSawSignIn(name, eventFailure(e))
+				}
 				return &machinev1.TestAgentResponse{Ok: ok, Reply: reply, Millis: uint32(time.Since(start).Milliseconds())}, nil
 			}
 		}
 	}
+}
+
+// testSawSignIn keeps what a failed test turn showed of the agent's sign-in
+// (工单 #180): a turn that failed "not logged in" is signed out, as a session's
+// is (Sessions.sawSignIn); any other failure says nothing of it. One that
+// answered is signed in (TestAgent): Run Test confirms an ACP agent's sign-in
+// as a session does, not only the task it starts.
+func (n *Machine) testSawSignIn(name string, f *provider.Failure) {
+	if f.GetKind() == sessionv1.FailureKind_FAILURE_KIND_AUTH {
+		n.agentSignedIn(name, false)
+	}
+}
+
+// eventFailure is why an error or failed turn ended: its own failure, else
+// its text classified.
+func eventFailure(e provider.Event) *provider.Failure {
+	if e.Failure != nil {
+		return e.Failure
+	}
+	return &provider.Failure{Kind: provider.Classify(e.Text), Message: e.Text}
 }

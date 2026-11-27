@@ -257,7 +257,7 @@ func defaultCapabilitiesFor(name string, p provider.Provider) provider.Capabilit
 			SelectModel:          true,
 			SwitchModelInSession: true,
 			SelectEffort:         true,
-			SelectMode:           false,
+			SelectMode:           true, // the presets Aide's gate enforces (工单 #180 C)
 			LoginInAide:          true,
 			Usage:                true,
 			Fork:                 false,

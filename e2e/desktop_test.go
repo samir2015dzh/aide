@@ -139,6 +139,9 @@ func TestDesktop(t *testing.T) {
 				registry, _ := fakeAntigravityRegistry(t)
 				more = append(more, "HOME="+home, "USERPROFILE="+home, "AIDE_ACP_REGISTRY_URL="+registry)
 			}
+			if name == "batch180" { // Claude Code listing its models with their efforts (工单 #180 C)
+				more = append(more, "AIDE_CLAUDE_BIN="+modelsClaude(t))
+			}
 			if name == "batchj-botsettings" { // DSH on this Mac, for its bot page and its settings page (工单 #97)
 				more = append(more, "AIDE_DEEPSEEK_BIN="+filepath.Join(binaries(t), "fakeacp"+exe))
 			}

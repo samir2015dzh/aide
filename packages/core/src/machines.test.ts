@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { AgentStatusSchema } from "@aide/proto/machine";
 import { describe, expect, test } from "vitest";
-import { agentTiles, defaultModelChoice, folderName, isAbsolutePath, listedModel, modelChoices, modelGroups, modelTitle, platformTitle } from "./machines";
+import { agentTiles, defaultModelChoice, folderName, isAbsolutePath, listedModel, modelChoices, modelEfforts, modelGroups, modelTitle, platformTitle } from "./machines";
 
 describe("machines", () => {
   test("models read as their agent names them, Claude's IDs as people call them", () => {
@@ -107,5 +107,34 @@ describe("modelGroups (工单 #136 P18)", () => {
       { provider: "magpie", models: ["gw-1"] },
       { provider: "", models: ["Opus 5.5"] },
     ]);
+  });
+});
+
+// 工单 #180 C: with the model left at its default, the efforts are the default model's, not none.
+describe("modelEfforts", () => {
+  const e = ["low", "medium", "high", "xhigh", "max"];
+  const agent = (own: string, defaults = "") =>
+    create(AgentStatusSchema, {
+      name: "claude",
+      models: [
+        { id: "opus", resolved: "claude-opus-5-5", efforts: e },
+        { id: "haiku", resolved: "claude-haiku-5-5", efforts: [] },
+      ],
+      own: { model: own },
+      defaults: { model: defaults },
+    });
+  const claude = agent("claude-opus-5-5");
+  test("a chosen model's own", () => {
+    expect(modelEfforts(claude, "opus")).toEqual(e);
+    expect(modelEfforts(claude, "haiku")).toEqual([]);
+    expect(modelEfforts(claude, "unlisted")).toEqual([]);
+  });
+  test("the default: the machine's, else the agent's own, by alias or by the model it resolves to", () => {
+    expect(modelEfforts(claude)).toEqual(e);
+    expect(modelEfforts(agent("claude-opus-5-5", "haiku"))).toEqual([]);
+  });
+  test("a default not listed: any listed model's", () => {
+    expect(modelEfforts(agent(""))).toEqual(e);
+    expect(modelEfforts(undefined)).toEqual([]);
   });
 });
