@@ -29,7 +29,10 @@
     "broken": "Found on {{machine}}, but it fails to start",
     "noAnswer": "Found on {{machine}}, but it didn’t answer the check",
     "missing": "Not detected on {{machine}}",
-    "signInClaude": "Claude Code's command line is on {{machine}}, but not signed in (the Claude desktop app's sign-in does not carry over)"
+    "signInClaude": "Claude Code's command line is on {{machine}}, but not signed in (the Claude desktop app's sign-in does not carry over)",
+    "signInSeen": "Found on {{machine}}; when it last ran in Aide ({{when}}) it said it isn’t signed in",
+    "seenWhy": "In its words: {{why}}",
+    "seenEarlier": "earlier"
   },
   "tryThis": "What to check:",
   "checkAgain": "Check Again",
@@ -38,7 +41,8 @@
     "checkAgain": "Then click Check Again. Aide looks for it every time you do; there is no need to restart anything.",
     "broken": "What Aide’s check found: {{reason}}",
     "offline": "Open Aide on {{machine}}, or wake it up. Its status comes back as soon as it is online.",
-    "customMissing": "Check the command: is the program installed on {{machine}}, under that name or at that full path? Edit the agent below and click Test Connection to see what happens."
+    "customMissing": "Check the command: is the program installed on {{machine}}, under that name or at that full path? Edit the agent below and click Test Connection to see what happens.",
+    "retest": "First check whether it really isn’t signed in: click Run Test below. If it runs, it shows as signed in; if it still says it isn’t, sign in as the next step says."
   },
   "project": {
     "none": "A test task runs in a project: {{agent}} has none on {{machine}} yet (a folder it may work in). Add one first.",
@@ -140,7 +144,8 @@
     "needSignInLater": "Sign in once the server is installed, which only you can do: run aide agent login antigravity once in a terminal and allow it with your Google account.",
     "install": "Install Antigravity ACP Server",
     "installing": "Downloading and checking…",
-    "installWhat": "Aide downloads the Antigravity ACP server from Google’s official releases, checks it against the official ACP registry’s SHA-256, installs it on {{machine}} where Aide looks for it, and checks again."
+    "installWhat": "Aide downloads the Antigravity ACP server from Google’s official releases, checks it against the official ACP registry’s SHA-256, installs it on {{machine}} where Aide looks for it, and checks again.",
+    "needSignInSeen": "When it last ran in Aide it said it isn’t signed in. The Antigravity ACP server keeps its sign-in apart from the Antigravity app’s, so signing in to the app may not carry over: click Run Test below to check again; if it still says it isn’t, run aide agent login antigravity once in a terminal and allow it with your Google account."
   },
   "custom": {
     "intro": "Connect any coding agent Aide doesn’t list, if it speaks the Agent Client Protocol (ACP). Tell Aide how to start it; Aide keeps it on that computer and lists it with the others. An agent without ACP that can run commands in a terminal connects under Assistants below, as Other Agent.",

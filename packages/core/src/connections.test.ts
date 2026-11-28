@@ -23,6 +23,14 @@ function machine(agents: object[], over: Partial<Machine> = {}): Machine {
 }
 
 describe("connections", () => {
+  // 工单 #180: signed out by what its last run said, the row says so in its words, and that a test run checks again.
+  test("an agent signed out by its last run says why", () => {
+    const seen = machineConnections(machine([{ name: "antigravity", available: true, loggedIn: false, signInSeen: { signedIn: false, why: "authentication required" } }]), now).rows[0];
+    expect([seen.text, seen.lacks]).toEqual(["未登录", "Antigravity 上次在 Aide 里运行时说它没登录（authentication required）：可以在连接页点「运行测试」再验一次。"]);
+    const plain = machineConnections(machine([{ name: "antigravity", available: true, loggedIn: false }]), now).rows[0];
+    expect(plain.lacks).toBe("Antigravity 装了但没登录：这台机器上暂时不能把任务派给它。");
+  });
+
   test("Claude Desktop signed in and the command line not are two rows that say so (工单 #44)", () => {
     const c = machineConnections(machine([{ name: "claude", available: true, version: "2.1.330", loggedIn: false, desktop: { installed: true, signedIn: true } }]), now);
     expect(c.rows.map((r) => [r.id, r.state, r.text])).toEqual([

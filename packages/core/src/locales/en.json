@@ -252,7 +252,8 @@
     "bridgeInstallRestart": "Takes effect once DSH Desktop restarts (this line turns “Installed” as soon as the plugin answers).",
     "dshModelGroup": "{{provider}}: {{models}}",
     "listSeparator": ", ",
-    "andMore": " and {{count}} more"
+    "andMore": " and {{count}} more",
+    "agentSignedOutSeen": "When {{agent}} last ran in Aide it said it isn’t signed in ({{why}}): Run Test on its Connect page checks again."
   },
   "roster": {
     "online": "Online",

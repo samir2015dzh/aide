@@ -313,6 +313,9 @@ const (
 	// LocalServiceReadClaudeSessionProcedure is the fully-qualified name of the LocalService's
 	// ReadClaudeSession RPC.
 	LocalServiceReadClaudeSessionProcedure = "/aide.local.v1.LocalService/ReadClaudeSession"
+	// LocalServiceContinueClaudeSessionProcedure is the fully-qualified name of the LocalService's
+	// ContinueClaudeSession RPC.
+	LocalServiceContinueClaudeSessionProcedure = "/aide.local.v1.LocalService/ContinueClaudeSession"
 	// LocalServiceListHeldMessagesProcedure is the fully-qualified name of the LocalService's
 	// ListHeldMessages RPC.
 	LocalServiceListHeldMessagesProcedure = "/aide.local.v1.LocalService/ListHeldMessages"
@@ -579,6 +582,9 @@ type LocalServiceClient interface {
 	// One of them and a page of its conversation
 	// (aide.machine.v1.MachineAdminService.ReadClaudeSession).
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error)
+	// Goes on with one of them in Aide (工单 #181,
+	// aide.machine.v1.MachineAdminService.ContinueClaudeSession).
+	ContinueClaudeSession(context.Context, *v1.ContinueClaudeSessionRequest) (*v11.ContinueClaudeSessionResponse, error)
 	// The messages each machine holds for the owner before they reach a
 	// session, over the machines (aide.machine.v1.MachineAdminService.ListHeldMessages).
 	ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error)
@@ -1215,6 +1221,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("ReadClaudeSession")),
 			connect.WithClientOptions(opts...),
 		),
+		continueClaudeSession: connect.NewClient[v1.ContinueClaudeSessionRequest, v11.ContinueClaudeSessionResponse](
+			httpClient,
+			baseURL+LocalServiceContinueClaudeSessionProcedure,
+			connect.WithSchema(localServiceMethods.ByName("ContinueClaudeSession")),
+			connect.WithClientOptions(opts...),
+		),
 		listHeldMessages: connect.NewClient[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse](
 			httpClient,
 			baseURL+LocalServiceListHeldMessagesProcedure,
@@ -1386,6 +1398,7 @@ type localServiceClient struct {
 	dSHSessionOptions              *connect.Client[v1.DSHSessionOptionsRequest, v11.DSHSessionOptionsResponse]
 	listClaudeSessions             *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 	readClaudeSession              *connect.Client[v1.ReadClaudeSessionRequest, v11.ReadClaudeSessionResponse]
+	continueClaudeSession          *connect.Client[v1.ContinueClaudeSessionRequest, v11.ContinueClaudeSessionResponse]
 	listHeldMessages               *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
 	releaseHeldMessage             *connect.Client[v1.ReleaseHeldMessageRequest, v11.ReleaseHeldMessageResponse]
 	listMachineCustomAgents        *connect.Client[v1.ListMachineCustomAgentsRequest, v11.ListCustomAgentsResponse]
@@ -2283,6 +2296,15 @@ func (c *localServiceClient) ReadClaudeSession(ctx context.Context, req *v1.Read
 	return nil, err
 }
 
+// ContinueClaudeSession calls aide.local.v1.LocalService.ContinueClaudeSession.
+func (c *localServiceClient) ContinueClaudeSession(ctx context.Context, req *v1.ContinueClaudeSessionRequest) (*v11.ContinueClaudeSessionResponse, error) {
+	response, err := c.continueClaudeSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListHeldMessages calls aide.local.v1.LocalService.ListHeldMessages.
 func (c *localServiceClient) ListHeldMessages(ctx context.Context, req *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {
 	response, err := c.listHeldMessages.CallUnary(ctx, connect.NewRequest(req))
@@ -2614,6 +2636,9 @@ type LocalServiceHandler interface {
 	// One of them and a page of its conversation
 	// (aide.machine.v1.MachineAdminService.ReadClaudeSession).
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error)
+	// Goes on with one of them in Aide (工单 #181,
+	// aide.machine.v1.MachineAdminService.ContinueClaudeSession).
+	ContinueClaudeSession(context.Context, *v1.ContinueClaudeSessionRequest) (*v11.ContinueClaudeSessionResponse, error)
 	// The messages each machine holds for the owner before they reach a
 	// session, over the machines (aide.machine.v1.MachineAdminService.ListHeldMessages).
 	ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error)
@@ -3246,6 +3271,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("ReadClaudeSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceContinueClaudeSessionHandler := connect.NewUnaryHandlerSimple(
+		LocalServiceContinueClaudeSessionProcedure,
+		svc.ContinueClaudeSession,
+		connect.WithSchema(localServiceMethods.ByName("ContinueClaudeSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceListHeldMessagesHandler := connect.NewUnaryHandlerSimple(
 		LocalServiceListHeldMessagesProcedure,
 		svc.ListHeldMessages,
@@ -3514,6 +3545,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceListClaudeSessionsHandler.ServeHTTP(w, r)
 		case LocalServiceReadClaudeSessionProcedure:
 			localServiceReadClaudeSessionHandler.ServeHTTP(w, r)
+		case LocalServiceContinueClaudeSessionProcedure:
+			localServiceContinueClaudeSessionHandler.ServeHTTP(w, r)
 		case LocalServiceListHeldMessagesProcedure:
 			localServiceListHeldMessagesHandler.ServeHTTP(w, r)
 		case LocalServiceReleaseHeldMessageProcedure:
@@ -3943,6 +3976,10 @@ func (UnimplementedLocalServiceHandler) ListClaudeSessions(context.Context, *v1.
 
 func (UnimplementedLocalServiceHandler) ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v11.ReadClaudeSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ReadClaudeSession is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) ContinueClaudeSession(context.Context, *v1.ContinueClaudeSessionRequest) (*v11.ContinueClaudeSessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.local.v1.LocalService.ContinueClaudeSession is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {

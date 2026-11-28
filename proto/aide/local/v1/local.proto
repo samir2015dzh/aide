@@ -252,6 +252,9 @@ service LocalService {
   // One of them and a page of its conversation
   // (aide.machine.v1.MachineAdminService.ReadClaudeSession).
   rpc ReadClaudeSession(ReadClaudeSessionRequest) returns (aide.machine.v1.ReadClaudeSessionResponse);
+  // Goes on with one of them in Aide (工单 #181,
+  // aide.machine.v1.MachineAdminService.ContinueClaudeSession).
+  rpc ContinueClaudeSession(ContinueClaudeSessionRequest) returns (aide.machine.v1.ContinueClaudeSessionResponse);
   // The messages each machine holds for the owner before they reach a
   // session, over the machines (aide.machine.v1.MachineAdminService.ListHeldMessages).
   rpc ListHeldMessages(ListHeldMessagesRequest) returns (ListHeldMessagesResponse);
@@ -1422,6 +1425,14 @@ message ReadClaudeSessionRequest {
   uint64 before_seq = 4;
   uint32 limit = 5;
   aide.session.v1.EventView view = 6;
+}
+
+message ContinueClaudeSessionRequest {
+  string machine_id = 1;
+  string session_id = 2;
+  string prompt = 3;
+  string project_id = 4;
+  string idempotency_key = 5;
 }
 
 message SetDSHTakeoverRequest {

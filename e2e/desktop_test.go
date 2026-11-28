@@ -198,10 +198,15 @@ esac
 			}
 			if name == "claudesessions" { // the Claude app's own session, in a checkout of a GitHub repository
 				local, config, repo := t.TempDir(), t.TempDir(), t.TempDir()
-				os.MkdirAll(filepath.Join(repo, ".git"), 0o755)
-				os.WriteFile(filepath.Join(repo, ".git", "config"), []byte("[remote \"origin\"]\n\turl = git@github.com:octo/site.git\n"), 0o644)
+				// A real checkout, which no project holds: going on with it in Aide adds it first (工单 #181).
+				for _, args := range [][]string{{"init", "-q"}, {"remote", "add", "origin", "git@github.com:octo/site.git"}} {
+					if out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput(); err != nil {
+						t.Fatalf("git %v: %v %s", args, err, out)
+					}
+				}
 				claudeAppSession(t, filepath.Join(local, "Claude-Data", "claude_pubid", "claude-code-sessions"), config, "c-site", "改首页", repo, time.Now().Add(-time.Hour), "首页标题改一下", "改好了。")
-				more = append(more, "LOCALAPPDATA="+local, "CLAUDE_CONFIG_DIR="+config)
+				// Claude Code that answers a turn, resumed or not.
+				more = append(more, "LOCALAPPDATA="+local, "CLAUDE_CONFIG_DIR="+config, "AIDE_CLAUDE_BIN="+modelsClaude(t))
 			}
 			var f desktopFixture
 			if name == "workspace" { // a managed workspace's session, on the scripted fake agent (workspaceWorld)

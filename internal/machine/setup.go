@@ -286,9 +286,9 @@ func (n *Machine) TestAgent(ctx context.Context, name string) (*machinev1.TestAg
 				ok := !e.IsError && reply != "" && !notSignedInReply.MatchString(reply)
 				switch {
 				case ok:
-					n.agentSignedIn(name, true)
+					n.agentSignedIn(name, true, "")
 				case notSignedInReply.MatchString(reply):
-					n.agentSignedIn(name, false)
+					n.agentSignedIn(name, false, reply)
 				case e.IsError:
 					n.testSawSignIn(name, eventFailure(e))
 				}
@@ -305,7 +305,7 @@ func (n *Machine) TestAgent(ctx context.Context, name string) (*machinev1.TestAg
 // as a session does, not only the task it starts.
 func (n *Machine) testSawSignIn(name string, f *provider.Failure) {
 	if f.GetKind() == sessionv1.FailureKind_FAILURE_KIND_AUTH {
-		n.agentSignedIn(name, false)
+		n.agentSignedIn(name, false, f.Message)
 	}
 }
 

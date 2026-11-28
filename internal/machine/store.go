@@ -511,6 +511,17 @@ func (s *Store) Sessions(where string, args ...any) ([]*sessionRow, error) {
 
 // ProviderRefs is the agents' own ids of the stored sessions (an ACP
 // agent's session id, a Codex thread...).
+// SessionByProviderRef is the session of agent with the agent's own id ref
+// (its provider_ref); "" when none.
+func (s *Store) SessionByProviderRef(agent, ref string) (string, error) {
+	var id string
+	err := s.rdb.QueryRow(`SELECT session_id FROM sessions WHERE agent=? AND provider_ref=? ORDER BY created_at DESC LIMIT 1`, agent, ref).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return id, err
+}
+
 func (s *Store) ProviderRefs() (map[string]bool, error) {
 	rows, err := s.rdb.Query(`SELECT provider_ref FROM sessions WHERE provider_ref != ''`)
 	if err != nil {

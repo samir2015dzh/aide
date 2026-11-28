@@ -248,6 +248,11 @@ private fun agentRow(a: AgentStatus): ConnRow {
             ),
             at, presence = Presence.UNCONFIRMED,
         )
+        // Signed out by what its last run said (工单 #180): said so, in its words, and that a test run checks again.
+        !a.loggedIn && a.signInSeen?.signedIn == false -> {
+            val why = a.signInSeen.why.ifEmpty { "—" }
+            ConnRow(a.name, a.name, title, ConnState.MISSING, t("Not signed in", "未登录"), t("When $title last ran in Aide it said it isn’t signed in ($why): Run Test on its Connect page in the desktop app checks again.", "$title 上次在 Aide 里运行时说它没登录（$why）：可以在桌面端连接页点「运行测试」再验一次。"), at)
+        }
         !a.loggedIn -> ConnRow(a.name, a.name, title, ConnState.MISSING, t("Not signed in", "未登录"), t("$title is installed but not signed in: no task can go to it here.", "$title 装了但没登录：这台机器上暂时不能把任务派给它。"), at)
         else -> ConnRow(a.name, a.name, title, ConnState.OK, versioned("Ready", "可以用", a.version), null, at)
     }

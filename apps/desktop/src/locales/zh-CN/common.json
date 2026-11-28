@@ -236,7 +236,15 @@
     "completed": "已完成",
     "blocked": "等你处理",
     "address": "可寄信：{{address}}",
-    "noAddress": "不可寄信（这台机器上的 Aide 还没接上这个对话）"
+    "noAddress": "其他 Agent 还不能给它寄信（这台机器上的 Aide 还没接上这个对话）",
+    "continueTitle": "在 Aide 里接着聊",
+    "continueNote": "Aide 会在它原来的文件夹（{{folder}}）里用 Claude Code 接着这段对话，新的一来一回也写进 Claude 里的这条记录，两边看到的一样。别同时在 Claude 里接着聊同一条。",
+    "continuePlaceholder": "接着说点什么…",
+    "continueSend": "接着聊",
+    "continueSending": "正在接上…",
+    "continueAddProject": "把这个文件夹加为项目，再接着聊",
+    "continuedNote": "已经在 Aide 里接着聊了：这里是它完整的对话（Claude 里的这条记录），新的一来一回也在 Aide 的那个会话里。",
+    "continuedOpen": "打开 Aide 里的会话"
   },
   "dsh": {
     "title": "DSH 会话",
@@ -637,7 +645,10 @@
     "room_members_count": "一个房间要有 1 到 {{max}} 个成员。",
     "room_not_in_charter": "{{agent}}（项目 {{project}}）不在这个房间的成员名单里。",
     "room_not_found": "负责这个房间的机器上找不到它了。",
-    "nothing_to_say": "还没写内容。"
+    "nothing_to_say": "还没写内容。",
+    "claude_no_project": "这台机器上没有哪个项目包含它工作的文件夹 {{folder}}：把这个文件夹加为项目，就能在 Aide 里接着聊。",
+    "claude_folder_gone": "它工作的文件夹 {{folder}} 已经不在这台机器上了，没法在原处接着聊：回 Claude 里继续，或在 Aide 里新派一个任务。",
+    "claude_no_transcript": "这台机器上没有 Claude Code 对这段对话的记录，没法在这里接着聊：回 Claude 里继续，或在 Aide 里新派一个任务。"
   },
   "composer": {
     "permission": "权限",

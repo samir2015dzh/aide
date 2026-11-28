@@ -3,6 +3,7 @@ package machine
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/samir2015dzh/aide/internal/provider"
 )
@@ -17,6 +18,9 @@ const (
 	// kAgentSignIn is what a session of an agent last showed of its sign-in
 	// ("in" or "out"): an agent whose check cannot tell (an ACP agent's, 工单
 	// #112) shows that rather than a guess.
+	// Kept as a SignInSeen (JSON); the bare "in"/"out" earlier versions kept
+	// says no more than that (工单 #180: an "out" with no when or why no
+	// longer decides, see signInKept).
 	kAgentSignIn = "agent_signin/"
 )
 
@@ -56,8 +60,8 @@ func (n *Machine) discover(name string, p provider.Provider, onPurpose bool) pro
 		n.keep(name, keptModels{Version: info.Version, Models: info.Models, Own: info.Own, AllModels: info.AllModels})
 	}
 	if info.Available && info.LoginUnconfirmed {
-		if b, _ := n.st.Get(kAgentSignIn + name); b != nil {
-			info.LoggedIn, info.LoginUnconfirmed = string(b) == "in", false
+		if seen, ok := n.signInKept(name); ok {
+			info.LoggedIn, info.LoginUnconfirmed, info.SignInSeen = seen.In, false, &seen
 		}
 	}
 	return info
@@ -91,16 +95,38 @@ func (n *Machine) keep(name string, k keptModels) {
 	}
 }
 
-// sawSignIn keeps what a session of the agent showed of its sign-in.
-func (n *Machine) sawSignIn(name string, in bool) {
-	v := "out"
-	if in {
-		v = "in"
+// signInKept is what the last run of the agent here showed of its sign-in.
+// A bare "out" kept by an earlier version is no evidence (工单 #180): it
+// says neither when nor why, and kept the agent signed out — no test run
+// offered — long after whatever showed it, so it is left out (the next run
+// says again); a bare "in" stands, as the next failed run corrects it.
+func (n *Machine) signInKept(name string) (provider.SignInSeen, bool) {
+	b, _ := n.st.Get(kAgentSignIn + name)
+	switch string(b) {
+	case "":
+		return provider.SignInSeen{}, false
+	case "in":
+		return provider.SignInSeen{In: true}, true
+	case "out":
+		return provider.SignInSeen{}, false
 	}
-	if b, _ := n.st.Get(kAgentSignIn + name); string(b) == v {
-		return
+	var seen provider.SignInSeen
+	if json.Unmarshal(b, &seen) != nil {
+		return provider.SignInSeen{}, false
 	}
-	if err := n.st.Set(kAgentSignIn+name, []byte(v)); err != nil {
+	return seen, true
+}
+
+// sawSignIn keeps what a session of the agent showed of its sign-in, when,
+// and what it said failing "not signed in" (why).
+func (n *Machine) sawSignIn(name string, in bool, why string) provider.SignInSeen {
+	if old, ok := n.signInKept(name); ok && in && old.In && !old.At.IsZero() {
+		return old // signed in since then: no write per turn
+	}
+	seen := provider.SignInSeen{In: in, At: time.Now().UTC().Truncate(time.Second), Why: why}
+	b, _ := json.Marshal(seen)
+	if err := n.st.Set(kAgentSignIn+name, b); err != nil {
 		n.log.Warn("keeping what a session showed of an agent's sign-in", "agent", name, "err", err)
 	}
+	return seen
 }

@@ -1766,6 +1766,28 @@ func (o *Owner) ReadClaudeSession(ctx context.Context, req *localv1.ReadClaudeSe
 	return n.Admin.ReadClaudeSession(ctx, r)
 }
 
+// ContinueClaudeSession goes on with one of them in Aide, on its machine
+// (工单 #181).
+func (o *Owner) ContinueClaudeSession(ctx context.Context, req *localv1.ContinueClaudeSessionRequest) (*machinev1.ContinueClaudeSessionResponse, error) {
+	r := &machinev1.ContinueClaudeSessionRequest{SessionId: req.SessionId, Prompt: req.Prompt, ProjectId: req.ProjectId, IdempotencyKey: req.IdempotencyKey}
+	m, err := o.findMachine(ctx, req.MachineId)
+	if err != nil {
+		return nil, err
+	}
+	if l := o.local(); m.Local && l != nil {
+		s, err := l.ContinueClaudeSession(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		return &machinev1.ContinueClaudeSessionResponse{Session: s}, nil
+	}
+	n, err := o.machineClient(ctx, m.MachineId)
+	if err != nil {
+		return nil, err
+	}
+	return n.Admin.ContinueClaudeSession(ctx, r)
+}
+
 // ReadDSHSession reads a DeepSeek Harness session on a machine.
 func (o *Owner) ReadDSHSession(ctx context.Context, req *localv1.ReadDSHSessionRequest) (*machinev1.ReadDSHSessionResponse, error) {
 	m, err := o.findMachine(ctx, req.MachineId)

@@ -546,6 +546,20 @@ func (l *localService) ReadClaudeSession(ctx context.Context, req *localv1.ReadC
 	return l.o().ReadClaudeSession(ctx, req)
 }
 
+func (l *localService) ContinueClaudeSession(ctx context.Context, req *localv1.ContinueClaudeSessionRequest) (*machinev1.ContinueClaudeSessionResponse, error) {
+	if m, ok, err := l.o().onlyMachine(); ok {
+		if err != nil {
+			return nil, err
+		}
+		s, err := m.ContinueClaudeSession(ctx, &machinev1.ContinueClaudeSessionRequest{SessionId: req.SessionId, Prompt: req.Prompt, ProjectId: req.ProjectId, IdempotencyKey: req.IdempotencyKey})
+		if err != nil {
+			return nil, err
+		}
+		return &machinev1.ContinueClaudeSessionResponse{Session: s}, nil
+	}
+	return l.o().ContinueClaudeSession(ctx, req)
+}
+
 func (l *localService) ReadDSHSession(ctx context.Context, req *localv1.ReadDSHSessionRequest) (*machinev1.ReadDSHSessionResponse, error) {
 	if m, ok, err := l.o().onlyMachine(); ok {
 		if err != nil {

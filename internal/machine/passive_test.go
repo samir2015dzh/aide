@@ -131,19 +131,60 @@ func TestSignInShownBySessions(t *testing.T) {
 	if in, unconfirmed := state(n); in || !unconfirmed {
 		t.Fatalf("before any session: in %v, unconfirmed %v", in, unconfirmed)
 	}
-	n.agentSignedIn("acplike", true)
+	n.agentSignedIn("acplike", true, "")
 	if in, unconfirmed := state(n); !in || unconfirmed {
 		t.Fatalf("after a turn ran: in %v, unconfirmed %v", in, unconfirmed)
 	}
 	n.Close()
 	n = open()
-	defer n.Close()
+	defer func() { n.Close() }() // the last one opened
 	if in, unconfirmed := state(n); !in || unconfirmed {
 		t.Fatalf("after a restart: in %v, unconfirmed %v", in, unconfirmed)
 	}
-	n.agentSignedIn("acplike", false)
+	n.agentSignedIn("acplike", false, "Not logged in · Please run /login")
 	if in, unconfirmed := state(n); in || unconfirmed {
 		t.Fatalf("after a turn failed not logged in: in %v, unconfirmed %v", in, unconfirmed)
+	}
+	// What it rests on is shown (工单 #180): when, and what the run said; also after a restart.
+	n.Close()
+	n = open()
+	state(n)
+	n.mu.Lock()
+	seen := signInSeenProto(n.infos["acplike"].SignInSeen) // as the machine's status carries it
+	n.mu.Unlock()
+	if seen == nil || seen.SignedIn || seen.Why != "Not logged in · Please run /login" || seen.At == nil {
+		t.Fatalf("its evidence: %+v", seen)
+	}
+}
+
+// TestBareSignOutIsNoEvidence (工单 #180): a bare "out" an earlier version
+// kept says neither when nor why: it no longer keeps the agent signed out
+// (and its test run unoffered); a bare "in" still stands.
+func TestBareSignOutIsNoEvidence(t *testing.T) {
+	dir := t.TempDir()
+	open := func() *Machine {
+		n, err := Open(Config{DataDir: dir, Providers: map[string]provider.Provider{"acplike": acpLike{}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	for _, c := range []struct {
+		kept            string
+		in, unconfirmed bool
+	}{{"out", false, true}, {"in", true, false}} {
+		n := open()
+		if err := n.st.Set(kAgentSignIn+"acplike", []byte(c.kept)); err != nil {
+			t.Fatal(err)
+		}
+		<-n.CheckAgents(true, 0)
+		n.mu.Lock()
+		i := n.infos["acplike"]
+		n.mu.Unlock()
+		n.Close()
+		if i.LoggedIn != c.in || i.LoginUnconfirmed != c.unconfirmed {
+			t.Fatalf("kept %q: in %v, unconfirmed %v", c.kept, i.LoggedIn, i.LoginUnconfirmed)
+		}
 	}
 }
 
@@ -160,7 +201,7 @@ func TestConfirmedSignOutNotResurrectedByCache(t *testing.T) {
 	}
 	defer n.Close()
 	<-n.CheckAgents(true, 0)
-	n.agentSignedIn("antigravity", true)
+	n.agentSignedIn("antigravity", true, "")
 	signedIn.Store(false)
 	<-n.CheckAgents(true, 0)
 	n.mu.Lock()
