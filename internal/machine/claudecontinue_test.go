@@ -19,9 +19,11 @@ import (
 
 // claudeAppSession writes what the Claude desktop app and Claude Code keep
 // of a session they had without Aide: the app's record and the transcript.
-func claudeAppSession(t *testing.T, home, config, id, cliID, cwd string) {
+// appData is %APPDATA% (where the app keeps them on Windows; read on every
+// system, as the Claude provider's own tests do).
+func claudeAppSession(t *testing.T, appData, config, id, cliID, cwd string) {
 	t.Helper()
-	dir := filepath.Join(home, "Library", "Application Support", "Claude", "claude-code-sessions", "acct", "org")
+	dir := filepath.Join(appData, "Claude", "claude-code-sessions", "acct", "org")
 	os.MkdirAll(dir, 0o755)
 	now := time.Now().UnixMilli()
 	rec, _ := json.Marshal(map[string]any{"sessionId": id, "cliSessionId": cliID, "title": "Rust 迁移难点", "cwd": cwd, "createdAt": now, "lastActivityAt": now})
@@ -43,15 +45,18 @@ func claudeAppSession(t *testing.T, home, config, id, cliID, cwd string) {
 func TestContinueClaudeSession(t *testing.T) {
 	claude := &recorder{}
 	h := newHarnessWith(t, DefaultLimits(), map[string]provider.Provider{"claude": claude})
-	home, config := t.TempDir(), t.TempDir()
+	home, appData, config := t.TempDir(), t.TempDir(), t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("APPDATA", appData)
+	t.Setenv("LOCALAPPDATA", t.TempDir())
 	t.Setenv("CLAUDE_CONFIG_DIR", config)
 	proj, _ := h.n.st.Project("demo")
 	wt := filepath.Join(t.TempDir(), "wt")
 	if out, err := exec.Command("git", "-C", proj.Path, "worktree", "add", "-q", "-b", "rust", wt).CombinedOutput(); err != nil {
 		t.Fatalf("worktree: %v %s", err, out)
 	}
-	claudeAppSession(t, home, config, "local_rust", "cli-rust", wt)
+	claudeAppSession(t, appData, config, "local_rust", "cli-rust", wt)
 	owner := &Principal{Kind: PrincipalOwner}
 	ctx := context.Background()
 
@@ -97,14 +102,14 @@ func TestContinueClaudeSession(t *testing.T) {
 
 	// A folder no project holds: said so, with the folder.
 	lone := t.TempDir()
-	claudeAppSession(t, home, config, "local_lone", "cli-lone", lone)
+	claudeAppSession(t, appData, config, "local_lone", "cli-lone", lone)
 	_, err = h.n.ContinueClaudeSession(ctx, owner, &machinev1.ContinueClaudeSessionRequest{SessionId: "local_lone", Prompt: "hi"})
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), lone) || !strings.Contains(err.Error(), "add that folder as a project") {
 		t.Fatalf("no project: %v", err)
 	}
 	// A folder that is gone.
 	gone := filepath.Join(t.TempDir(), "gone")
-	claudeAppSession(t, home, config, "local_gone", "cli-gone", gone)
+	claudeAppSession(t, appData, config, "local_gone", "cli-gone", gone)
 	if _, err = h.n.ContinueClaudeSession(ctx, owner, &machinev1.ContinueClaudeSessionRequest{SessionId: "local_gone", Prompt: "hi"}); !strings.Contains(fmtErr(err), "no longer here") {
 		t.Fatalf("gone: %v", err)
 	}
