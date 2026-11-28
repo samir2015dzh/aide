@@ -59,6 +59,10 @@ data class StateLimits(val lostAfterSeconds: Int = 0, val stallAfterSeconds: Int
 @Serializable
 data class LostSpan(val from: String = "", val to: String = "")
 
+/** What the last run of an agent here showed of its sign-in (工单 #180): when (RFC 3339), and its words when it failed so. */
+@Serializable
+data class SignInSeen(val signedIn: Boolean = false, val at: String = "", val why: String = "")
+
 @Serializable
 data class AgentStatus(
     val name: String = "",
@@ -86,6 +90,8 @@ data class AgentStatus(
     val usage: ClaudeUsage? = null,
     /** Its CLI's own update check (工单 #178): null for one with no updater, or not checked yet. */
     val update: AgentUpdate? = null,
+    /** What its sign-in rests on when its last run here decided it (工单 #180); null when its own check did. */
+    val signInSeen: SignInSeen? = null,
     /** Why it is not available: an AgentProblem name ("AGENT_PROBLEM_NOT_FOUND", …); "" when it is. */
     val problem: String = "",
     /** When the check the rest says came from ended (RFC 3339); "" never checked. */

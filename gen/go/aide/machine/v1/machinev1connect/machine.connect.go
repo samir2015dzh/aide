@@ -129,6 +129,9 @@ const (
 	// MachineAdminServiceReadClaudeSessionProcedure is the fully-qualified name of the
 	// MachineAdminService's ReadClaudeSession RPC.
 	MachineAdminServiceReadClaudeSessionProcedure = "/aide.machine.v1.MachineAdminService/ReadClaudeSession"
+	// MachineAdminServiceContinueClaudeSessionProcedure is the fully-qualified name of the
+	// MachineAdminService's ContinueClaudeSession RPC.
+	MachineAdminServiceContinueClaudeSessionProcedure = "/aide.machine.v1.MachineAdminService/ContinueClaudeSession"
 	// MachineAdminServiceListHeldMessagesProcedure is the fully-qualified name of the
 	// MachineAdminService's ListHeldMessages RPC.
 	MachineAdminServiceListHeldMessagesProcedure = "/aide.machine.v1.MachineAdminService/ListHeldMessages"
@@ -679,6 +682,12 @@ type MachineAdminServiceClient interface {
 	// One of them and a page of its conversation, from Claude Code's
 	// transcript, as session events. Read only. Owner only.
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error)
+	// Goes on with one of them in Aide (工单 #181): a session of Aide's that
+	// resumes it — Claude Code's own id, in its own folder — with the
+	// owner's message as its next turn, so what follows is in its transcript
+	// as Claude wrote it before. One already gone on with is that session.
+	// Owner only.
+	ContinueClaudeSession(context.Context, *v1.ContinueClaudeSessionRequest) (*v1.ContinueClaudeSessionResponse, error)
 	// Messages held for the owner before they reach a session
 	// (docs/agent-messages.md §15.5): from an agent let in less than 7 days
 	// ago, in a chain at hop 3 or more, or matching the owner's information
@@ -887,6 +896,12 @@ func NewMachineAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(machineAdminServiceMethods.ByName("ReadClaudeSession")),
 			connect.WithClientOptions(opts...),
 		),
+		continueClaudeSession: connect.NewClient[v1.ContinueClaudeSessionRequest, v1.ContinueClaudeSessionResponse](
+			httpClient,
+			baseURL+MachineAdminServiceContinueClaudeSessionProcedure,
+			connect.WithSchema(machineAdminServiceMethods.ByName("ContinueClaudeSession")),
+			connect.WithClientOptions(opts...),
+		),
 		listHeldMessages: connect.NewClient[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse](
 			httpClient,
 			baseURL+MachineAdminServiceListHeldMessagesProcedure,
@@ -998,6 +1013,7 @@ type machineAdminServiceClient struct {
 	dSHSessionOptions       *connect.Client[v1.DSHSessionOptionsRequest, v1.DSHSessionOptionsResponse]
 	listClaudeSessions      *connect.Client[v1.ListClaudeSessionsRequest, v1.ListClaudeSessionsResponse]
 	readClaudeSession       *connect.Client[v1.ReadClaudeSessionRequest, v1.ReadClaudeSessionResponse]
+	continueClaudeSession   *connect.Client[v1.ContinueClaudeSessionRequest, v1.ContinueClaudeSessionResponse]
 	listHeldMessages        *connect.Client[v1.ListHeldMessagesRequest, v1.ListHeldMessagesResponse]
 	releaseHeldMessage      *connect.Client[v1.ReleaseHeldMessageRequest, v1.ReleaseHeldMessageResponse]
 	setDSHTakeover          *connect.Client[v1.SetDSHTakeoverRequest, v1.SetDSHTakeoverResponse]
@@ -1212,6 +1228,15 @@ func (c *machineAdminServiceClient) ReadClaudeSession(ctx context.Context, req *
 	return nil, err
 }
 
+// ContinueClaudeSession calls aide.machine.v1.MachineAdminService.ContinueClaudeSession.
+func (c *machineAdminServiceClient) ContinueClaudeSession(ctx context.Context, req *v1.ContinueClaudeSessionRequest) (*v1.ContinueClaudeSessionResponse, error) {
+	response, err := c.continueClaudeSession.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // ListHeldMessages calls aide.machine.v1.MachineAdminService.ListHeldMessages.
 func (c *machineAdminServiceClient) ListHeldMessages(ctx context.Context, req *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {
 	response, err := c.listHeldMessages.CallUnary(ctx, connect.NewRequest(req))
@@ -1409,6 +1434,12 @@ type MachineAdminServiceHandler interface {
 	// One of them and a page of its conversation, from Claude Code's
 	// transcript, as session events. Read only. Owner only.
 	ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error)
+	// Goes on with one of them in Aide (工单 #181): a session of Aide's that
+	// resumes it — Claude Code's own id, in its own folder — with the
+	// owner's message as its next turn, so what follows is in its transcript
+	// as Claude wrote it before. One already gone on with is that session.
+	// Owner only.
+	ContinueClaudeSession(context.Context, *v1.ContinueClaudeSessionRequest) (*v1.ContinueClaudeSessionResponse, error)
 	// Messages held for the owner before they reach a session
 	// (docs/agent-messages.md §15.5): from an agent let in less than 7 days
 	// ago, in a chain at hop 3 or more, or matching the owner's information
@@ -1613,6 +1644,12 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 		connect.WithSchema(machineAdminServiceMethods.ByName("ReadClaudeSession")),
 		connect.WithHandlerOptions(opts...),
 	)
+	machineAdminServiceContinueClaudeSessionHandler := connect.NewUnaryHandlerSimple(
+		MachineAdminServiceContinueClaudeSessionProcedure,
+		svc.ContinueClaudeSession,
+		connect.WithSchema(machineAdminServiceMethods.ByName("ContinueClaudeSession")),
+		connect.WithHandlerOptions(opts...),
+	)
 	machineAdminServiceListHeldMessagesHandler := connect.NewUnaryHandlerSimple(
 		MachineAdminServiceListHeldMessagesProcedure,
 		svc.ListHeldMessages,
@@ -1743,6 +1780,8 @@ func NewMachineAdminServiceHandler(svc MachineAdminServiceHandler, opts ...conne
 			machineAdminServiceListClaudeSessionsHandler.ServeHTTP(w, r)
 		case MachineAdminServiceReadClaudeSessionProcedure:
 			machineAdminServiceReadClaudeSessionHandler.ServeHTTP(w, r)
+		case MachineAdminServiceContinueClaudeSessionProcedure:
+			machineAdminServiceContinueClaudeSessionHandler.ServeHTTP(w, r)
 		case MachineAdminServiceListHeldMessagesProcedure:
 			machineAdminServiceListHeldMessagesHandler.ServeHTTP(w, r)
 		case MachineAdminServiceReleaseHeldMessageProcedure:
@@ -1866,6 +1905,10 @@ func (UnimplementedMachineAdminServiceHandler) ListClaudeSessions(context.Contex
 
 func (UnimplementedMachineAdminServiceHandler) ReadClaudeSession(context.Context, *v1.ReadClaudeSessionRequest) (*v1.ReadClaudeSessionResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ReadClaudeSession is not implemented"))
+}
+
+func (UnimplementedMachineAdminServiceHandler) ContinueClaudeSession(context.Context, *v1.ContinueClaudeSessionRequest) (*v1.ContinueClaudeSessionResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("aide.machine.v1.MachineAdminService.ContinueClaudeSession is not implemented"))
 }
 
 func (UnimplementedMachineAdminServiceHandler) ListHeldMessages(context.Context, *v1.ListHeldMessagesRequest) (*v1.ListHeldMessagesResponse, error) {

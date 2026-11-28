@@ -342,6 +342,9 @@ function agentRow(a: AgentStatus): ConnRow {
   }
   // Its check cannot tell (工单 #112: an ACP agent's sign-in shows only in a session): unconfirmed, never signed in on a guess.
   if (!a.loggedIn && a.loginUnconfirmed) return { ...r, state: "unknown", presence: "unconfirmed", text: t("conn.unconfirmed"), lacks: t("conn.agentUnconfirmed", { agent: r.title }) };
+  // Signed out by what its last run said (工单 #180): said so, with its words, and that a test run checks again.
+  const seen = !a.loggedIn && a.signInSeen && !a.signInSeen.signedIn ? a.signInSeen : undefined;
+  if (seen) return { ...r, state: "missing", text: t("conn.signedOut"), lacks: t("conn.agentSignedOutSeen", { agent: r.title, why: seen.why || "—" }), fix: "signIn" };
   if (!a.loggedIn) return { ...r, state: "missing", text: t("conn.signedOut"), lacks: t("conn.agentSignedOut", { agent: r.title }), fix: "signIn" };
   return { ...r, text: a.version ? t("conn.readyVersion", { version: a.version }) : t("conn.ready") };
 }

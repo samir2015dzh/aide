@@ -101,3 +101,10 @@
 .dsh-install-state.warn{color:var(--orange)}
 .dsh-manual{margin-top:6px;color:var(--l2)}
 .dsh-manual summary{cursor:pointer;font-size:12px}
+/* Going on with an app's Claude session in Aide (工单 #181). */
+.claude-go-on{display:flex;flex-direction:column;gap:6px;margin:0 0 var(--sp-3);padding:10px 12px;border-radius:var(--r-ctl);background:var(--btn);box-shadow:var(--btn-sh)}
+.claude-go-on .dsh-note{margin:0;font-size:12px;color:var(--l2)}
+.claude-go-on textarea{resize:vertical;min-height:52px}
+.claude-go-on-acts{display:flex;justify-content:flex-end}
+.claude-go-on .sheet-err{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.dsh-head .dsh-addr{display:block}

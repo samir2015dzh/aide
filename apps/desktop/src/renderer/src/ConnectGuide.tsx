@@ -3,12 +3,12 @@ import { Check } from "./Picker";
 import { useTranslation } from "react-i18next";
 import { AgentUpdateState, type ACPRegistryEntry, type AgentStatus, type CustomAgent, type ListACPRegistryResponse, type UpdateAgentResponse } from "@aide/proto/machine";
 import type { Machine } from "@aide/proto/local";
-import { codingAgentIds, codingAgentTitle, projectIdFromFolder, projectTitle } from "@aide/core";
+import { agoText, codingAgentIds, codingAgentTitle, dateOf, projectIdFromFolder, projectTitle } from "@aide/core";
 import { AgentTile, Mark } from "@aide/ui";
 import { projectsFor, whyBroken } from "./AgentList";
 import { ConnectionsCard } from "./Connections";
 import { local } from "./api";
-import { agentOf, detect, fixes, formOf, formProblem, installs, lines, looksSecret, needs, notLoggedIn, stateKey, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
+import { agentOf, detect, fixes, formOf, formProblem, installs, lines, looksSecret, needs, notLoggedIn, seenOut, stateKey, terminalCommand, type CustomForm, type Line } from "./connectGuideLogic";
 import { Icon } from "./icons";
 import { needsUpdate } from "./skew";
 import { errorText, useStore } from "./store";
@@ -83,7 +83,7 @@ export function ConnectGuide({ line, place }: { line: Line; place: Place }) {
       )}
       {/* What Aide already knows comes first: the form below is for what it doesn't (工单 #136 P09). */}
       {line === "custom" && <KnownAgents m={m} />}
-      <Steps title={t("before")} items={needs(line, lineState(m, line)).map((k) => t(k as never, { machine: m.machineName }))} />
+      <Steps title={t("before")} items={needs(line, lineState(m, line), seenOut(m.status?.agents.find((x) => x.name === line))).map((k) => t(k as never, { machine: m.machineName }))} />
       <Steps title={t("steps")} items={[1, 2, 3, 4, 5].map((n) => t(`${line}.step${n}` as never))} ordered />
       {line === "custom" ? <Customs m={m} place={place} /> : <Agent m={m} agent={line} line={line} place={place} />}
     </div>
@@ -130,7 +130,9 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
   // Claude Code signs in from Aide (工单 #51: Connection details below); Codex and Antigravity in a terminal.
   const login = agent === "codex" ? "login" : undefined;
   const antigravityLoginCmd = agent === "antigravity" ? "aide agent login antigravity" : undefined;
-  const state = t(stateKey(d, a, line) as never, v);
+  const seen = seenOut(a) ? a!.signInSeen : undefined;
+  const at = dateOf(seen?.at);
+  const state = t(stateKey(d, a, line) as never, { ...v, when: at ? agoText(at, new Date()) : t("state.seenEarlier") });
   return (
     <>
       <section className="cg-sec" aria-label={t("status")}>
@@ -144,13 +146,14 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
             </button>
           )}
         </div>
+        {seen?.why && <p className="cg-note">{t("state.seenWhy", { why: seen.why })}</p>}
         {a?.available && a.update && <AgentUpdateLine m={m} a={a} />}
         {installs[line] && (d === "missing" || d === "appOnly" || d === "broken") && <Install m={m} line={line} registryId={installs[line]} />}
-        {fixes(line, d).length > 0 && (
+        {fixes(line, d, !!seen).length > 0 && (
           <div className="cg-fix">
             <span>{t("tryThis")}</span>
             <ul className="cg-list">
-              {fixes(line, d).map((k) => (
+              {fixes(line, d, !!seen).map((k) => (
                 <li key={k}>
                   {t(k as never, { ...v, reason: a ? whyBroken(a, tf) : "" })}
                   {d === "signIn" && login !== undefined && a?.binary && k.endsWith("fixSignIn") && <CopyLine text={terminalCommand(a.binary, login, windows)} />}
@@ -169,8 +172,9 @@ function Agent({ m, agent, line, place }: { m: Machine; agent: string; line: Lin
           <ConnectionsCard m={m} only={(r) => r.agent === agent} bare={(r) => r.id === (agent === "claude" ? "claude-cli" : agent)} />
         </section>
       )}
-      {/* A trial run is what confirms an ACP agent's sign-in (工单 #112): offered while it is unconfirmed too. */}
-      <Verify m={m} agent={agent} line={line} ready={d === "ready" || d === "unconfirmed"} place={place} />
+      {/* A trial run is what confirms an ACP agent's sign-in (工单 #112): offered while it is unconfirmed too, and while
+          only what its last run said keeps it signed out (工单 #180). */}
+      <Verify m={m} agent={agent} line={line} ready={d === "ready" || d === "unconfirmed" || !!seen} place={place} />
       <Steps
         title={t("where")}
         items={[

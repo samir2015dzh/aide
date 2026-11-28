@@ -397,6 +397,19 @@ message AgentStatus {
   // Its CLI's own update check (工单 #178), for an agent whose CLI updates
   // itself (UpdateAgent); unset for one that does not, or not checked yet.
   AgentUpdate update = 31;
+  // What its sign-in state rests on when a session or a test run here
+  // showed it (工单 #180): an agent whose own check cannot tell (an ACP
+  // agent's) is signed in or out by what its last run said, and this says
+  // when and in its words; unset when its own check decided, or nothing ran.
+  SignInSeen sign_in_seen = 32;
+}
+
+// SignInSeen is what the last run of an agent here showed of its sign-in.
+message SignInSeen {
+  bool signed_in = 1;
+  google.protobuf.Timestamp at = 2;
+  // What it said, for a run that failed "not signed in"; "" otherwise.
+  string why = 3;
 }
 
 // AgentUpdate is what an agent's release channel says against the version
@@ -824,6 +837,14 @@ service MachineAdminService {
   // transcript, as session events. Read only. Owner only.
   rpc ReadClaudeSession(ReadClaudeSessionRequest) returns (ReadClaudeSessionResponse) {
     option (aide.options.v1.access) = ACCESS_READ;
+  }
+  // Goes on with one of them in Aide (工单 #181): a session of Aide's that
+  // resumes it — Claude Code's own id, in its own folder — with the
+  // owner's message as its next turn, so what follows is in its transcript
+  // as Claude wrote it before. One already gone on with is that session.
+  // Owner only.
+  rpc ContinueClaudeSession(ContinueClaudeSessionRequest) returns (ContinueClaudeSessionResponse) {
+    option (aide.options.v1.access) = ACCESS_WRITE;
   }
   // Messages held for the owner before they reach a session
   // (docs/agent-messages.md §15.5): from an agent let in less than 7 days
@@ -1333,6 +1354,10 @@ message ClaudeSession {
   // SessionStart); "" before, when it takes no message
   // (docs/agent-messages.md §15.4). Never worked out from the app's data.
   string address = 12;
+  // The session of Aide's it goes on in, once the owner went on with it
+  // in Aide (工单 #181, ContinueClaudeSession); "" before. Still listed
+  // here: this is its whole conversation, that session's from then on.
+  string continued_in = 13;
 }
 
 message ReadClaudeSessionRequest {
@@ -1342,6 +1367,21 @@ message ReadClaudeSessionRequest {
   // 1 to 1000; 0 means 50.
   uint32 limit = 4;
   aide.session.v1.EventView view = 5;
+}
+
+message ContinueClaudeSessionRequest {
+  // The app's id of it, or Claude Code's.
+  string session_id = 1;
+  // The owner's message: its next turn.
+  string prompt = 2;
+  // The project to keep it under; "" finds the one its folder is in (the
+  // project's folder, a folder in it, or a worktree of its repository).
+  string project_id = 3;
+  string idempotency_key = 4;
+}
+
+message ContinueClaudeSessionResponse {
+  aide.session.v1.Session session = 1;
 }
 
 message ReadClaudeSessionResponse {

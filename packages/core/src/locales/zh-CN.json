@@ -243,7 +243,8 @@
     "bridgeInstallRestart": "重启 DSH Desktop 后生效（插件一开始应答，这一行会自己变成「已安装」）。",
     "dshModelGroup": "{{provider}}：{{models}}",
     "listSeparator": "、",
-    "andMore": " 等 {{count}} 个"
+    "andMore": " 等 {{count}} 个",
+    "agentSignedOutSeen": "{{agent}} 上次在 Aide 里运行时说它没登录（{{why}}）：可以在连接页点「运行测试」再验一次。"
   },
   "roster": {
     "online": "在线",

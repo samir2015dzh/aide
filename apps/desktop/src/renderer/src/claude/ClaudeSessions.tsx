@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { ConnectError } from "@connectrpc/connect";
+import { ErrorReasonSchema } from "@aide/proto/local";
 import { ToolRow } from "../dsh/ToolRow";
 import { MachineTag } from "../MachineTag";
 import { useTranslation } from "react-i18next";
-import { agoText, dateOf, lostLine, transcript } from "@aide/core";
+import { agoText, dateOf, lostLine, projectIdFromFolder, transcript } from "@aide/core";
 import type { ClaudeSessionEntry } from "@aide/proto/local";
 import { EventView, type SessionEvent } from "@aide/proto/session";
 import { local } from "../api";
-import { errorText, useNow } from "../store";
+import { errorText, useNow, useStore } from "../store";
 import "../dsh/dsh.css";
 
 // The Claude Code sessions the Claude desktop app lists on the owner's machines, which Aide did not start
@@ -76,8 +78,9 @@ export function ClaudeTranscript({ entry, line }: { entry: ClaudeSessionEntry; l
         </div>
         <span>{[line, s.model, s.cwd].filter(Boolean).join(" · ")}</span>
         {/* Where an agent's message to it goes, once this machine's aide hooks reported it (docs/agent-messages.md §15.4). */}
-        <span className={s.address ? "mono sel-text" : undefined}>{s.address ? t("claude.address", { address: s.address }) : t("claude.noAddress")}</span>
+        <span className={s.address ? "mono sel-text dsh-addr" : "dsh-addr"}>{s.address ? t("claude.address", { address: s.address }) : t("claude.noAddress")}</span>
       </div>
+      {!entry.lost && !s.error && (s.continuedIn ? <ContinuedIn entry={entry} /> : <ContinueInAide entry={entry} />)}
       {entry.lost ? (
         <p className="dsh-empty">{t("dsh.lostNote", { name: entry.machineName || entry.machineId })}</p>
       ) : (
@@ -112,5 +115,86 @@ export function ClaudeTranscript({ entry, line }: { entry: ClaudeSessionEntry; l
         </>
       )}
     </>
+  );
+}
+
+/** Gone on with in Aide already (工单 #181): this is its whole conversation; the session there goes on from then. */
+function ContinuedIn({ entry }: { entry: ClaudeSessionEntry }) {
+  const { t } = useTranslation("common");
+  const st = useStore();
+  return (
+    <section className="claude-go-on" aria-label={t("claude.continueTitle")}>
+      <p className="dsh-note">{t("claude.continuedNote")}</p>
+      <div className="claude-go-on-acts">
+        <button className="btn sm primary" onClick={() => st.set({ selection: { kind: "session", id: entry.session!.continuedIn } })}>
+          {t("claude.continuedOpen")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Going on with it in Aide (工单 #181): the owner's message starts a session of Aide's that resumes this conversation —
+ * Claude Code's own, in its own folder — and opens it. A folder no project holds is said so, with the way on: add it as
+ * a project, then go on.
+ */
+function ContinueInAide({ entry }: { entry: ClaudeSessionEntry }) {
+  const { t } = useTranslation("common");
+  const st = useStore();
+  const s = entry.session!;
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<{ text: string; folder?: string }>();
+  const [key, setKey] = useState(() => crypto.randomUUID());
+  const go = async (addFolder?: string) => {
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (addFolder) {
+        const taken = new Set(st.projects.filter((p) => p.machineId === entry.machineId).map((p) => p.projectId));
+        await local.addProject({ machineId: entry.machineId, projectId: projectIdFromFolder(baseName(addFolder), taken), path: addFolder, agents: ["claude"] });
+      }
+      const res = await local.continueClaudeSession({ machineId: entry.machineId, sessionId: s.sessionId, prompt: text, idempotencyKey: key });
+      setText("");
+      setKey(crypto.randomUUID());
+      if (res.session) st.set({ selection: { kind: "session", id: res.session.sessionId } });
+    } catch (e) {
+      const r = e instanceof ConnectError ? e.findDetails(ErrorReasonSchema)[0] : undefined;
+      setError({ text: errorText(e), folder: r?.reason === "claude_no_project" ? r.args.folder : undefined });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="claude-go-on" aria-label={t("claude.continueTitle")}>
+      <div className="fhead">{t("claude.continueTitle")}</div>
+      <p className="dsh-note">{t("claude.continueNote", { folder: s.cwd })}</p>
+      <textarea
+        className="field"
+        rows={2}
+        value={text}
+        placeholder={t("claude.continuePlaceholder")}
+        aria-label={t("claude.continueTitle")}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), void go())}
+      />
+      <div className="claude-go-on-acts">
+        <button className="btn sm primary" disabled={busy || !text.trim()} onClick={() => void go()}>
+          {busy ? t("claude.continueSending") : t("claude.continueSend")}
+        </button>
+      </div>
+      {error && (
+        <div className="sheet-err" role="alert">
+          {error.text}
+          {error.folder && (
+            <button className="btn sm" disabled={busy || !text.trim()} onClick={() => void go(error.folder)}>
+              {t("claude.continueAddProject")}
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

@@ -50,12 +50,21 @@ export function detect(a: AgentStatus | undefined, online: boolean, known: boole
 }
 
 /**
+ * Signed out by what its last run here said (工单 #180: AgentStatus.signInSeen), not by its own check: a test run can
+ * say otherwise, so it is offered.
+ */
+export function seenOut(a: AgentStatus | undefined): boolean {
+  return !!a && a.available && !a.loggedIn && !a.loginUnconfirmed && !!a.signInSeen && !a.signInSeen.signedIn;
+}
+
+/**
  * The status line's text, as a key of the connect texts (state.*): a found agent's version, or that it is unknown
  * (工单 #176: its --version is no verdict); a broken one's check that had no answer kept apart from a program that
  * fails to start (工单 #175).
  */
 export function stateKey(d: Detected, a: AgentStatus | undefined, line?: Line): string {
   if (d === "ready") return a?.version ? "state.readyVersion" : "state.readyNoVersion";
+  if (d === "signIn" && seenOut(a)) return "state.signInSeen";
   if (d === "signIn" && line === "claude") return "state.signInClaude";
   if (d === "broken" && a?.problem === timedOut) return "state.noAnswer";
   return `state.${d}`;
@@ -66,14 +75,15 @@ export function stateKey(d: Detected, a: AgentStatus | undefined, line?: Line): 
  * the likely causes first, each something the person can do. A broken
  * agent's own reason comes first, from the machine (whyBroken).
  */
-export function fixes(line: Line, d: Detected): string[] {
+export function fixes(line: Line, d: Detected, seen = false): string[] {
   switch (d) {
     case "missing":
       return line === "custom" ? ["fix.customMissing", "fix.checkAgain"] : [`${line}.fixInstall`, `${line}.fixWhere`, "fix.checkAgain"];
     case "appOnly":
       return line === "claude" ? ["claude.fixCodeTab", "fix.checkAgain"] : line === "deepseek" ? ["deepseek.fixAppOnly", "fix.checkAgain"] : [`${line}.fixInstall`, "fix.checkAgain"];
     case "signIn":
-      return [`${line}.fixSignIn`, "fix.checkAgain"];
+      // Signed out by what a run said (工单 #180): a test run checks it again first, then the sign-in.
+      return seen ? ["fix.retest", `${line}.fixSignIn`, "fix.checkAgain"] : [`${line}.fixSignIn`, "fix.checkAgain"];
     case "broken":
       return ["fix.broken", "fix.checkAgain"];
     case "offline":
@@ -94,10 +104,10 @@ export const installs: Partial<Record<Line, string>> = { antigravity: "antigravi
  * P05: "signed in" stated outright beside "not detected"), and keep apart its server, which Aide installs, and its
  * sign-in, which only its owner can give.
  */
-export function needs(line: Line, d: Detected): string[] {
+export function needs(line: Line, d: Detected, seen = false): string[] {
   if (line === "antigravity") {
     const server = d === "missing" || d === "appOnly" ? "needServerMissing" : d === "broken" ? "needServerBroken" : d === "offline" || d === "checking" ? "needServer" : "needServerOk";
-    const signIn = d === "ready" ? "needSignInOk" : d === "signIn" ? "needSignInMissing" : d === "unconfirmed" ? "needSignInUnconfirmed" : d === "offline" || d === "checking" ? "needSignIn" : "needSignInLater";
+    const signIn = d === "ready" ? "needSignInOk" : d === "signIn" ? (seen ? "needSignInSeen" : "needSignInMissing") : d === "unconfirmed" ? "needSignInUnconfirmed" : d === "offline" || d === "checking" ? "needSignIn" : "needSignInLater";
     return [`antigravity.${server}`, `antigravity.${signIn}`];
   }
   return line === "codex" || line === "custom" ? [`${line}.need1`, `${line}.need2`] : [`${line}.need1`, `${line}.need2`, `${line}.need3`];

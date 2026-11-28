@@ -244,7 +244,15 @@
     "completed": "Done",
     "blocked": "Needs you",
     "address": "Takes messages at {{address}}",
-    "noAddress": "Takes no messages (Aide on this machine hasn't been in touch with this conversation yet)"
+    "noAddress": "Other agents can’t write to it yet (Aide on this machine hasn’t been in touch with this conversation)",
+    "continueTitle": "Go On in Aide",
+    "continueNote": "Aide goes on with this conversation with Claude Code in its own folder ({{folder}}), and what follows is written in this conversation in Claude too, the same on both sides. Don’t go on with it in Claude at the same time.",
+    "continuePlaceholder": "Say what comes next…",
+    "continueSend": "Go On",
+    "continueSending": "Picking it up…",
+    "continueAddProject": "Add This Folder as a Project, Then Go On",
+    "continuedNote": "Already going on in Aide: this is its whole conversation (this record in Claude); what follows is in that session of Aide’s too.",
+    "continuedOpen": "Open the Session in Aide"
   },
   "dsh": {
     "title": "DSH sessions",
@@ -654,7 +662,10 @@
     "room_members_count": "A room has 1 to {{max}} members.",
     "room_not_in_charter": "{{agent}} (project {{project}}) is not on this room’s member list.",
     "room_not_found": "The machine keeping this room no longer has it.",
-    "nothing_to_say": "Nothing written yet."
+    "nothing_to_say": "Nothing written yet.",
+    "claude_no_project": "No project on this machine holds {{folder}}, the folder it worked in: add that folder as a project to go on with it in Aide.",
+    "claude_folder_gone": "{{folder}}, the folder it worked in, is no longer on this machine, so it can't go on there: go on in Claude, or start a new task in Aide.",
+    "claude_no_transcript": "Claude Code's record of this conversation isn't on this machine, so it can't go on here: go on in Claude, or start a new task in Aide."
   },
   "composer": {
     "permission": "Permission",

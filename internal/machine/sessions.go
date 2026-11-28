@@ -134,7 +134,7 @@ type Sessions struct {
 	// signedIn hears what a session showed of its agent's sign-in: false
 	// when it failed not signed in, true when it ran a turn (工单 #108);
 	// nil in tests.
-	signedIn func(agent string, in bool)
+	signedIn func(agent string, in bool, why string)
 	// estimateCost estimates USD cost from open reference pricing when a turn
 	// reports tokens without a provider-reported cost (工单 #114); nil in tests.
 	estimateCost func(agent, model string, inputTokens, outputTokens uint64) (float64, bool)
@@ -431,6 +431,15 @@ func (s *Sessions) find(p *Principal, id string, write bool) (*live, *sessionRow
 // from one of the owner's devices, on any project and coding agent here
 // (created_by "owner"; docs/technical-design.md §3.4).
 func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.StartSessionRequest) (*sessionv1.Session, error) {
+	return s.start(ctx, p, req, nil)
+}
+
+// resumed is a conversation an agent had outside Aide that a session goes
+// on with (工单 #181): the agent's own id of it and the folder it worked
+// in, worked in where it is (never a worktree of Aide's, never removed).
+type resumed struct{ ref, dir string }
+
+func (s *Sessions) start(ctx context.Context, p *Principal, req *sessionv1.StartSessionRequest, ext *resumed) (*sessionv1.Session, error) {
 	if p.Kind != PrincipalClient && p.Kind != PrincipalOwner {
 		return nil, cerr(connect.CodePermissionDenied, "only clients and the owner may start sessions")
 	}
@@ -572,13 +581,16 @@ func (s *Sessions) Start(ctx context.Context, p *Principal, req *sessionv1.Start
 	if repo.Name != "" {
 		r.Repo, r.RepoURL, r.RepoBranch = repo.String(), repo.URL, repoBranch
 	}
+	if ext != nil { // in its own folder, resuming its conversation from the first turn
+		r.Workspace, r.Worktree, r.ProviderRef = identityv1.Workspace_WORKSPACE_IN_PLACE, ext.dir, ext.ref
+	}
 	if req.QuestionTimeoutSeconds != nil {
 		r.QuestionTimeout = int(*req.QuestionTimeoutSeconds)
 	}
 	s.count(r.Status, 1)
 	prompt.by, prompt.conv, prompt.byName = p.ID(), req.Conversation, p.Name()
 	l := &live{id: id, row: r, subs: map[chan *sessionv1.SessionEvent]bool{}, tools: map[string]string{}, pending: prompt, lastEvent: now, queuedAt: now,
-		asker: p.ID(), askerConv: req.Conversation}
+		asker: p.ID(), askerConv: req.Conversation, resume: ext != nil}
 	s.mu.Lock()
 	s.live[id] = l
 	s.mu.Unlock()
@@ -2450,7 +2462,7 @@ func (s *Sessions) interruptStart(l *live, f *provider.Failure) {
 	agent := l.row.Agent
 	l.mu.Unlock()
 	countFailure(agent, pf.Kind)
-	s.sawSignIn(agent, pf.Kind)
+	s.sawSignIn(agent, pf)
 	s.emit(l, &sessionv1.SessionEvent{Kind: &sessionv1.SessionEvent_Error{Error: &sessionv1.ErrorEvent{Message: pf.Message, Failure: pf}}})
 	s.setStatus(l, sessionv1.SessionStatus_SESSION_STATUS_CRASHED, pf.Message)
 	s.dispatch()
@@ -2612,7 +2624,7 @@ func (s *Sessions) finishTurn(l *live, e provider.Event, status sessionv1.Sessio
 			s.log.Warn("turn failed", "session", id, "turn", turn, "kind", tc.Failure.Kind.String(), "message", tc.Failure.Message)
 		}
 	}
-	s.sawSignIn(l.row.Agent, tc.Failure.GetKind())
+	s.sawSignIn(l.row.Agent, tc.Failure)
 	var commit string
 	var turnStat *sessionv1.DiffStat
 	var err error
@@ -3172,15 +3184,15 @@ func countResume(agent, outcome string) {
 // countFailure counts a turn or session failure by agent and kind.
 // sawSignIn tells the machine what a turn that ended (k: its failure, or
 // unspecified when it did not fail) showed of the agent's sign-in.
-func (s *Sessions) sawSignIn(agent string, k sessionv1.FailureKind) {
+func (s *Sessions) sawSignIn(agent string, f *sessionv1.Failure) {
 	if s.signedIn == nil {
 		return
 	}
-	switch k {
+	switch f.GetKind() {
 	case sessionv1.FailureKind_FAILURE_KIND_AUTH:
-		s.signedIn(agent, false)
+		s.signedIn(agent, false, f.GetMessage())
 	case sessionv1.FailureKind_FAILURE_KIND_UNSPECIFIED:
-		s.signedIn(agent, true)
+		s.signedIn(agent, true, "")
 	}
 }
 

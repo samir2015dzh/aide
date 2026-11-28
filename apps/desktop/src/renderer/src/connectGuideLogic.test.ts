@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AgentStatus, CustomAgent } from "@aide/proto/machine";
-import { agentOf, detect, fixes, formOf, formProblem, installs, joinArgs, looksSecret, needs, splitArgs, stateKey, terminalCommand } from "./connectGuideLogic.ts";
+import { agentOf, detect, fixes, formOf, formProblem, installs, joinArgs, looksSecret, needs, seenOut, splitArgs, stateKey, terminalCommand } from "./connectGuideLogic.ts";
 
 const status = (o: Partial<AgentStatus>) => ({ name: "x", available: false, loggedIn: false, checking: false, problem: 0, detail: "", ...o }) as AgentStatus;
 
@@ -121,4 +121,18 @@ test("needs: Antigravity's say how its server and sign-in stand now, the sign-in
   assert.deepEqual(needs("codex", "missing"), ["codex.need1", "codex.need2"]);
   assert.deepEqual(needs("deepseek", "ready"), ["deepseek.need1", "deepseek.need2", "deepseek.need3"]);
   assert.deepEqual(installs, { antigravity: "antigravity-acp" });
+});
+
+// 工单 #180: signed out by what its last run said — not by its own check — it says so, a test run checks again first,
+// and only then the sign-in; Antigravity's "before you start" says its app's sign-in may not carry over.
+test("signed out by its last run: said so, and a test run comes first", () => {
+  const seen = status({ available: true, signInSeen: { signedIn: false, why: "not logged in" } as AgentStatus["signInSeen"] });
+  assert.equal(seenOut(seen), true);
+  assert.equal(seenOut(status({ available: true })), false);
+  assert.equal(seenOut(status({ available: true, loginUnconfirmed: true })), false);
+  assert.equal(stateKey("signIn", seen, "antigravity"), "state.signInSeen");
+  assert.deepEqual(fixes("antigravity", "signIn", true), ["fix.retest", "antigravity.fixSignIn", "fix.checkAgain"]);
+  assert.deepEqual(fixes("antigravity", "signIn"), ["antigravity.fixSignIn", "fix.checkAgain"]);
+  assert.deepEqual(needs("antigravity", "signIn", true), ["antigravity.needServerOk", "antigravity.needSignInSeen"]);
+  assert.deepEqual(needs("antigravity", "unconfirmed"), ["antigravity.needServerOk", "antigravity.needSignInUnconfirmed"]);
 });

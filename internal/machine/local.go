@@ -149,6 +149,11 @@ func (l *Local) ReadClaudeSession(req *machinev1.ReadClaudeSessionRequest) (*mac
 	return l.n.ReadClaudeSession(req)
 }
 
+// ContinueClaudeSession goes on with one of them in Aide (工单 #181).
+func (l *Local) ContinueClaudeSession(ctx context.Context, req *machinev1.ContinueClaudeSessionRequest) (*sessionv1.Session, error) {
+	return l.n.ContinueClaudeSession(ctx, l.p, req)
+}
+
 func (l *Local) ReadDSHSession(req *machinev1.ReadDSHSessionRequest) (*machinev1.ReadDSHSessionResponse, error) {
 	return l.n.ReadDSHSession(req)
 }

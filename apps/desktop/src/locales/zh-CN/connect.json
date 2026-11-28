@@ -29,7 +29,10 @@
     "broken": "在 {{machine}} 上找到了，但启动失败",
     "noAnswer": "在 {{machine}} 上找到了，但检查时它没有回应",
     "missing": "在 {{machine}} 上没有检测到",
-    "signInClaude": "在 {{machine}} 上找到了 Claude Code 命令行，但它还没登录（Claude Desktop 的登录不会续给它）"
+    "signInClaude": "在 {{machine}} 上找到了 Claude Code 命令行，但它还没登录（Claude Desktop 的登录不会续给它）",
+    "signInSeen": "在 {{machine}} 上找到了；它上次在 Aide 里运行时（{{when}}）说没登录",
+    "seenWhy": "它的原话：{{why}}",
+    "seenEarlier": "早先"
   },
   "tryThis": "检查这些：",
   "checkAgain": "重新检查",
@@ -38,7 +41,8 @@
     "checkAgain": "然后点「重新检查」。每点一次 Aide 都会重新找，不用重启任何东西。",
     "broken": "Aide 检查到的情况：{{reason}}",
     "offline": "在 {{machine}} 上打开 Aide，或者唤醒它。它一上线，状态就会回来。",
-    "customMissing": "检查命令：这个程序装在 {{machine}} 上了吗？名字或完整路径对不对？在下面编辑这个 Agent，点「测试连接」看看结果。"
+    "customMissing": "检查命令：这个程序装在 {{machine}} 上了吗？名字或完整路径对不对？在下面编辑这个 Agent，点「测试连接」看看结果。",
+    "retest": "先确认它是不是真没登录：点下面的「运行测试」。跑通了会显示已登录；仍说没登录，再照下一条登录。"
   },
   "project": {
     "none": "开始测试任务要在一个项目里：{{agent}} 在 {{machine}} 上还没有项目（允许它工作的文件夹），先添加一个。",
@@ -139,7 +143,8 @@
     "needSignInLater": "服务装好后再登录：这一步只能你本人完成，在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。",
     "install": "安装 Antigravity ACP 服务",
     "installing": "正在下载并校验…",
-    "installWhat": "Aide 会从 Google 的官方发布处下载 Antigravity ACP 服务，按官方 ACP 注册表的 SHA-256 校验后装到 {{machine}} 上 Aide 找它的位置，装好后自动重新检查。"
+    "installWhat": "Aide 会从 Google 的官方发布处下载 Antigravity ACP 服务，按官方 ACP 注册表的 SHA-256 校验后装到 {{machine}} 上 Aide 找它的位置，装好后自动重新检查。",
+    "needSignInSeen": "它上次在 Aide 里运行时说没登录。Antigravity ACP 服务的登录与反重力应用里的登录分开记，应用里登录了不一定带给它：先点下面的「运行测试」再验一次；仍说没登录，再在终端运行一次 aide agent login antigravity，在浏览器里用 Google 账号授权。"
   },
   "custom": {
     "intro": "Aide 没列出的编码 Agent，只要支持 Agent Client Protocol（ACP），都可以连接。告诉 Aide 怎么启动它；Aide 会把它保存在那台电脑上，和其他 Agent 列在一起。不支持 ACP、但能在终端里运行命令的 Agent，在下面的「助手」里选「其他 Agent」连接。",

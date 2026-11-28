@@ -488,13 +488,13 @@ func (n *Machine) providerInfo(name string) provider.Info {
 // (MachineService.Watch sends it within statusEvery; no ReportStatus, 工单 #143).
 // What it showed is kept (passive.go) for an agent whose check cannot tell
 // (工单 #112: an ACP agent's).
-func (n *Machine) agentSignedIn(name string, in bool) {
-	n.sawSignIn(name, in)
+func (n *Machine) agentSignedIn(name string, in bool, why string) {
+	seen := n.sawSignIn(name, in, why)
 	n.mu.Lock()
 	i, ok := n.infos[name]
-	changed := ok && i.Available && (i.LoggedIn != in || i.LoginUnconfirmed)
-	if changed {
-		i.LoggedIn, i.LoginUnconfirmed = in, false
+	if ok && i.Available {
+		// What it rests on now (工单 #180): this run.
+		i.LoggedIn, i.LoginUnconfirmed, i.SignInSeen = in, false, &seen
 		n.infos[name] = i
 	}
 	n.mu.Unlock()
@@ -657,6 +657,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 				a.CheckedAt = timestamppb.New(i.CheckedAt)
 			}
 			a.Update = n.updateOfLocked(name, i.Version)
+			a.SignInSeen = signInSeenProto(i.SignInSeen)
 			a.Usage = n.agentUsage[name] // asked at its check (工单 #143); Claude Code's below
 			if name == "claude" {
 				a.Usage = n.usage // the last reading; a refresh is kicked below
@@ -685,6 +686,7 @@ func (n *Machine) Status() *machinev1.MachineStatus {
 		}
 		a.Pause, a.AutoResumedAt = n.pauseOfLocked(name)
 		a.Category = n.categories[name]
+		a.SignInSeen = signInSeenProto(i.SignInSeen)
 		n.agentModels(a, i)
 		st.Agents = append(st.Agents, a)
 	}
@@ -932,4 +934,15 @@ func (n *Machine) estimateTurnCost(agent, model string, inputTokens, outputToken
 	}
 	n.mu.Unlock()
 	return n.catalog.EstimateCostUSD(model, resolved, inputTokens, outputTokens)
+}
+
+func signInSeenProto(s *provider.SignInSeen) *machinev1.SignInSeen {
+	if s == nil {
+		return nil
+	}
+	out := &machinev1.SignInSeen{SignedIn: s.In, Why: s.Why}
+	if !s.At.IsZero() {
+		out.At = timestamppb.New(s.At)
+	}
+	return out
 }

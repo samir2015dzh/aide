@@ -25,6 +25,10 @@ type Info struct {
 	// LoginUnconfirmed: the check could not tell whether it is signed in
 	// (LoggedIn false): shown as unconfirmed, not as signed out (工单 #108).
 	LoginUnconfirmed bool
+	// SignInSeen: what LoggedIn rests on when the last run of the agent
+	// here decided it, its own check unable to tell (工单 #180); nil when
+	// its check decided.
+	SignInSeen *SignInSeen
 	// Claude only: the Claude desktop app's settings are on the machine,
 	// and it is signed in. Its sign-in is not the command line's
 	// (LoggedIn): the CLI Aide runs keeps its own.
@@ -511,4 +515,12 @@ func CleanTitle(s string) string {
 		return t
 	}
 	return ""
+}
+
+// SignInSeen is what a session or a test run of an agent showed of its
+// sign-in: signed in or out, when, and what it said when it failed so.
+type SignInSeen struct {
+	In  bool      `json:"in"`
+	At  time.Time `json:"at"`
+	Why string    `json:"why,omitempty"`
 }

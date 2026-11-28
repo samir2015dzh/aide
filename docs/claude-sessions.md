@@ -3,7 +3,7 @@
 The owner sees in Aide the Claude Code sessions the Claude desktop app has
 on each of their machines, the ones Aide did not start: listed by their
 title in the app, with the GitHub repository their folder is a checkout of
-when the checkout says so, and opened read only. Work order: the handover
+when the checkout says so, and opened read only — or gone on with in Aide (§5). Work order: the handover
 repository's "Claude Desktop / Claude Code 既有会话在 Aide 内的可见性"
 (inventory: `reports/2026-11-20-forensics-visibility-loginstate.md` §3,
 grade A; the owner's ruling on what is shown, 2026-11-20).
@@ -92,3 +92,26 @@ it has a record of, so:
   not in what lists show (`machine.BasicSession`): the page reads the full
   session when asked. The app's main process opens no other `claude://`
   link (`shared/claudeDesktop.ts`).
+
+## 5. Going on with one in Aide (工单 #181)
+
+- `MachineAdminService.ContinueClaudeSession` (owner only; the owner's
+  `LocalService.ContinueClaudeSession` on any of their machines) starts a
+  session of Aide's that resumes one of the app's sessions: `claude --resume`
+  with Claude Code's own id, in the session's own folder (worked in place:
+  never a worktree of Aide's, never removed), the owner's message its first
+  turn. Claude Code resumes into the same session id (it makes a new one
+  only with `--fork-session`), so what follows is in the transcript the app
+  shows: the two read the same.
+- The project it is kept under: the one named, else the one whose folder
+  holds the session's folder (the nearest), else one whose repository the
+  folder is a worktree of (git's common dir). None: refused with
+  `claude_no_project` and the folder; the page offers to add that folder as
+  a project and go on. A folder gone, or no transcript of it here: refused
+  with `claude_folder_gone` / `claude_no_transcript`, saying to go on in
+  Claude or start a new task in Aide.
+- The session it goes on in is kept (`claude-continued/<Claude Code's id>`):
+  going on again opens it, and the app's session stays listed, saying so
+  (`ClaudeSession.continued_in`) — its earlier conversation is only there.
+- Going on with it in Claude at the same time runs it twice: the page says
+  not to.
