@@ -1,4 +1,12 @@
 {
+  "0.2.17": {
+    "improvements": [
+      "External Claude Code sessions can now be continued inside Aide: open one from the session list and keep chatting — new messages are written back to Claude Code's own record, so both sides show the same conversation. If no project matches, Aide explains why and offers to add the folder as a project and continue."
+    ],
+    "fixes": [
+      "Antigravity sign-in state is no longer stuck on a stale verdict: a single past 'not signed in' observation used to be remembered and shown everywhere as a definite 'Not signed in'. Observations now carry evidence (when, and the exact words); an old verdict without evidence no longer counts and shows as 'Unconfirmed'. The connection guide's first step is now 'Run a test' to check on the spot, and if the test still reports signed out, the exact words are shown with a way to re-check."
+    ]
+  },
   "0.2.16": {
     "improvements": [
       "Agents that are not installed yet are no longer dead rows on the setup page: every entry opens and shows how to install or connect it, or explains what it is and on which machine it would be detected."
